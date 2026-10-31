@@ -1223,6 +1223,9 @@
 	"stepNotStarted": {
 		"message": "$1：未开始"
 	},
+	"stepNotRun": {
+		"message": "$1：未执行"
+	},
 	"reasonStopped": {
 		"message": "这一步还没完成就停止了。"
 	},
@@ -1234,6 +1237,15 @@
 	},
 	"reasonNotStarted": {
 		"message": "未开始：任务因重启而结束。"
+	},
+	"reasonInvalid": {
+		"message": "pi 给这一步的参数不符合工具的要求，所以没有执行。"
+	},
+	"reasonUnavailable": {
+		"message": "这个工具当前不可用，所以这一步没有执行。"
+	},
+	"reasonRefused": {
+		"message": "pi 没有放行这一步，所以没有执行。"
 	},
 	"actedOnPage": {
 		"message": "已操作页面"

@@ -321,7 +321,7 @@ it("puts a script's code and what an action did in detail (design 6.23)", () => 
 	expect(chat.entries.slice(2).map((entry) => "code" in entry)).toEqual([false, false]);
 });
 
-it("says in plain words how a stop or a restart ended a step; the model's text and other failures stay as they are", () => {
+it("says in plain words why pi-durable answered a step itself; the model's text and the tools' own failures stay as they are", () => {
 	// As pi-durable writes them: no output, its text for the model, and the code in the entry's data.
 	const ended = (id: number, toolName: string, code: string, message: string, details?: unknown): Entry => ({
 		...toolResult(id, true, `<harness>\n[error] ${message}\n</harness>`, details, toolName),
@@ -346,8 +346,14 @@ it("says in plain words how a stop or a restart ended a step; the model's text a
 			// Names the model made up stay as they are, an object's own keys too.
 			ended(7, "__proto__", "abandoned", "Tool __proto__ was not started: its caller ended with a restart"),
 			ended(8, "constructor", "aborted", "Tool constructor was aborted"),
-			// Blocked by pi's own hook: not an ending, so its text stays.
+			// Blocked by pi's own checks: their reason, without pi-durable's wrapper and prefix.
 			ended(6, "run_script", "blocked", "Tool call blocked: The user denied this script"),
+			ended(9, "act_on_page", "invalid_arguments", 'Validation failed for tool "act_on_page": - text: too long'),
+			ended(10, "close_tab", "tool_unavailable", "Tool close_tab is not available"),
+			// A block without a reason still says the step did not run.
+			ended(12, "act_on_page", "blocked", "Tool call blocked: "),
+			// The tool's own failure, with no diagnostic, keeps its text.
+			toolResult(11, true, "a16 is not a text field", { summary: "Type the code" }, "act_on_page"),
 		]),
 	);
 	expect(chat.entries).toEqual([
@@ -385,13 +391,34 @@ it("says in plain words how a stop or a restart ended a step; the model's text a
 			error: "Not started: the task ended with a restart.",
 		},
 		{ ...step, id: 8, role: "notice", text: "constructor: stopped", error: "Stopped before this step finished." },
+		{ ...step, id: 6, role: "notice", text: "Run script: not run", error: "The user denied this script" },
 		{
 			...step,
-			id: 6,
+			id: 9,
 			role: "notice",
-			text: "run_script failed",
-			error: "<harness>\n[error] Tool call blocked: The user denied this script\n</harness>",
-			acted: true,
+			text: "Act on page: not run",
+			error: "pi asked for this step in a form the tool does not accept, so it did not run.",
+		},
+		{
+			...step,
+			id: 10,
+			role: "notice",
+			text: "close_tab: not run",
+			error: "This tool is not available, so the step did not run.",
+		},
+		{
+			...step,
+			id: 12,
+			role: "notice",
+			text: "Act on page: not run",
+			error: "pi did not allow this step, so it did not run.",
+		},
+		{
+			...step,
+			id: 11,
+			role: "notice",
+			text: "Type the code",
+			error: "a16 is not a text field",
 		},
 	]);
 });

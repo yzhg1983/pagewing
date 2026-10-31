@@ -1223,6 +1223,9 @@
 	"stepNotStarted": {
 		"message": "$1: not started"
 	},
+	"stepNotRun": {
+		"message": "$1: not run"
+	},
 	"reasonStopped": {
 		"message": "Stopped before this step finished."
 	},
@@ -1234,6 +1237,15 @@
 	},
 	"reasonNotStarted": {
 		"message": "Not started: the task ended with a restart."
+	},
+	"reasonInvalid": {
+		"message": "pi asked for this step in a form the tool does not accept, so it did not run."
+	},
+	"reasonUnavailable": {
+		"message": "This tool is not available, so the step did not run."
+	},
+	"reasonRefused": {
+		"message": "pi did not allow this step, so it did not run."
 	},
 	"actedOnPage": {
 		"message": "Acted on the page"

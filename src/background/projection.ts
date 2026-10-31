@@ -458,19 +458,41 @@ function projectEntry(
 }
 
 /**
- * How pi-durable ended a tool call that did not finish, from the result entry's diagnostics: stopped while it ran or
- * before it started (`aborted`), cut by a restart while it ran (`interrupted`), or not started before a restart ended its
- * task (`abandoned`). Null for a call that finished, failed on its own, or was blocked.
+ * Why pi-durable answered a tool call itself, from the result entry's diagnostics, whose text is for the model: stopped
+ * while it ran or before it started (`aborted`), cut by a restart while it ran (`interrupted`), not started before a
+ * restart ended its task (`abandoned`), refused by pi's own checks (`blocked`, with their reason), arguments the tool's
+ * schema refused (`invalid`), or a tool the model may not call (`unavailable`); `refused` is a block without a reason.
+ * Null for a call the tool answered.
  */
-type Ended = "aborted" | "interrupted" | "abandoned";
+type Ended =
+	| { kind: "aborted" | "interrupted" | "abandoned" | "invalid" | "unavailable" | "refused" }
+	| { kind: "blocked"; reason: string };
+
+const BLOCKED = "Tool call blocked: ";
 
 function endOf(data: JsonValue | undefined): Ended | null {
 	const diagnostics = typeof data === "object" && data !== null && !Array.isArray(data) ? data.diagnostics : undefined;
 	if (!Array.isArray(diagnostics)) return null;
 	for (const diagnostic of diagnostics) {
 		if (typeof diagnostic !== "object" || diagnostic === null || Array.isArray(diagnostic)) continue;
-		const { severity, code } = diagnostic;
-		if (severity === "error" && (code === "aborted" || code === "interrupted" || code === "abandoned")) return code;
+		const { severity, code, message } = diagnostic;
+		if (severity !== "error") continue;
+		switch (code) {
+			case "aborted":
+			case "interrupted":
+			case "abandoned":
+				return { kind: code };
+			case "invalid_arguments":
+				return { kind: "invalid" };
+			case "tool_unavailable":
+				return { kind: "unavailable" };
+			case "blocked":
+				// pi's own reason, in English for the model, without pi-durable's prefix; a hook may give none.
+				if (typeof message === "string") {
+					const reason = (message.startsWith(BLOCKED) ? message.slice(BLOCKED.length) : message).trim();
+					return reason === "" ? { kind: "refused" } : { kind: "blocked", reason };
+				}
+		}
 	}
 	return null;
 }
@@ -501,8 +523,9 @@ function toolLabel(name: string): string {
 }
 
 /**
- * A tool call pi-durable ended: its line, and why, in the interface language; the model got pi-durable's own text. A
- * stopped action or script may have changed the page already: Stop does not undo it.
+ * A tool call pi-durable answered itself: its line, and why, in the interface language but for pi's own checks; the
+ * model got pi-durable's own text. A stopped or interrupted action or script may have changed the page already: Stop
+ * does not undo it. The other calls did not run.
  */
 function endedNotice(
 	base: Parameters<typeof toolNotice>[0],
@@ -512,21 +535,36 @@ function endedNotice(
 	ended: Ended,
 ): ChatEntry {
 	const label = toolLabel(result.toolName);
-	const acted = result.toolName === "act_on_page" || result.toolName === "run_script";
-	const [line, reason] =
-		ended === "aborted"
-			? [t("stepStopped", [label]), acted ? t("reasonStoppedActed") : t("reasonStopped")]
-			: ended === "interrupted"
-				? [t("stepInterrupted", [label]), t("reasonInterrupted")]
-				: [t("stepNotStarted", [label]), t("reasonNotStarted")];
+	const acts = result.toolName === "act_on_page" || result.toolName === "run_script";
+	const [line, reason] = endedText(label, acts, ended);
 	return {
 		...base,
 		role: "notice",
 		text: summary ?? line,
 		error: reason,
 		detail: code,
-		...(acted && ended !== "abandoned" ? { acted: true as const } : {}),
+		...(acts && (ended.kind === "aborted" || ended.kind === "interrupted") ? { acted: true as const } : {}),
 	};
+}
+
+/** The step's line without the model's summary, and the reason under it. */
+function endedText(label: string, acts: boolean, ended: Ended): [string, string] {
+	switch (ended.kind) {
+		case "aborted":
+			return [t("stepStopped", [label]), acts ? t("reasonStoppedActed") : t("reasonStopped")];
+		case "interrupted":
+			return [t("stepInterrupted", [label]), t("reasonInterrupted")];
+		case "abandoned":
+			return [t("stepNotStarted", [label]), t("reasonNotStarted")];
+		case "invalid":
+			return [t("stepNotRun", [label]), t("reasonInvalid")];
+		case "unavailable":
+			return [t("stepNotRun", [label]), t("reasonUnavailable")];
+		case "refused":
+			return [t("stepNotRun", [label]), t("reasonRefused")];
+		case "blocked":
+			return [t("stepNotRun", [label]), ended.reason];
+	}
 }
 
 /**
