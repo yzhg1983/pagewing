@@ -459,6 +459,10 @@ function instructions({ tools }: PageToolSettings): string {
 message may end with "[Attached page: ...]". When that note says the tab has moved, the user most likely means the \
 page the tab shows now: the page tools work on that page, not the attached one. A message may also carry images and \
 text files the user attached, each file between "[Attached file: ...]" and "[End of file ...]".`,
+		// The panel draws Mermaid (design 6.32), but a model not told so draws boxes with characters.
+		`For diagrams in your answer, use a fenced \`\`\`mermaid block rather than character art, unless the user asks for \
+another format. The panel draws supported diagrams, such as flowcharts, sequence diagrams, and state diagrams, as \
+pictures.`,
 	];
 	if (tools.read !== "off")
 		lines.push(`Call ${READ_PAGE} when the answer needs page content not already in the message. \
