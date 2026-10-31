@@ -1980,6 +1980,28 @@ it("the tools and the instructions name run_script only while it is not Off", as
 	}
 });
 
+it("the instructions ask for diagrams as Mermaid, which the panel draws, also with every tool Off (design 6.32)", async () => {
+	const off: PageToolSettings = {
+		tools: { read: "off", observe: "off", act: "off", script: "off", screenshot: "off" },
+		callsPerAnswer: 50,
+	};
+	for (const settings of [ALL_ON, off]) {
+		const { tab, faux, tabs, idle } = await setup(settings);
+		let systems: SystemMessage[] = [];
+		faux.setResponses([
+			(transcript: TranscriptContext) => {
+				systems = transcript.messages.filter((message): message is SystemMessage => message.role === "system");
+				return fauxAssistantMessage("ok");
+			},
+		]);
+		await tab.send(withPage("r1", "Explain this with a diagram", attach(1, tabs.get(1)!)));
+		await idle();
+		const told = JSON.stringify(systems.map((message) => [message.content, message.sections]));
+		expect(told).toContain("use a fenced ```mermaid block rather than character art, unless the user asks for");
+		expect(told).toContain("The panel draws supported diagrams");
+	}
+});
+
 it("pi's script world is set up before the last checks: Off, Ask, Stop, or a timeout during the setup runs nothing", async () => {
 	const { tab, faux, tabs, access, calls, config, seen, step, call, answer, idle } = await setup(ALL_ON, 200);
 	const page = attach(1, tabs.get(1)!);
