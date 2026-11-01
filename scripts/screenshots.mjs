@@ -284,7 +284,7 @@ const TEXT = {
 		translate: {
 			name: "Translate in page",
 			template:
-				"Translate the text below into {{language}}, then embed the translation back into the original page, paragraph by paragraph: each translated paragraph right below its original. Keep the original text.\n\nStyle each translation as a plain paragraph in the page's own typography: no border, vertical line, quote formatting, background color, or other decoration.\n\n{{selection}}",
+				"Translate the text below into {{language}}, then embed the translation back into the original page, paragraph by paragraph: each translated paragraph right below its original. Keep the original text.\n\nStyle each translation like its original: the same kind of element (a heading stays a heading, a list item a list item) with the same classes, but without its id. Add no border, vertical line, quote formatting, background color, or other decoration that the original does not have.\n\n{{selection}}",
 			summary: "Put each translation under its paragraph",
 			url: AURORA,
 			lead: AURORA_LEAD,
@@ -363,7 +363,7 @@ const TEXT = {
 		translate: {
 			name: "页面内翻译",
 			template:
-				"把下面的内容译成中文，再逐段放回原网页：每段译文紧跟在对应的原文段落下方，保留原文。\n\n译文使用网页正文的普通段落样式，不要加左边框、竖线、引用样式、背景色或其他装饰。\n\n{{selection}}",
+				"把下面的内容译成中文，再逐段放回原网页：每段译文紧跟在对应的原文段落下方，保留原文。\n\n译文沿用对应原文的样式：用同一种元素（标题仍是标题，列表项仍是列表项），带上相同的 class，但不要复制 id。不要另加原文没有的左边框、竖线、引用样式、背景色或其他装饰。\n\n{{selection}}",
 			summary: "把每段译文放到原文下方",
 			url: AURORE,
 			lead: AURORE_LEAD,

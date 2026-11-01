@@ -181,7 +181,7 @@ answer language (Settings > Answers).
 ```text
 Translate the text below into {{language}}, then embed the translation back into the original page, paragraph by paragraph: each translated paragraph right below its original. Keep the original text.
 
-Style each translation as a plain paragraph in the page's own typography: no border, vertical line, quote formatting, background color, or other decoration.
+Style each translation like its original: the same kind of element (a heading stays a heading, a list item a list item) with the same classes, but without its id. Add no border, vertical line, quote formatting, background color, or other decoration that the original does not have.
 
 {{selection}}
 ```
