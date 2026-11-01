@@ -1082,6 +1082,15 @@
 	"toolCount": {
 		"message": "$1 tools"
 	},
+	"oneStep": {
+		"message": "1 step"
+	},
+	"stepCount": {
+		"message": "$1 steps"
+	},
+	"stepsFailed": {
+		"message": "$1 · $2 failed"
+	},
 	"answerTime": {
 		"message": "Time: $1"
 	},

@@ -985,6 +985,8 @@ function keyRow(provider: ProviderId): { node: HTMLElement; update(next: PanelSt
 
 let renderedChat: number | null = null;
 let rendered: ChatEntry[] = [];
+/** The node of each rendered entry, in order: a group's line between them is not one. */
+let entryNodes: HTMLElement[] = [];
 const originBox = node("div", "");
 const entriesBox = node("div", "entries");
 const tailBox = node("div", "");
@@ -1109,11 +1111,14 @@ function renderTranscript(next: PanelState): void {
 		renderedChat = chat.conversationId;
 		rendered = [];
 		entriesBox.replaceChildren();
+		entryNodes = [];
 		editor = undefined;
 		dropImages();
 		diagrams.drop();
 		folds.clear();
 		chosen.clear();
+		groups.clear();
+		groupChosen.clear();
 		pinned = true;
 		renderJump();
 	}
@@ -1126,9 +1131,15 @@ function renderTranscript(next: PanelState): void {
 	// user opened it.
 	const focused = [...folds].find(([, fold]) => fold.notice.contains(focusHolder()));
 	const inBody = focused?.[1].body.contains(focusHolder()) ?? false;
-	while (entriesBox.childNodes.length > kept) entriesBox.lastChild?.remove();
+	// A group's line that moves to its redrawn steps loses focus; it gets it back below.
+	const focusedGroup = [...groups.values()].find((group) => group.toggle === document.activeElement);
+	for (const gone of entryNodes.splice(kept)) gone.remove();
 	if (focused !== undefined && !focused[1].notice.isConnected && inBody) chosen.set(focused[0], true);
-	for (const entry of chat.entries.slice(kept)) entriesBox.append(entryNode(entry));
+	for (const entry of chat.entries.slice(kept)) {
+		const added = entryNode(entry);
+		entriesBox.append(added);
+		entryNodes.push(added);
+	}
 	for (const [id, fold] of folds) if (!fold.notice.isConnected) folds.delete(id);
 	if (focused !== undefined && !focused[1].notice.isConnected) {
 		const line = folds.get(focused[0])?.toggle;
@@ -1136,8 +1147,10 @@ function renderTranscript(next: PanelState): void {
 		if (ui.viewer.open) viewerOpener = line ?? null;
 		else line?.focus({ preventScroll: true });
 	}
-	applyFolds();
 	rendered = chat.entries;
+	applyFolds();
+	if (focusedGroup?.toggle.isConnected && document.activeElement !== focusedGroup.toggle)
+		focusedGroup.toggle.focus({ preventScroll: true });
 	renderEditButtons(next);
 	syncChildren(originBox, chat.editedFrom === null ? [] : [originNode(chat.editedFrom)]);
 
@@ -1290,6 +1303,92 @@ function setFold(fold: Fold, open: boolean): void {
 
 function applyFolds(): void {
 	for (const [id, fold] of folds) setFold(fold, foldOpen(id, fold));
+	applyGroups();
+}
+
+// Step groups (design 6.23): when a task has answered, its consecutive steps fold under one line ("19 steps"), so the
+// question and the answer show together after a long task. A group without an answer after it (Stop, a failure, a
+// restart) stays open: its steps are all that says what happened. Steps folded in a group keep their own folds.
+
+type Group = { line: HTMLElement; toggle: HTMLButtonElement; members: HTMLElement[]; open: boolean };
+/** By the ID of the group's first step. */
+const groups = new Map<number, Group>();
+/** By the ID of the group's first step: the user opened (true) or folded the group. */
+const groupChosen = new Map<number, boolean>();
+
+/** Finds the runs of steps in the rendered chat, and shows each folded or open. */
+function applyGroups(): void {
+	const seen = new Set<number>();
+	for (let start = 0; start < rendered.length; ) {
+		if (!rendered[start]!.step) {
+			start += 1;
+			continue;
+		}
+		let end = start;
+		while (end < rendered.length && rendered[end]!.step) end += 1;
+		const steps = rendered.slice(start, end);
+		const tools = steps.filter((one) => one.role === "notice");
+		const after = rendered[end];
+		// An answer cut by Stop or an error is not one: the steps say what happened before it.
+		const answered =
+			after !== undefined &&
+			after.role === "assistant" &&
+			!after.step &&
+			after.text.trim() !== "" &&
+			after.error === null &&
+			after.stopped !== true;
+		const id = steps[0]!.id;
+		seen.add(id);
+		const group = groups.get(id) ?? groupNode(id);
+		groups.set(id, group);
+		group.members = entryNodes.slice(start, end);
+		if (group.members[0]!.previousSibling !== group.line) group.members[0]!.before(group.line);
+		const foldable = answered && tools.length > 0 && !steps.some((one) => running.has(one.id));
+		setGroup(group, tools, !foldable || groupOpen(id, group));
+		group.line.hidden = !foldable;
+		start = end;
+	}
+	for (const [id, group] of groups)
+		if (!seen.has(id)) {
+			group.line.remove();
+			groups.delete(id);
+		}
+}
+
+/** A group's line: the button that opens and folds its steps. */
+function groupNode(id: number): Group {
+	const toggle = node("button", "step-toggle");
+	toggle.type = "button";
+	const line = node("div", "msg notice step-group", toggle);
+	const group: Group = { line, toggle, members: [], open: true };
+	toggle.addEventListener("click", () => {
+		groupChosen.set(id, !group.open);
+		applyGroups();
+	});
+	return group;
+}
+
+/**
+ * Whether a finished group shows its steps: as the user chose, else folded; but it stays open while the user reads
+ * above the end of the chat or has focus in it, so nothing moves under them, as a step's fold does.
+ */
+function groupOpen(id: number, group: Group): boolean {
+	const choice = groupChosen.get(id);
+	if (choice !== undefined) return choice;
+	const holder = focusHolder();
+	return group.open && group.members.length > 0 && (!pinned || group.members.some((one) => one.contains(holder)));
+}
+
+function setGroup(group: Group, tools: ChatEntry[], open: boolean): void {
+	group.open = open;
+	for (const member of group.members) member.hidden = !open;
+	const failed = tools.filter((one) => one.error).length;
+	const count = tools.length === 1 ? t("oneStep") : t("stepCount", [String(tools.length)]);
+	const text = failed === 0 ? count : t("stepsFailed", [count, String(failed)]);
+	if (group.toggle.textContent !== text) group.toggle.textContent = text;
+	group.toggle.setAttribute("aria-expanded", String(open));
+	group.line.classList.toggle("folded", !open);
+	group.line.classList.toggle("failed", failed > 0);
 }
 
 // Focus left a step that waited for it, and the viewer gave it back: fold what waited, once focus has moved.

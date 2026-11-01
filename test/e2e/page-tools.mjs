@@ -142,6 +142,10 @@ const provider = createServer(
 			if (step === undefined) {
 				res.write(chunk({ role: "assistant", content: final }, null));
 				res.write(chunk({}, "stop"));
+			} else if (step.hold) {
+				// An answer that has begun and waits, until the panel's Stop drops the request.
+				res.write(chunk({ role: "assistant", content: step.hold }, null));
+				return;
 			} else {
 				const tool_calls = step.calls.map(([name, args], index) => ({
 					index,
@@ -678,8 +682,13 @@ try {
 
 	// Folding (design 6.23): a script's step shows its code while its turn runs and folds to its line when the turn
 	// ends; the line is the button, by mouse and by key, and a step the user opened stays open. What an action did folds
-	// too; a failure's reason does not.
+	// too; a failure's reason does not. An answered task's steps also fold under one line, which opens them.
 	const step = (summary) => panel.locator(".msg.step", { hasText: summary });
+	const groupOf = (summary) =>
+		step(summary).locator("xpath=preceding-sibling::div[contains(@class, 'step-group')][1]");
+	const groupOpen = async (summary) =>
+		(await groupOf(summary).locator(".step-toggle").getAttribute("aria-expanded")) === "true" &&
+		(await step(summary).isVisible());
 	const isOpen = async (summary) =>
 		(await step(summary).locator(".step-toggle").getAttribute("aria-expanded")) === "true" &&
 		(await step(summary).locator(".fold-body").isVisible());
@@ -698,6 +707,28 @@ try {
 		},
 	);
 	check("a script's step shows its code while its turn runs", whileRunning === true);
+	await poll(async () => !(await groupOpen("Fold one")), "the task's steps under one line", 5_000).catch(() => {});
+	check(
+		"an answered task's steps fold under one line that counts them, earlier tasks' too",
+		!(await groupOpen("Fold one")) &&
+			(await groupOf("Fold one").textContent()) === "2 steps" &&
+			(await panel.locator(".msg.step-group.folded:visible").count()) >= 3 &&
+			(await panel
+				.locator(".msg.step-group.failed.folded:visible", { hasText: /^\d+ steps? · 1 failed$/ })
+				.count()) >= 1,
+		await panel.locator(".msg.step-group:visible").allTextContents(),
+	);
+	const groupLine = groupOf("Fold one").locator(".step-toggle");
+	await groupLine.click();
+	const groupClicked = await groupOpen("Fold one");
+	await groupLine.press("Enter");
+	check(
+		"the group's line opens and folds its steps, by click and by key",
+		groupClicked && !(await groupOpen("Fold one")),
+	);
+	// Every group open: the steps inside keep their own folds.
+	const foldedGroup = panel.locator(".msg.step-group.folded:visible > .step-toggle");
+	while ((await foldedGroup.count()) > 0) await foldedGroup.first().click();
 	const folded = async () => !(await isOpen("Fold one")) && !(await isOpen("Fold two"));
 	await poll(folded, "the turn's steps folded", 5_000).catch(() => {});
 	check(
@@ -749,7 +780,11 @@ try {
 	await poll(async () => !(await isOpen("Fold three")), "folded at the end", 5_000).catch(() => {});
 	check(
 		"a turn that ends while the user reads above stays open, and folds when they are back at the end",
-		scrolled && kept && !(await isOpen("Fold three")) && !(await isOpen("Fold four")),
+		scrolled &&
+			kept &&
+			!(await isOpen("Fold three")) &&
+			!(await isOpen("Fold four")) &&
+			!(await groupOpen("Fold three")),
 		{ scrolled, kept },
 	);
 	// Stop during a task's tools puts its stats on its note, before its results: the next task must not take those
@@ -774,6 +809,23 @@ try {
 		"a task stopped in its tools keeps its steps folded while the next one runs",
 		afterStop?.five === false && afterStop?.six === false,
 		afterStop,
+	);
+	check(
+		"a task stopped without an answer keeps its steps in view: they say what happened",
+		(await step("Fold five").isVisible()) && (await groupOf("Fold five").isHidden()),
+	);
+	// Stop while the answer is being written: the cut answer is not one, so the steps stay in view too.
+	script = [call("run_script", { code: "'eighth'", summary: "Fold eight" }), { hold: "Partly written" }];
+	await panel.fill("#composer", "Stop while answering");
+	await panel.press("#composer", "Enter");
+	await answerCard("Run")();
+	await panel.locator(".msg", { hasText: "Partly written" }).waitFor({ timeout: 20_000 });
+	await panel.locator("#stop").click();
+	await poll(async () => await panel.locator("#stop").isHidden(), "stopped while answering");
+	await sleep(300);
+	check(
+		"a task stopped while answering keeps its steps in view",
+		(await step("Fold eight").isVisible()) && (await groupOf("Fold eight").isHidden()),
 	);
 
 	// Stop on the card: the note before the call ends the turn, and its time and tools show without reopening the chat

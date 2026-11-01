@@ -1082,6 +1082,15 @@
 	"toolCount": {
 		"message": "$1 次工具调用"
 	},
+	"oneStep": {
+		"message": "1 个步骤"
+	},
+	"stepCount": {
+		"message": "$1 个步骤"
+	},
+	"stepsFailed": {
+		"message": "$1 · $2 个失败"
+	},
 	"answerTime": {
 		"message": "用时：$1"
 	},
