@@ -2,14 +2,14 @@
 
 English | [简体中文](README.zh-CN.md)
 
-![pi-aside: an AI agent beside every page. It reads the page, operates it, runs scripts, asks first, and uses your own key. Beside it, an essay whose claims pi marked up in place](docs/images/overview.svg)
+![pi-aside: an AI agent beside every page. It reads the page, operates it, writes and runs its own scripts, asks first, and uses your own key. Beside it, an essay whose claims pi marked up in place](docs/images/overview.svg)
 
-**An AI agent in Chrome's side panel.** Ask about the page you are on, or hand pi a task: it reads the page, clicks
-and types, moves through a site and its tab group, runs scripts to pull out data, and shows you every step. It is a
-general agent, not a set of features: the same few tools (read the page, act on it, run a script, take a screenshot)
-work on any site, for whatever you ask.
+**An AI agent in Chrome's side panel.** Ask about the page you are on, or hand pi a task: it reads the page, clicks and
+types, moves through a site and its tab group, writes and runs its own scripts when clicking is not enough, and shows
+you every step. It is a general agent: everything it does comes from the same few tools (read the page, observe it, act
+on it, run a script, take a screenshot).
 
-Use your ChatGPT plan, or your own OpenRouter, OpenAI, Anthropic, or DeepSeek API key. There is no pi-aside server:
+**Use your ChatGPT plan**, or your own OpenRouter, OpenAI, Anthropic, or DeepSeek API key. There is no pi-aside server:
 requests go straight from your browser to your provider.
 
 [Install](#install) · [Quick start](#quick-start) · [Examples](#examples)
@@ -23,10 +23,10 @@ requests go straight from your browser to your provider.
   a CSV or a log. Answers can include tables, code, and diagrams.
 - **It does tasks, not just answers.** pi clicks, types, picks options, and moves from page to page and across the tabs
   in your tab group. After each step it checks what happened, and it keeps going until the task is done.
-- **It can program the page.** When clicking would be slow or impossible, pi writes a short script. It can rewrite the
-  page in place (translate it, highlight what matters, add notes), collect every row of a long table or of many pages
-  at once, fetch data from the site with your login, and work out exact answers from it. By default, you see the code
-  before it runs.
+- **It can program the page.** When clicking would be slow or impossible, pi writes a short script and runs it on the
+  page. It can rewrite the page in place (translate it, highlight what matters, add notes), collect every row of a long
+  table or of many pages at once, fetch data from the site with your login, and work out exact answers from it. By
+  default, you see the code before it runs.
 - **Your prompts become one-click tools.** Save a task as a prompt and it appears in the right-click menu and as a
   `/command`, such as [translating a page in place](#translate-a-page-in-place) or
   [summarizing a YouTube video](#summarize-a-youtube-video).
