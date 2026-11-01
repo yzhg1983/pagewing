@@ -53,7 +53,7 @@ import {
 	type ToolModes,
 	type WhenBusy,
 } from "../shared/protocol.ts";
-import { runScriptBuilt, userScriptsAllowed } from "../shared/user-scripts.ts";
+import { userScriptsAllowed } from "../shared/user-scripts.ts";
 import { prepare } from "./attach.ts";
 import { type Connection, pageTab, WorkerClient } from "./client.ts";
 import { attachedPage as choosePage } from "./compose.ts";
@@ -169,7 +169,6 @@ const ui = {
 	toolsSaved: element("tools-saved"),
 	userScripts: element("user-scripts"),
 	userScriptsRow: element("user-scripts-row"),
-	toolScript: element("tool-script"),
 	openDetails: element<HTMLButtonElement>("open-details"),
 	callsPerAnswer: element<HTMLInputElement>("calls-per-answer"),
 	promptsSaved: element("prompts-saved"),
@@ -3448,7 +3447,6 @@ function syncUserScripts(): void {
 	ui.openDetails.classList.toggle("primary", attention);
 }
 syncUserScripts();
-ui.toolScript.hidden = !runScriptBuilt();
 // The switch is on pi's details page, in a tab: the panel looks again when the user comes back.
 window.addEventListener("focus", syncUserScripts);
 document.addEventListener("visibilitychange", syncUserScripts);

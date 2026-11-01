@@ -10,10 +10,6 @@ import { build } from "esbuild";
 const target = "dist";
 const outdir = "dist.new";
 const previous = "dist.old";
-// `--no-run-script` builds the store fallback without Run script (for a store review that refuses Run script as remote code): its manifest leaves
-// out the userScripts permission, so Chrome gives pi no chrome.userScripts, run_script is never offered, and Settings
-// hides it.
-const runScript = !process.argv.includes("--no-run-script");
 
 /** Modules whose `import(` the worker never reaches, and why. A dependency update that adds one fails the build. */
 const REVIEWED_IMPORTS = {
@@ -63,11 +59,6 @@ const bundles = [
 ];
 
 cpSync("static", outdir, { recursive: true });
-if (!runScript) {
-	const manifest = JSON.parse(readFileSync(`${outdir}/manifest.json`, "utf8"));
-	manifest.permissions = manifest.permissions.filter((permission) => permission !== "userScripts");
-	writeFileSync(`${outdir}/manifest.json`, `${JSON.stringify(manifest, null, "\t")}\n`);
-}
 
 /** A package.json `repository` as a web URL: "git+https://github.com/a/b.git" and "github:a/b" -> https://github.com/a/b. */
 function sourceUrl(repository) {
@@ -105,7 +96,7 @@ writeFileSync(`${outdir}/THIRD_PARTY_NOTICES.txt`, notices.join(`\n${"-".repeat(
 
 const worker = readFileSync(`${outdir}/background.js`, "utf8");
 console.log(
-	`built ${target}/${runScript ? "" : " without Run script"}: background.js ${Math.round(worker.length / 1024)} KiB; notices for ${packages.size} package(s)`,
+	`built ${target}/: background.js ${Math.round(worker.length / 1024)} KiB; notices for ${packages.size} package(s)`,
 );
 let unreviewed = 0;
 for (const match of worker.matchAll(/\bimport\s*\(/g)) {

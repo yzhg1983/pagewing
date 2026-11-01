@@ -66,7 +66,7 @@ Rules that keep the extension correct:
 | New dependency | `package.json` | A new `import(` fails the build until it is reviewed; a package without a licence fails it too. |
 | pi-durable or pi-ai API | any | Check the 1.4.0 types in `node_modules`, not the pi-mono source. |
 | Commit callback | any `commit()` | Await nothing outside `tx` (a Chrome call, a timer): every chat's commits, streaming included, run on one line. Make native calls before or after the commit, as `switch_tab` does. |
-| Icon, illustrations, or screenshots | `assets/`, `scripts/` | `CHROME=… npm run icons`, `npm run illustrations` (the README's two drawings, SVG), or `npm run screenshots`, then commit what they write. The screenshots load live sites: check them before committing. In them the model's turns are scripted and the page tools run for real: they show the interface, not a model's accuracy or speed. |
+| Icon, illustrations, or screenshots | `assets/`, `scripts/` | `CHROME=… npm run icons`, `npm run illustrations` (the README's two drawings, SVG), or `npm run screenshots`, then commit what they write. The screenshots load live sites: check them before committing. By default the model's turns are scripted and the page tools run for real, so they show the interface, not a model's accuracy or speed; with `LIVE=1` a real model runs them, as for the README's and the store's shots. |
 
 ## CI and releases
 
@@ -79,7 +79,5 @@ request or run CI from the Actions tab.
 To release: set the same, higher version in `package.json` and `static/manifest.json` and commit it to `main`, then
 push a tag for it (`git tag v0.1.0 && git push origin v0.1.0`). The release workflow checks and builds it and drafts a
 GitHub Release with `pi-aside-<version>.zip`; check and publish the draft, then upload the zip to the Chrome Web Store.
-The draft also holds `pi-aside-<version>-no-run-script.zip` (`npm run build -- --no-run-script`): the same build without
-the `userScripts` permission and Run script, to upload instead if the store's review refuses Run script.
 A change to the manifest's permissions or to the data pi-aside handles also changes the store's Privacy practices tab,
 which the maintainer updates.
