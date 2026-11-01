@@ -327,7 +327,7 @@
 		"message": "截图，原始尺寸"
 	},
 	"manifestDescription": {
-		"message": "侧边栏里的 AI 智能体：询问当前网页，或让它替你点击、输入、收集数据。非官方，基于 pi-durable。"
+		"message": "侧边栏里的通用 AI 智能体：看网页时随时提问，有事直接交给它：它会点按钮、填表单，必要时还会自己写脚本并运行。基于 pi-durable 构建。"
 	},
 	"openPi": {
 		"message": "打开 pi"
