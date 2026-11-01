@@ -13,8 +13,3 @@ export function userScriptsAllowed(): boolean {
 		return false;
 	}
 }
-
-/** Whether this build has Run script: the store fallback (`build.mjs --no-run-script`) leaves out the permission. */
-export function runScriptBuilt(): boolean {
-	return chrome.runtime.getManifest().permissions?.includes("userScripts") === true;
-}

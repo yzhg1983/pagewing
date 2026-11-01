@@ -49,14 +49,9 @@ jobs:
       - run: npm run build
       - name: Zip the extension
         run: cd dist && zip -qr "../pi-aside-$VERSION.zip" . -x '*.map'
-      # The store fallback without Run script, for a review that refuses it as remote code.
-      - run: npm run build -- --no-run-script
-      - run: node -e 'if (require("./dist/manifest.json").permissions.includes("userScripts")) process.exit(1)'
-      - name: Zip the extension without Run script
-        run: cd dist && zip -qr "../pi-aside-$VERSION-no-run-script.zip" . -x '*.map'
       - name: Draft the release
         env:
           GH_TOKEN: ${{ github.token }}
         run: >
-          gh release create "$GITHUB_REF_NAME" "pi-aside-$VERSION.zip" "pi-aside-$VERSION-no-run-script.zip"
+          gh release create "$GITHUB_REF_NAME" "pi-aside-$VERSION.zip"
           --draft --verify-tag --generate-notes --title "pi-aside $VERSION"
