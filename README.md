@@ -5,7 +5,9 @@ English | [简体中文](README.zh-CN.md)
 ![pi-aside: an AI agent beside every page. It reads the page, operates it, runs scripts, asks first, and uses your own key. Beside it, an essay whose claims pi marked up in place](docs/images/overview.svg)
 
 **An AI agent in Chrome's side panel.** Ask about the page you are on, or hand pi a task: it reads the page, clicks
-and types, moves through a site and its tab group, runs scripts to pull out data, and shows you every step.
+and types, moves through a site and its tab group, runs scripts to pull out data, and shows you every step. It is a
+general agent, not a set of features: the same few tools (read the page, act on it, run a script, take a screenshot)
+work on any site, for whatever you ask.
 
 Use your ChatGPT plan, or your own OpenRouter, OpenAI, Anthropic, or DeepSeek API key. There is no pi-aside server:
 requests go straight from your browser to your provider.
@@ -89,6 +91,10 @@ Open pi on the page you want help with. On a Mac, use `Cmd` instead of `Ctrl`
 | Use a prompt | Right-click the page or selected text and choose one, such as **Summarize**, or type `/` in the message box. |
 
 ## Examples
+
+None of these is a built-in feature. Each is one question, and pi chose the tools itself: reading the page, clicking
+and typing, running a script, taking a screenshot. They are a few things we tried, not a list of what pi can do: ask
+for your own.
 
 <sub>The screenshots and animations below are real runs of GPT-6.1 Sol through a ChatGPT plan, on live sites.
 Results and timing vary by model and run.</sub>
