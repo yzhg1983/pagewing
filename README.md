@@ -194,8 +194,9 @@ translation, at the cost of more time.
 #### Summarize a YouTube video
 
 pi reads the video's full captions with one script, without opening the transcript panel, and answers from them. By
-default it writes a summary: the main points first, then chapters whose timestamps open the video at that moment. To
-catch the player's caption request, the script may turn captions off and on once; it leaves them as they were.
+default it writes a summary: the main points first, then chapters. Click a chapter's timestamp and the video in the tab
+jumps to that moment, without reloading the page. To catch the player's caption request, the script may turn captions
+off and on once; it leaves them as they were.
 
 Add it as "Summarize video". On a video, right-click the page and choose **Summarize video**, or type
 `/summarize-video`. A question after the command replaces the summary: `/summarize-video what does she say about
