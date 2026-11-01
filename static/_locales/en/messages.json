@@ -327,7 +327,7 @@
 		"message": "Screenshot, full size"
 	},
 	"manifestDescription": {
-		"message": "An AI agent in the side panel: ask about a page, or let it click, type, and gather data for you. Unofficial; built on pi-durable."
+		"message": "A side-panel AI agent: ask about any page or hand it a task. It clicks, types, writes and runs its own scripts. Built on pi-durable."
 	},
 	"openPi": {
 		"message": "Open pi"
