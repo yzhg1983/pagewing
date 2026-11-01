@@ -1659,7 +1659,8 @@ body.callback h1 {
 /* The steps on the way to an answer (design 6.23): tools' lines and what the model said before a tool call, as one log
    on a rail, left-aligned with the answer. A tool's line has a ring on the rail; it is cut at two lines. */
 .msg.step,
-.msg.step-note {
+.msg.step-note,
+.msg.step-group {
 	position: relative;
 	align-self: stretch;
 	margin: 0;
@@ -1667,13 +1668,20 @@ body.callback h1 {
 	text-align: left;
 }
 
-:not(.step, .step-note) + .msg.step,
-:not(.step, .step-note) + .msg.step-note {
+:not(.step, .step-note, .step-group) + .msg.step,
+:not(.step, .step-note, .step-group) + .msg.step-note,
+.msg.step-group {
 	margin-top: 8px;
 }
 
+/* A step folded in its group is out of view, of the tab order, and of what a screen reader reads. */
+.entries > .msg[hidden] {
+	display: none;
+}
+
 .msg.step::before,
-.msg.step-note::before {
+.msg.step-note::before,
+.msg.step-group::before {
 	content: "";
 	position: absolute;
 	left: 6px;
@@ -1682,7 +1690,8 @@ body.callback h1 {
 	border-left: 1.5px solid var(--border);
 }
 
-.msg.step::after {
+.msg.step::after,
+.msg.step-group::after {
 	content: "";
 	position: absolute;
 	left: 2.5px;
@@ -1722,8 +1731,22 @@ body.callback h1 {
 	border-color: var(--fg);
 }
 
-.msg.step.folded::after {
+.msg.step.folded::after,
+.msg.step-group.folded::after {
 	background: var(--muted);
+}
+
+/* A finished task's steps under one line (design 6.23): its ring is red when a step failed, as the line says. */
+.msg.step-group.failed::after {
+	border-color: var(--bad);
+}
+
+.msg.step-group.failed.folded::after {
+	background: var(--bad);
+}
+
+.msg.step-group:not(.failed):has(> .step-toggle:hover)::after {
+	border-color: var(--fg);
 }
 
 .msg.step.folded:has(> .reason)::after {
