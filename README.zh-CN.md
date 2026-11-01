@@ -71,7 +71,7 @@ npm run build             # 构建到 dist/
 
 *“用 5 个简短的要点总结这个页面。”* 在 Paul Graham 的文章《How to Do Great Work》旁，pi 读完整页，很快给出要点，还能在同一个对话里接着追问。
 
-![pi-aside 在 Paul Graham 的文章 How to Do Great Work 旁：用 5 个简短的要点总结全文，用时 28 秒](docs/images/zh-CN-summary.png)
+![pi-aside 在 Paul Graham 的文章 How to Do Great Work 旁：用 5 个简短的要点总结全文](docs/images/zh-CN-summary.png)
 
 ### 在白板上画图
 
@@ -101,20 +101,13 @@ npm run build             # 构建到 dist/
 
 *“最新的 100 个未关闭 issue 分属哪些领域？画个图，并在这个页面上标出讨论最多的 5 个。”* 在 VS Code 的 issue 页面，一段脚本读完四页 issue；pi 把它们归入各个领域，在页面上画成图，并列出这 100 个里讨论最多的 5 个。
 
-![动画：pi-aside 在 VS Code 的 GitHub issue 页面旁读完最新 100 个未关闭 issue，把按领域分布的图表加在页面上，并列出讨论最多的 5 个](docs/images/zh-CN-issues.webp)
+![动画：pi-aside 在 VS Code 的 GitHub issue 页面旁读完最新 100 个未关闭 issue，在对话里画出按领域分布的图，并在页面上标出讨论最多的 5 个](docs/images/zh-CN-issues.webp)
 
 <sub>已加速播放。[完成后的静态截图](docs/images/zh-CN-issues.png)。</sub>
 
-### 解释选中的内容
-
-*“用中文简单解释这段话，并画一张图。”* 选中 MDN 的 HTTP 缓存指南里的一段，pi 讲清楚存下的响应什么时候算“新鲜”、什么时候“过期”，需要时配上表格或图。
-
-![动画：pi-aside 在 MDN 的 HTTP 缓存指南旁，针对选中的段落提问，用大白话解释，并配了一张图](docs/images/zh-CN-explain.webp)
-
-<sub>已加速播放。[回答的静态截图](docs/images/zh-CN-explain.png)。</sub>
-
 ### 还可以试试
 
+- *“用中文简单解释这段话，并画一张图。”* 选中一段文字，pi 用大白话讲清楚，并在回答里画一张图。
 - *“对比一下这个标签页组里的三台笔记本：价格、重量、续航和接口。”* pi 逐个读取标签页，整理成一张表。
 - *“这些国家里，2010 年以来谁的可再生能源发电占比涨得最多？”* pi 截图读取图表，比较各国的变化。
 - *“按下面的信息填好这张表单，提交前停下。”* pi 逐项填写，最后那一下提交留给你自己点。

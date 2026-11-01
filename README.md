@@ -98,7 +98,7 @@ Results and timing vary by model and run.</sub>
 *"Summarize this page in 5 short bullet points."* Beside Paul Graham's essay *How to Do Great Work*, pi reads the page
 and answers in seconds. Ask a follow-up in the same chat.
 
-![pi-aside beside Paul Graham's essay How to Do Great Work: a summary in 5 short points, made in 18 seconds](docs/images/summary.png)
+![pi-aside beside Paul Graham's essay How to Do Great Work: a summary in 5 short points](docs/images/summary.png)
 
 ### Draw on a whiteboard
 
@@ -139,17 +139,10 @@ and lists the most-discussed among these 100.
 
 <sub>Sped up. [The finished chart as a still image](docs/images/issues.png).</sub>
 
-### Explain a selection
-
-*"Explain this simply, with a diagram."* With a paragraph of MDN's HTTP caching guide selected, pi explains when a
-stored response is fresh or stale, with a table or a diagram when it helps.
-
-![An animation of pi-aside beside MDN's HTTP caching guide: a question about a selected paragraph, answered in plain words with a diagram](docs/images/explain.webp)
-
-<sub>Sped up. [The answer as a still image](docs/images/explain.png).</sub>
-
 ### More to try
 
+- *"Explain this simply, with a diagram."* With a paragraph selected, pi explains it in plain words and draws a
+  diagram in its answer.
 - *"Compare the three laptops in this tab group: price, weight, battery, and ports."* pi reads each tab and makes a
   table.
 - *"Which of these countries increased its renewable electricity share most since 2010?"* pi takes a screenshot of

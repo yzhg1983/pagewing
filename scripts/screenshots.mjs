@@ -1,11 +1,9 @@
 // Screenshots of pi-aside for the README and the store, 1280 x 800: a headline over the production panel beside a live
-// page, in a plain browser window. Seven scenes on real sites, in English and, for the store's Chinese listing, in
+// page, in a plain browser window. Six scenes on real sites, in English and, for the store's Chinese listing, in
 // Chinese: one script that counts a Wikipedia table by decade and marks rows on the page, which pi charts; a screenshot of an
 // error, which pi finds among Vite's issues; a selected paragraph of MDN explained with a flowchart; one script that
 // ranks Hacker News's front page by comments and marks the top 5; a chart of Our World in Data read from a screenshot;
-// the card that asks before pi acts on GitHub; and the README's saved prompt "Translate in page", which puts a
-// translation under each selected paragraph of a Wikipedia article: Chinese for the English image, French for the
-// Chinese one, so the translation stands out from the original.
+// and the card that asks before pi acts on GitHub.
 // Chrome's side panel is browser UI that automation cannot capture, so the panel runs as a tab and the two are put side
 // by side. The pages are loaded live from their sites, in a fresh profile without a login. The model's turns come from
 // pi-ai's in-process faux provider; the page tools and scripts run for real, and the answers take their facts from the
@@ -16,15 +14,24 @@
 // the composer, so the panel can be drawn larger.
 // Run: CHROME="/path/to/chrome-for-testing" npm run screenshots   (writes docs/images/)
 // SCENES=table,issue takes only those scenes, and LOCALES=en only that language.
-// LIVE=1 takes the scenes that a real model runs (a diagram on Excalidraw, a summary of an essay, a JSFiddle app, the
-// saved prompt Translate in page, a question about a selection, a JupyterLite notebook, and a GitHub repository's
-// issues) with the test browser's own ChatGPT session: the first run prints a sign-in link for the owner's browser,
+// LIVE=1 takes the scenes that a real model runs (a diagram on Excalidraw, a summary of an essay, a JSFiddle app, a
+// question about a selection, a JupyterLite notebook, and a GitHub repository's issues) with the test browser's own ChatGPT session: the first run prints a sign-in link for the owner's browser,
 // and ~/.cache/pi-aside-live keeps the session. RECORD=app,notebook also records those scenes' runs as
 // animated WebPs.
 
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+	copyFileSync,
+	cpSync,
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	readdirSync,
+	readFileSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { createServer } from "node:http";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
@@ -84,27 +91,6 @@ const CHART = "https://ourworldindata.org/grapher/share-electricity-renewables";
 const COUNTRIES = ["DEU", "CHN", "USA", "IND"];
 const ISSUES = "https://github.com/vitejs/vite/issues";
 const HN = "https://news.ycombinator.com/";
-// The articles' leads, as the translations were written for them: each paragraph found by how it starts, and compared
-// whole, without spacing or citation marks, so any edit to them stops the run. Chinese takes more room in English: one
-// paragraph and its translation fill the page.
-const AURORA = "https://zh.wikipedia.org/zh-cn/%E6%9E%81%E5%85%89";
-const AURORA_LEAD = [
-	{
-		start: "极光，是一种等离子体现象",
-		text: "极光，是一种等离子体现象，主要发生在具有磁场的行星上的高纬度区域，而在地球上的极光带即是经度上距离地磁极10°至20°，纬度宽约3°至6°的区域。当磁暴发生时，在较低的纬度也会出现极光。",
-	},
-];
-const AURORE = "https://fr.wikipedia.org/wiki/Aurore_polaire";
-const AURORE_LEAD = [
-	{
-		start: "L’aurore polaire, également appelée",
-		text: "L’aurore polaire, également appelée « aurore boréale » dans l'hémisphère nord et « aurore australe » dans l'hémisphère sud, est un phénomène lumineux atmosphérique caractérisé par des voiles extrêmement colorés dans le ciel nocturne, le vert étant prédominant aux latitudes proches des pôles.",
-	},
-	{
-		start: "Provoquées par l'interaction entre les particules",
-		text: "Provoquées par l'interaction entre les particules chargées du vent solaire et la haute atmosphère, les aurores se produisent principalement dans les régions proches des pôles magnétiques, dans une zone annulaire justement appelée « zone aurorale » (entre 65 et 75° de latitude).",
-	},
-];
 // Access to all sites, as after Settings > Advanced > Sites > Allow all sites: Chrome lets pi capture a tab with it, or after a
 // click on pi's toolbar button, which automation cannot make.
 manifest.host_permissions = ["<all_urls>"];
@@ -223,10 +209,6 @@ const TEXT = {
 				["Dig into ", "a whole repo", ""],
 				"One script reads 100 issues, charts them, and marks the hottest.",
 			],
-			translate: [
-				["Translate ", "in place", ""],
-				"A saved prompt: each translation goes right under its paragraph.",
-			],
 		},
 		notebook: {
 			ask: "In a new Python notebook, load the Titanic passengers from https://raw.githubusercontent.com/mwaskom/seaborn-data/master/titanic.csv, plot the survival rate by class and sex, and tell me what stands out.",
@@ -280,22 +262,6 @@ const TEXT = {
 			labels: ["labels", "Filter by labels"],
 			summary: "Open the label filter",
 		},
-		// The README's prompt, as the user adds it.
-		translate: {
-			name: "Translate in page",
-			template:
-				"Translate the text below into {{language}}, then embed the translation back into the original page, paragraph by paragraph: each translated paragraph right below its original. Keep the original text.\n\nStyle each translation like its original: the same kind of element (a heading stays a heading, a list item a list item) with the same classes, but without its id. Add no border, vertical line, quote formatting, background color, or other decoration that the original does not have.\n\n{{selection}}",
-			summary: "Put each translation under its paragraph",
-			url: AURORA,
-			lead: AURORA_LEAD,
-			// Above the paragraph: the article's tab bar shows whole, and the contents button that floats at the top
-			// left stays clear of the first word.
-			above: 70,
-			lines: [
-				"An aurora is a plasma phenomenon that occurs mainly at high latitudes on planets with a magnetic field. On Earth, the auroral zone lies 10° to 20° from the geomagnetic poles and is about 3° to 6° of latitude wide. During magnetic storms, auroras also appear at lower latitudes.",
-			],
-			answer: "Done: the paragraph is translated into English, right under its original.",
-		},
 	},
 	zh_CN: {
 		heads: {
@@ -310,7 +276,6 @@ const TEXT = {
 			summary: [["一键", "总结全文", ""], "几秒读懂要点，还能接着追问。"],
 			app: [["做出", "能用的小应用", ""], "pi 写好 HTML、CSS 和 JavaScript，马上就能运行。"],
 			issues: [["一眼看懂", "整个仓库", ""], "一段脚本读完 100 个 issue，画成图，再标出最热的几个。"],
-			translate: [["", "页面内", "翻译"], "常用提示词：每段译文紧跟在对应原文的下方。"],
 		},
 		notebook: {
 			ask: "新建一个 Python 笔记本，载入泰坦尼克号乘客数据 https://raw.githubusercontent.com/mwaskom/seaborn-data/master/titanic.csv ，按舱位等级和性别画出生还率，再告诉我有什么值得注意的。",
@@ -359,21 +324,6 @@ const TEXT = {
 			ask: "只看还没关闭的 bug，告诉我最早的是哪一个。",
 			labels: ["labels", "Filter by labels"],
 			summary: "打开标签筛选",
-		},
-		translate: {
-			name: "页面内翻译",
-			template:
-				"把下面的内容译成中文，再逐段放回原网页：每段译文紧跟在对应的原文段落下方，保留原文。\n\n译文沿用对应原文的样式：用同一种元素（标题仍是标题，列表项仍是列表项），带上相同的 class，但不要复制 id。不要另加原文没有的左边框、竖线、引用样式、背景色或其他装饰。\n\n{{selection}}",
-			summary: "把每段译文放到原文下方",
-			url: AURORE,
-			lead: AURORE_LEAD,
-			// Above the paragraph: the contents button that floats at the top left stays clear of its first word.
-			above: 64,
-			lines: [
-				"极光在北半球称为“北极光”，在南半球称为“南极光”，是一种大气发光现象：夜空中出现色彩极为艳丽的光幕，在靠近两极的纬度上以绿色为主。",
-				"极光由太阳风中的带电粒子与高层大气相互作用产生，主要出现在磁极附近，分布在一个环形地带里，这个地带也因此被称为“极光带”（纬度 65° 至 75° 之间）。",
-			],
-			answer: "完成：两段都已译成中文，每段译文紧跟在原文下方。",
 		},
 	},
 };
@@ -452,7 +402,7 @@ await build({
 			name: "screenshot-main-hooks",
 			setup(builder) {
 				builder.onLoad({ filter: /\/background\/main\.ts$/ }, ({ path }) => ({
-					contents: `${readFileSync(path, "utf8")}\nglobalThis.__piShotsMain = { begin, askSelection };`,
+					contents: `${readFileSync(path, "utf8")}\nglobalThis.__piShotsMain = { begin };`,
 					loader: "ts",
 					resolveDir: join(repo, "src/background"),
 				}));
@@ -522,7 +472,7 @@ function record({ page, panel }, file) {
 	};
 	return {
 		stop,
-		/** Adds the finished page as the last frame and writes the animation. */
+		/** Adds the finished page as the last frame and writes the animation, staged until its still is written: gives its path. */
 		async encode() {
 			await stop();
 			if (failure) throw failure;
@@ -531,26 +481,27 @@ function record({ page, panel }, file) {
 				.filter((name) => /^\d{4}\.png$/.test(name))
 				.sort();
 			const args = list.flatMap((name, i) => ["-d", i === list.length - 1 ? "4000" : "150", join(frames, name)]);
-			execFileSync("img2webp", ["-loop", "0", "-lossy", "-q", "70", ...args, "-o", join(out, `${file}.webp`)]);
-			console.log(join(out, `${file}.webp`));
+			const staged = join(frames, `${file}.webp`);
+			execFileSync("img2webp", ["-loop", "0", "-lossy", "-q", "70", ...args, "-o", staged]);
+			return staged;
 		},
 	};
 }
 
 /**
  * Puts a headline over a page and its panel in a plain browser window, and writes it to docs/images. `head`: the
- * headline's three parts, the middle one in the accent colour, and the subline. The chat is shown from its question, so
- * the image has the question and the answer together; with `end`, a chat too long for that shows its end, the answer.
+ * headline's three parts, the middle one in the accent colour, and the subline. The chat is shown from its question.
  */
-async function save(page, panel, { head: [[before, accent, after], subline], file, end = false }) {
+async function save(page, panel, { head: [[before, accent, after], subline], file, result, card = false }) {
 	await page.bringToFront();
 	// A tab brought to the front shows its old frame, or none, until Chrome paints it again.
 	await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
 	await sleep(1000);
 	const pageShot = await page.screenshot();
 	await panel.bringToFront();
-	// By the wheel, as the user would: the chat follows its end until the user scrolls. The question shows at the top;
-	// with `end`, a chat too long for the panel shows its end, the answer, instead.
+	// By the wheel, as the user would: the chat follows its end until the user scrolls. The question shows at the top,
+	// always: a shot without it does not say what pi was asked. A finished task's steps fold under one line, so the
+	// answer follows it.
 	const wheel = async (by) => {
 		await panel.mouse.move(PANEL_VIEW.width / 2, 200);
 		await panel.mouse.wheel(0, by);
@@ -562,13 +513,15 @@ async function save(page, panel, { head: [[before, accent, after], subline], fil
 			const box = [...document.querySelectorAll("*")].find(
 				(each) => getComputedStyle(each).overflowY === "auto" && each.querySelector(".msg"),
 			);
-			return { below: box.scrollHeight - box.clientHeight, bottom: box.getBoundingClientRect().bottom };
+			const { top, bottom } = box.getBoundingClientRect();
+			return { top, bottom };
 		});
 	await wheel(-10_000);
 	const chat = await measure();
-	if (chat.below > 0 && end) await wheel(10_000);
-	else if (chat.below > 0)
-		console.log(`${file}: the chat goes on ${chat.below} px below the panel; check that the answer shows.`);
+	// What the image shows of the chat: from its top to the crop, or to the image's edge before it.
+	const shown = { top: chat.top, bottom: Math.min(chat.bottom, PANEL_VIEW.height - COMPOSER) };
+	const missing = await incomplete(panel, shown, { result, card });
+	if (missing.length > 0) throw Error(`${file} not written: ${missing.join("; ")}`);
 	const panelShot = await panel.screenshot({ clip: { x: 0, y: 0, width: PANEL_VIEW.width, height: chat.bottom } });
 
 	const image = (png) => `data:image/png;base64,${png.toString("base64")}`;
@@ -604,6 +557,40 @@ p{position:absolute;left:66px;top:108px;margin:0;font-size:23px;color:#4a5578}
 		await shot.close();
 	}
 	console.log(join(out, file));
+}
+
+/**
+ * What a still lacks in the part of the chat it shows (`shown`): a still is complete or not written. The question whole; then the
+ * answer's first lines (the whole of a short one), with the `result` it holds, such as a diagram, whole and drawn, and no
+ * task running; or, with `card`, the card that waits for the user.
+ */
+function incomplete(panel, shown, { result, card }) {
+	return panel.evaluate(
+		({ shown, result, card }) => {
+			// Enough of an answer to read its point: about five lines.
+			const READ = 120;
+			const missing = [];
+			const inView = (box, height = box.height) =>
+				box.height > 0 && box.top >= shown.top && box.top + height <= shown.bottom;
+			const question = document.querySelector(".msg.user")?.getBoundingClientRect();
+			if (question === undefined || !inView(question)) missing.push("the whole question");
+			if (card) {
+				const ask = document.querySelector(".ask")?.getBoundingClientRect();
+				if (ask === undefined || !inView(ask)) missing.push("the whole card");
+				return missing;
+			}
+			const answer = [...document.querySelectorAll(".msg.assistant:not(.step-note)")].at(-1);
+			const box = answer?.getBoundingClientRect();
+			if (box === undefined || !inView(box, Math.min(box.height, READ))) missing.push("the answer");
+			if (result !== undefined) {
+				const held = answer?.querySelector(result)?.getBoundingClientRect();
+				if (held === undefined || !inView(held)) missing.push(`the whole ${result}`);
+			}
+			if (document.getElementById("stop")?.checkVisibility()) missing.push("a finished task");
+			return missing;
+		},
+		{ shown, result, card },
+	);
 }
 
 /**
@@ -882,7 +869,7 @@ async function renewables() {
 const SCENES = process.env.SCENES?.split(",");
 let hnOpened = 0;
 /** The scenes that need a real model: only these run with LIVE=1, and only with it. */
-const LIVE_SCENES = ["diagram", "summary", "app", "translate", "explain", "notebook", "issues"];
+const LIVE_SCENES = ["diagram", "summary", "app", "explain", "notebook", "issues"];
 const scene = (name) =>
 	(LIVE !== undefined) === LIVE_SCENES.includes(name) && (SCENES === undefined || SCENES.includes(name));
 
@@ -903,14 +890,14 @@ async function shots(locale, lang, prefix) {
 async function scenes(chrome, play, text, prefix) {
 	/**
 	 * A live scene: the owner's ChatGPT session asks on `url`, the tools as the model chooses, and its cards are allowed
-	 * as the user would. The run is long: the image shows its end, and the headline says what was asked. `prepare`
+	 * as the user would. The image shows the question, the answer, and the result: on the page, or in the panel as `result`. `prepare`
 	 * readies the page before the ask; `show` readies the finished page for its picture (by default, it undoes a
 	 * sideways scroll that pi's steps can leave).
 	 */
 	const live = async (
 		name,
 		url,
-		{ prepare, show = (page) => page.evaluate(() => window.scrollTo(0, window.scrollY)) } = {},
+		{ prepare, show = (page) => page.evaluate(() => window.scrollTo(0, window.scrollY)), result } = {},
 	) => {
 		if (!scene(name)) return;
 		let recording;
@@ -922,16 +909,58 @@ async function scenes(chrome, play, text, prefix) {
 				ms: 15 * 60_000,
 			});
 			await show(view.page);
-			await save(view.page, view.panel, { head: text.heads[name], file: `${prefix}${name}.png`, end: true });
-			await recording?.encode();
+			// An answer's diagram would pass in one frame between the text around it, so the animation holds on it. By the
+			// wheel: the chat goes back to its end after any scroll that is not the user's.
+			const by = await view.panel.evaluate(() => {
+				const diagram = [...document.querySelectorAll(".msg.assistant .diagram")].at(-1);
+				if (!diagram) return 0;
+				const [box, chat] = [diagram, document.getElementById("transcript")].map((each) =>
+					each.getBoundingClientRect(),
+				);
+				// A chart taller than the chat shows from its top.
+				const to = box.height > chat.height ? box.top - 8 : box.top + box.height / 2;
+				return Math.round(to - (box.height > chat.height ? chat.top : chat.top + chat.height / 2));
+			});
+			if (by !== 0) {
+				await view.panel.mouse.move(PANEL_VIEW.width / 2, 200);
+				await view.panel.mouse.wheel(0, by);
+				await view.panel.mouse.move(0, 0);
+				await sleep(500);
+			}
+			// Before the still, which scrolls the chat up to the question: the animation ends on the answer. It is published
+			// only with its still, so the README's pair always comes from one run.
+			const animation = await recording?.encode();
+			await save(view.page, view.panel, { head: text.heads[name], file: `${prefix}${name}.png`, result });
+			if (animation !== undefined) {
+				copyFileSync(animation, join(out, `${prefix}${name}.webp`));
+				console.log(join(out, `${prefix}${name}.webp`));
+			}
 		} catch (error) {
+			failed.push(`${prefix}${name}`);
 			console.log(`${prefix}${name}.png: ${error.message}`);
 		} finally {
 			await recording?.stop();
 			await keepSession(chrome);
 		}
 	};
-	await live("diagram", "https://excalidraw.com/");
+	// pi's clicks can leave the app scrolled sideways, and its drawing under the canvas's hint or controls: undo the
+	// scroll, then Excalidraw's own Zoom to fit (Shift+1) and one step of its Zoom out show the whole drawing clear of
+	// them, as the user would. Zoom to fit alone fills the canvas, under its controls.
+	await live("diagram", "https://excalidraw.com/", {
+		show: async (page) => {
+			await page.evaluate(() => {
+				for (const each of [document.documentElement, ...document.querySelectorAll("*")])
+					if (each.scrollLeft !== 0) each.scrollLeft = 0;
+			});
+			await page.keyboard.press("Escape");
+			await page.keyboard.press("Shift+Digit1");
+			await sleep(500);
+			await page.locator(".zoom-out-button").click();
+			// Off the button, or its tooltip shows: to the canvas's empty right edge.
+			await page.mouse.move(page.viewportSize().width - 8, page.viewportSize().height / 2);
+			await sleep(1000);
+		},
+	});
 	// pi can end the notebook scrolled to its notes, past the chart.
 	await live("notebook", "https://jupyter.org/try-jupyter/lab/", {
 		show: async (page) => {
@@ -945,7 +974,7 @@ async function scenes(chrome, play, text, prefix) {
 		},
 	});
 	await live("summary", "https://paulgraham.com/greatwork.html");
-	await live("explain", MDN, { prepare: selectQuote });
+	await live("explain", MDN, { prepare: selectQuote, result: ".msg.assistant .diagram" });
 	// JSFiddle's ad covers the result, and blocking it stops the editors from loading: close it, as a user would, also
 	// after pi reloads the page.
 	await live("app", "https://jsfiddle.net/", {
@@ -1111,100 +1140,7 @@ async function scenes(chrome, play, text, prefix) {
 			"the card",
 			{ answer: () => false },
 		);
-		await save(control.page, control.panel, { head: text.heads.control, file: `${prefix}control.png` });
-	}
-
-	if (scene("translate")) {
-		// Translate: the README's saved prompt, from the menu for the selected lead of an article; one script puts each
-		// translation under its paragraph, as the prompt asks.
-		const { name, template, summary, url, lead, above, lines, answer } = text.translate;
-		await chrome.worker.evaluate(
-			({ name, template }) =>
-				globalThis.__piShots.saveSettings({
-					prompts: [...globalThis.__piShots.PRESETS, { id: "translate-in-page", name, template }],
-				}),
-			{ name, template },
-		);
-		/** The lead, `above` px below the top; with `select`, the lead selected. Gives the selection's text. */
-		const show = (page, select) =>
-			page.evaluate(
-				({ lead, above, select }) => {
-					const paragraphs = [...document.querySelectorAll("#mw-content-text p")];
-					const plain = (text) =>
-						text
-							.replace(/\[\d+\]/g, "")
-							.replace(/\s+/g, " ")
-							.trim();
-					const matched = lead.map(({ start, text }) => {
-						const found = paragraphs.find((p) => p.textContent.trim().startsWith(start));
-						if (found === undefined || plain(found.textContent) !== plain(text))
-							throw Error(`The article's lead has changed: ${found?.textContent ?? start}`);
-						return found;
-					});
-					const [first, last] = [matched[0], matched.at(-1)];
-					scrollTo(0, first.getBoundingClientRect().top + scrollY - above);
-					getSelection().removeAllRanges();
-					if (!select) return "";
-					const range = document.createRange();
-					range.setStartBefore(first);
-					range.setEndAfter(last);
-					getSelection().addRange(range);
-					return getSelection().toString();
-				},
-				{ lead, above, select },
-			);
-		const translate = await open(chrome, url, (page) => show(page, true));
-		const code = `const translations = ${JSON.stringify(
-			lead.map(({ start }, i) => [start, lines[i]]),
-			null,
-			2,
-		)};
-const paragraphs = [...document.querySelectorAll("#mw-content-text p")];
-let placed = 0;
-for (const [start, translation] of translations) {
-  const original = paragraphs.find((p) => p.textContent.trim().startsWith(start));
-  if (!original) continue;
-  const p = document.createElement("p");
-  p.textContent = translation;
-  original.after(p);
-  placed++;
-}
-return { placed };`;
-		if (LIVE === undefined) await play([{ tool: "run_script", args: { code, summary } }, { later: true }]);
-		const done = LIVE === undefined ? ".msg.assistant p" : ".msg.assistant:not(.step-note)";
-		await send(chrome, translate.panel, "", finished(translate.panel, done), "the translation", {
-			ms: 15 * 60_000,
-			// As a right-click on the selection, then the prompt in pi's menu.
-			start: async () => {
-				const selectionText = await show(translate.page, true);
-				await chrome.worker.evaluate(
-					async ({ tabId, selectionText }) => {
-						const tab = await chrome.tabs.get(tabId);
-						const gesture = { frameId: 0, url: tab.url, top: tab.url, selectionText, editable: false };
-						const started = globalThis.__piShotsMain.begin("context-menu", tab, gesture);
-						await globalThis.__piShotsMain.askSelection(
-							"context-menu",
-							started,
-							crypto.randomUUID(),
-							"translate-in-page",
-						);
-					},
-					{ tabId: translate.tabId, selectionText },
-				);
-			},
-			later:
-				LIVE !== undefined
-					? undefined
-					: async () => {
-							const ran = await lastResult(chrome);
-							if (!ran.ok || ran.value.placed !== lead.length)
-								throw Error(`The script placed: ${JSON.stringify(ran)}`);
-							return answer;
-						},
-		});
-		await show(translate.page, false);
-		// The result is on the page, so the question stays in view even when the chat runs longer.
-		await save(translate.page, translate.panel, { head: text.heads.translate, file: `${prefix}translate.png` });
+		await save(control.page, control.panel, { head: text.heads.control, file: `${prefix}control.png`, card: true });
 	}
 }
 
@@ -1221,6 +1157,8 @@ function localized(locale) {
 	return copy;
 }
 
+/** The live scenes that wrote nothing: the others run on, and the run fails at the end. */
+const failed = [];
 const contexts = [];
 try {
 	const locales = process.env.LOCALES?.split(",") ?? ["en", "zh_CN"];
@@ -1230,4 +1168,8 @@ try {
 } finally {
 	for (const context of contexts) await context.close();
 	rmSync(dir, { recursive: true, force: true });
+}
+if (failed.length > 0) {
+	console.log(`Not written: ${failed.join(", ")}.`);
+	process.exitCode = 1;
 }
