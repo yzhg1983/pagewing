@@ -27,9 +27,9 @@ const TEXT = {
 	en: {
 		file: "",
 		overview: {
-			label: "pi-aside: an AI agent beside every page. It reads the page, operates it, runs scripts, asks first, and uses your own key. Beside it, an essay whose claims pi marked up in place, two flagged as having no source.",
+			label: "pi-aside: an AI agent beside every page. It reads the page, operates it, writes and runs its own scripts, asks first, and uses your own key. Beside it, an essay whose claims pi marked up in place, two flagged as having no source.",
 			tagline: "An AI agent beside every page.",
-			chips: ["Reads the page", "Operates the page", "Runs scripts", "Asks first", "Your own key"],
+			chips: ["Reads the page", "Operates the page", "Writes and runs scripts", "Asks first", "Your own key"],
 			providers: [
 				"Your ChatGPT plan, or an OpenRouter, OpenAI, Anthropic, or DeepSeek key.",
 				"No pi-aside server: requests go straight to your provider.",
@@ -68,9 +68,9 @@ const TEXT = {
 	zh_CN: {
 		file: "zh-CN-",
 		overview: {
-			label: "pi-aside：每个网页旁的 AI 智能体。读懂网页、操作网页、运行脚本、先问再做，用你自己的密钥。旁边是一篇文章，pi 直接在页面上标出了其中的论断，并注明两处没有出处。",
+			label: "pi-aside：每个网页旁的 AI 智能体。读懂网页、操作网页、编写并运行脚本、先问再做，用你自己的密钥。旁边是一篇文章，pi 直接在页面上标出了其中的论断，并注明两处没有出处。",
 			tagline: "每个网页旁的 AI 智能体。",
-			chips: ["读懂网页", "操作网页", "运行脚本", "先问再做", "用你自己的密钥"],
+			chips: ["读懂网页", "操作网页", "编写并运行脚本", "先问再做", "用你自己的密钥"],
 			providers: [
 				"ChatGPT 订阅，或 OpenRouter、OpenAI、Anthropic、DeepSeek 的 API 密钥。",
 				"没有 pi-aside 服务器：请求直接发往模型服务商。",
@@ -272,7 +272,8 @@ function overview(locale) {
 	let y = 214;
 	text.chips.forEach((label, i) => {
 		const w = 46 + width(label, 15);
-		if (x + w > 600) {
+		// Rounded: estimated widths add up with float error, and a chip that ends on the column's edge fits.
+		if (Math.round(x + w) > 600) {
 			x = 64;
 			y += 46;
 		}
