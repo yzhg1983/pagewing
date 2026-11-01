@@ -49,7 +49,7 @@ requests go straight from your browser to your provider.
 
 ## Install
 
-pi-aside is at version 0.1, an early release. It needs Chrome 140 or later.
+pi-aside is an early release. It needs Chrome 140 or later.
 
 **From a release:** download `pi-aside-<version>.zip` from
 [Releases](https://github.com/yzhg1983/pi-aside/releases) and unzip it into a new folder. Open `chrome://extensions`,
