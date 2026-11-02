@@ -15,11 +15,15 @@ const FONT =
 	"ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif";
 const MONO = "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
 const SERIF = "Georgia, 'Times New Roman', serif";
+// Paper and highlighter: ink on warm paper, the highlighter yellow pi marks pages with as the one accent, and the
+// icon's blue only where pi-aside itself shows it (the icon, the user's message).
 const BLUE = "#3157d5";
 const LIGHT_BLUE = "#6f8ff0";
-const NAVY = ["#1d2858", "#111936"];
+const PAPER = "#f7f4ee";
+const BORDER = "#c8c1b5";
 const YELLOW = "#ffe08a";
-const INK = "#1f2937";
+const INK = "#1c1b19";
+const SECONDARY = "#625f58";
 const MUTED = "#6b7280";
 const LINE = "#d6dae3";
 
@@ -114,16 +118,23 @@ const width = (text, size) => [...text].reduce((sum, ch) => sum + (ch.charCodeAt
 const svg = (w, h, label, defs, style, body) =>
 	`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" role="img" aria-label="${esc(label)}">
 <defs>
-<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${NAVY[0]}"/><stop offset="1" stop-color="${NAVY[1]}"/></linearGradient>
-<filter id="blur" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="60"/></filter>
-<filter id="shadow" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="18" stdDeviation="22" flood-color="#000" flood-opacity="0.45"/></filter>
+<filter id="marker" x="-0.02" y="0.08" width="1.04" height="0.9"><feFlood flood-color="${YELLOW}"/></filter>
+<filter id="shadow" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="10" stdDeviation="16" flood-color="#3b3326" flood-opacity="0.16"/></filter>
 ${defs}</defs>
-${style ? `<style>\n${style}\n</style>\n` : ""}<rect width="${w}" height="${h}" rx="18" fill="url(#bg)"/>
+${style ? `<style>\n${style}\n</style>\n` : ""}<rect x="0.5" y="0.5" width="${w - 1}" height="${h - 1}" rx="18" fill="${PAPER}" stroke="${BORDER}"/>
 <g font-family="${FONT}">
 ${body.join("\n")}
 </g>
 </svg>
 `;
+/**
+ * A line of ink text over a highlighter band: the band is a filter that fills a copy's own box, so it fits whatever
+ * font the viewer has, and the text is drawn again on top of it.
+ */
+const highlight = (attributes, content) => [
+	`<text ${attributes} filter="url(#marker)">${content}</text>`,
+	`<text ${attributes} fill="${INK}">${content}</text>`,
+];
 /** The π tile and the panel bar of the icon, `size` high. */
 const logo = (x, y, size) => {
 	const r = size * 0.26;
@@ -139,7 +150,7 @@ const window_ = (body, { x0, y0, x1, y1, split, url, size = 12.5 }) => {
 		`<rect x="${x0}" y="${y0}" width="${x1 - x0}" height="${y1 - y0}" rx="14" fill="#fff" filter="url(#shadow)"/>`,
 	);
 	body.push(
-		`<path d="M${x0} ${y0 + 14} a14 14 0 0 1 14 -14 H${x1 - 14} a14 14 0 0 1 14 14 V${y0 + 40} H${x0} Z" fill="#e8ebf3"/>`,
+		`<path d="M${x0} ${y0 + 14} a14 14 0 0 1 14 -14 H${x1 - 14} a14 14 0 0 1 14 14 V${y0 + 40} H${x0} Z" fill="#ece8e0"/>`,
 	);
 	["#ff5f57", "#febc2e", "#28c840"].forEach((color, i) => {
 		body.push(`<circle cx="${x0 + 22 + i * 20}" cy="${y0 + 20}" r="6" fill="${color}"/>`);
@@ -260,13 +271,9 @@ function overview(locale) {
 	const o = (line) => body.push(line);
 	const W = 1200;
 	const H = 440;
-	o(`<circle cx="1060" cy="30" r="260" fill="${BLUE}" opacity="0.2" filter="url(#blur)"/>`);
-	o(`<circle cx="80" cy="460" r="220" fill="${LIGHT_BLUE}" opacity="0.12" filter="url(#blur)"/>`);
 	body.push(...logo(64, 64, 58));
-	o(`<text x="152" y="111" font-size="50" font-weight="700" fill="#fff" letter-spacing="-1">pi-aside</text>`);
-	o(
-		`<text x="64" y="182" font-size="30" font-weight="600" fill="#fff" letter-spacing="-0.4">${esc(text.tagline)}</text>`,
-	);
+	o(`<text x="152" y="111" font-size="50" font-weight="700" fill="${INK}" letter-spacing="-1">pi-aside</text>`);
+	body.push(...highlight('x="64" y="182" font-size="30" font-weight="600" letter-spacing="-0.4"', esc(text.tagline)));
 	// The chips, wrapped to the left column.
 	let x = 64;
 	let y = 214;
@@ -277,17 +284,15 @@ function overview(locale) {
 			x = 64;
 			y += 46;
 		}
+		o(`<rect x="${x + 0.5}" y="${y + 0.5}" width="${w - 1}" height="35" rx="17.5" fill="none" stroke="${BORDER}"/>`);
 		o(
-			`<rect x="${x}" y="${y}" width="${w}" height="36" rx="18" fill="#ffffff" fill-opacity="0.07" stroke="#ffffff" stroke-opacity="0.18"/>`,
+			`<path transform="translate(${x + 14} ${y + 10})" d="${ICONS[i]}" fill="none" stroke="${SECONDARY}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>`,
 		);
-		o(
-			`<path transform="translate(${x + 14} ${y + 10})" d="${ICONS[i]}" fill="none" stroke="#9fb3ff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>`,
-		);
-		o(`<text x="${x + 38}" y="${y + 23.5}" font-size="15" fill="#fff">${esc(label)}</text>`);
+		o(`<text x="${x + 38}" y="${y + 23.5}" font-size="15" fill="${INK}">${esc(label)}</text>`);
 		x += w + 10;
 	});
 	text.providers.forEach((line, i) => {
-		o(`<text x="64" y="${y + 84 + i * 22}" font-size="14" fill="#8f9cc6">${esc(line)}</text>`);
+		o(`<text x="64" y="${y + 84 + i * 22}" font-size="14" fill="${SECONDARY}">${esc(line)}</text>`);
 	});
 
 	// The product: a page, and the panel that worked on it.
@@ -332,11 +337,12 @@ function agent(locale) {
 	};
 	const W = 1200;
 	const H = 640;
-	o(`<circle cx="1040" cy="40" r="260" fill="${BLUE}" opacity="0.18" filter="url(#blur)"/>`);
-	o(`<circle cx="120" cy="620" r="220" fill="${LIGHT_BLUE}" opacity="0.12" filter="url(#blur)"/>`);
 	body.push(...logo(60, 30, 34));
-	o(
-		`<text x="124" y="56" font-size="26" font-weight="700" fill="#fff" letter-spacing="-0.4">${esc(text.head)}<tspan fill="#9fb3ff" font-weight="500">${esc(text.headRest)}</tspan></text>`,
+	body.push(
+		...highlight(
+			'x="124" y="56" font-size="26" font-weight="700" letter-spacing="-0.4"',
+			`${esc(text.head)}<tspan font-weight="500">${esc(text.headRest)}</tspan>`,
+		),
 	);
 
 	const box = {
@@ -479,7 +485,7 @@ function agent(locale) {
 	o(
 		`<g class="pointer"><path transform="translate(${px + 45} 314)" d="M0 0 L0 18 L5 13.5 L8.5 21 L11.5 19.6 L8 12.4 L14 12.4 Z" fill="#111" stroke="#fff" stroke-width="1.4" stroke-linejoin="round"/></g>`,
 	);
-	o(`<text x="${W / 2}" y="616" text-anchor="middle" font-size="13.5" fill="#8f9cc6">${esc(text.footer)}</text>`);
+	o(`<text x="${W / 2}" y="616" text-anchor="middle" font-size="13.5" fill="${SECONDARY}">${esc(text.footer)}</text>`);
 	css.push(
 		`@media (prefers-reduced-motion: reduce) { * { animation: none !important; } .card, .pointer { display: none; } .marked { fill: ${YELLOW}; } }`,
 	);
