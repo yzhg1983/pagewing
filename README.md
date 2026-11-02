@@ -101,7 +101,7 @@ Results and timing vary by model and run.</sub>
 
 ### Summarize a page
 
-*"Summarize this page in 5 short bullet points."* Beside Paul Graham's essay *How to Do Great Work*, pi reads the page
+*"Summarize this page in 5 short bullet points."* Beside Paul Graham's essay [*How to Do Great Work*](https://paulgraham.com/greatwork.html), pi reads the page
 and answers in seconds. Ask a follow-up in the same chat.
 
 ![pi-aside beside Paul Graham's essay How to Do Great Work: a summary in 5 short points](docs/images/summary.png)
@@ -109,44 +109,24 @@ and answers in seconds. Ask a follow-up in the same chat.
 ### Draw on a whiteboard
 
 *"Draw a simple, colorful diagram of how a web request reaches the server: browser, CDN, load balancer, app server,
-cache, and database. Make it big and easy to read."* On Excalidraw, pi draws with a script, checks the result with a
+cache, and database. Make it big and easy to read."* On [Excalidraw](https://excalidraw.com/), pi draws with a script, checks the result with a
 screenshot, and fits it in view.
 
 ![An animation of pi-aside beside Excalidraw: pi draws a colorful diagram of a web request going from the browser through a CDN, a load balancer, and an app server to a cache and a database](docs/images/diagram.webp)
 
 <sub>Sped up. [The finished diagram as a still image](docs/images/diagram.png).</sub>
 
-### Build a working app
-
-*"Build a Pomodoro timer here: start, pause, and reset, a progress ring, and a calm color theme. Then run it, and show the result large."* On
-JSFiddle, pi writes the HTML, CSS, and JavaScript into the editors, runs the result, and tests its buttons.
-
-![An animation of pi-aside beside JSFiddle: pi writes a Pomodoro timer into the editors, runs it, and shows the timer large](docs/images/app.webp)
-
-<sub>Sped up. [The finished app as a still image](docs/images/app.png).</sub>
-
-### Analyze data in a notebook
-
-*"In a new Python notebook, load the Titanic passengers from (a CSV link), plot the survival rate by class and sex,
-and tell me what stands out."* On JupyterLite, which runs Python in the page, pi writes the cells, runs them, reads
-the chart, and reports what the data shows, without claiming causes.
-
-![An animation of pi-aside beside a JupyterLite notebook: pi writes and runs the cells, and a bar chart of Titanic survival rates by class and sex appears with pi's findings](docs/images/notebook.webp)
-
-<sub>Sped up. [The finished notebook as a still image](docs/images/notebook.png).</sub>
-
-### Dig into a whole repository
-
-*"Which areas do the 100 newest open issues fall in? Chart them on this page, and highlight the 5 most-discussed issues
-there."* On VS Code's issues, one script reads four pages of issues. pi sorts them into areas, charts them on the page,
-and lists the most-discussed among these 100.
-
-![An animation of pi-aside beside VS Code's GitHub issues: pi reads the 100 newest open issues, adds a chart of them by area to the page, and lists the 5 most-discussed](docs/images/issues.webp)
-
-<sub>Sped up. [The finished chart as a still image](docs/images/issues.png).</sub>
-
 ### More to try
 
+- *"Build a Pomodoro timer here: start, pause, and reset, a progress ring, and a calm color theme. Then run it."* On
+  [JSFiddle](https://jsfiddle.net/), pi writes the HTML, CSS, and JavaScript, runs the result, and tests its buttons.
+- *"In a new Python notebook, load the Titanic passengers from
+  https://raw.githubusercontent.com/mwaskom/seaborn-data/master/titanic.csv, plot the survival rate by class and sex,
+  and give me the 3 main findings in a few words each."* On [JupyterLite](https://jupyter.org/try-jupyter/lab/), which
+  runs Python in the page, pi writes and runs the cells, then reads the chart.
+- *"Which areas do the 100 newest open issues fall in? Chart them on this page, and highlight the 5
+  most-discussed."* On [VS Code's issues](https://github.com/microsoft/vscode/issues), pi reads the 100 newest issues,
+  sorts them into areas, and adds the chart to the page.
 - *"Explain this simply, with a diagram."* With a paragraph selected, pi explains it in plain words and draws a
   diagram in its answer.
 - *"Compare the three laptops in this tab group: price, weight, battery, and ports."* pi reads each tab and makes a

@@ -15,9 +15,12 @@
 // Run: CHROME="/path/to/chrome-for-testing" npm run screenshots   (writes docs/images/)
 // SCENES=table,issue takes only those scenes, and LOCALES=en only that language.
 // LIVE=1 takes the scenes that a real model runs (a diagram on Excalidraw, a summary of an essay, a JSFiddle app, a
-// question about a selection, a JupyterLite notebook, and a GitHub repository's issues) with the test browser's own ChatGPT session: the first run prints a sign-in link for the owner's browser,
-// and ~/.cache/pi-aside-live keeps the session. RECORD=app,notebook also records those scenes' runs as
-// animated WebPs.
+// question about a selection, and a JupyterLite notebook) with the test browser's own ChatGPT session: the first run
+// prints a sign-in link for the owner's browser, and ~/.cache/pi-aside-live keeps the session. RECORD=diagram also
+// records that scene's run as an animated WebP.
+// The README shows diagram and summary: LIVE=1 SCENES=diagram,summary RECORD=diagram. App and notebook are for the store
+// only (git ignores their files; the private notes keep the store's copies): LIVE=1 SCENES=app,notebook. Explain and
+// the scenes without LIVE make images that nothing uses at present.
 
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -191,7 +194,7 @@ const decadeChart = (decades, { title, axis }) => {
 };
 /** The decade with the most films, from the script's counts. */
 const topDecade = (decades) => Object.entries(decades).reduce((top, each) => (each[1] > top[1] ? each : top));
-// Each headline: [before, the words in the accent colour, after], and its subline.
+// Each headline: [before, the words on the highlighter band, after], and its subline.
 const TEXT = {
 	en: {
 		heads: {
@@ -205,20 +208,13 @@ const TEXT = {
 			notebook: [["Analyze data in ", "a notebook", ""], "pi writes the code, runs it, and reads the chart."],
 			summary: [["Summarize ", "any page", ""], "The key points in seconds, then ask a follow-up."],
 			app: [["Build ", "a working app", ""], "pi writes the HTML, CSS, and JavaScript, and it runs right away."],
-			issues: [
-				["Dig into ", "a whole repo", ""],
-				"One script reads 100 issues, charts them, and marks the hottest.",
-			],
 		},
 		notebook: {
-			ask: "In a new Python notebook, load the Titanic passengers from https://raw.githubusercontent.com/mwaskom/seaborn-data/master/titanic.csv, plot the survival rate by class and sex, and tell me what stands out.",
+			ask: "In a new Python notebook, load the Titanic passengers from https://raw.githubusercontent.com/mwaskom/seaborn-data/master/titanic.csv, plot the survival rate by class and sex, and give me the 3 main findings in a few words each.",
 		},
 		summary: { ask: "Summarize this page in 5 short bullet points." },
 		app: {
 			ask: "Build a Pomodoro timer here: start, pause, and reset, a progress ring, and a calm color theme. Then run it, and show the result large.",
-		},
-		issues: {
-			ask: "Which areas do the 100 newest open issues fall in? Chart them on this page, and highlight the 5 most-discussed issues there.",
 		},
 		diagram: {
 			ask: "Draw a simple, colorful diagram of how a web request reaches the server: browser, CDN, load balancer, app server, cache, and database. Make it big and easy to read.",
@@ -275,14 +271,12 @@ const TEXT = {
 			notebook: [["在笔记本里", "分析数据", ""], "pi 写代码、运行，再解读图表。"],
 			summary: [["一键", "总结全文", ""], "几秒读懂要点，还能接着追问。"],
 			app: [["做出", "能用的小应用", ""], "pi 写好 HTML、CSS 和 JavaScript，马上就能运行。"],
-			issues: [["一眼看懂", "整个仓库", ""], "一段脚本读完 100 个 issue，画成图，再标出最热的几个。"],
 		},
 		notebook: {
-			ask: "新建一个 Python 笔记本，载入泰坦尼克号乘客数据 https://raw.githubusercontent.com/mwaskom/seaborn-data/master/titanic.csv ，按舱位等级和性别画出生还率，再告诉我有什么值得注意的。",
+			ask: "新建一个 Python 笔记本，载入泰坦尼克号乘客数据 https://raw.githubusercontent.com/mwaskom/seaborn-data/master/titanic.csv ，按舱位等级和性别画出生还率，再列出 3 个主要发现，每个一句短话。",
 		},
 		summary: { ask: "用 5 个简短的要点总结这个页面。" },
 		app: { ask: "在这里做一个番茄钟：开始、暂停、重置，带进度圆环和柔和的配色，然后运行它，并把结果放大显示。" },
-		issues: { ask: "最新的 100 个未关闭 issue 分属哪些领域？画个图，并在这个页面上标出讨论最多的 5 个。" },
 		diagram: {
 			ask: "画一张简洁、彩色的图，说明网页请求是怎么到达服务器的：浏览器、CDN、负载均衡、应用服务器、缓存和数据库。画大一点，方便看清。",
 		},
@@ -490,7 +484,7 @@ function record({ page, panel }, file) {
 
 /**
  * Puts a headline over a page and its panel in a plain browser window, and writes it to docs/images. `head`: the
- * headline's three parts, the middle one in the accent colour, and the subline. The chat is shown from its question.
+ * headline's three parts, the middle one on the highlighter band, and the subline. The chat is shown from its question.
  */
 async function save(page, panel, { head: [[before, accent, after], subline], file, result, card = false }) {
 	await page.bringToFront();
@@ -529,12 +523,12 @@ async function save(page, panel, { head: [[before, accent, after], subline], fil
 	const frame = `<!doctype html><style>
 *{box-sizing:border-box}
 body{margin:0;width:${WIDTH}px;height:${HEIGHT}px;overflow:hidden;font:13px system-ui,"PingFang SC",sans-serif;
-background:radial-gradient(900px 500px at 100% 0%,#d9e3ff 0%,transparent 60%),linear-gradient(180deg,#f5f7fc,#e9eef9)}
-h1{position:absolute;left:64px;top:34px;margin:0;font:800 56px/1.1 system-ui,"PingFang SC",sans-serif;letter-spacing:-.025em;color:#0e1430}
-h1 em{font-style:normal;color:#3158d8}
-p{position:absolute;left:66px;top:108px;margin:0;font-size:23px;color:#4a5578}
-.window{position:absolute;left:${INSET}px;right:${INSET}px;top:${TOP}px;height:${HEIGHT - TOP + 20}px;background:#fff;border-radius:14px 14px 0 0;overflow:hidden;box-shadow:0 18px 50px #1b255033,0 2px 6px #1b25501a}
-.chrome{height:${CHROME}px;background:#e8ebf2;display:flex;align-items:center;gap:8px;padding:0 14px}
+background:#f7f4ee}
+h1{position:absolute;left:64px;top:34px;margin:0;font:800 56px/1.1 system-ui,"PingFang SC",sans-serif;letter-spacing:-.025em;color:#1c1b19}
+h1 em{font-style:normal;background:#ffe08a;padding:0 .08em}
+p{position:absolute;left:66px;top:108px;margin:0;font-size:23px;color:#625f58}
+.window{position:absolute;left:${INSET}px;right:${INSET}px;top:${TOP}px;height:${HEIGHT - TOP + 20}px;background:#fff;border-radius:14px 14px 0 0;overflow:hidden;box-shadow:0 8px 20px #3b332614,0 1px 3px #3b332614}
+.chrome{height:${CHROME}px;background:#ece8e0;display:flex;align-items:center;gap:8px;padding:0 14px}
 .dots{display:flex;gap:7px;margin-right:8px}.dots i{width:12px;height:12px;border-radius:50%;display:block}
 .tab{background:#fff;border-radius:8px;padding:6px 12px;max-width:260px;color:#3c4043;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .url{margin-left:auto;background:#fff;border-radius:14px;padding:5px 14px;color:#5f6368;max-width:520px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -869,7 +863,7 @@ async function renewables() {
 const SCENES = process.env.SCENES?.split(",");
 let hnOpened = 0;
 /** The scenes that need a real model: only these run with LIVE=1, and only with it. */
-const LIVE_SCENES = ["diagram", "summary", "app", "explain", "notebook", "issues"];
+const LIVE_SCENES = ["diagram", "summary", "app", "explain", "notebook"];
 const scene = (name) =>
 	(LIVE !== undefined) === LIVE_SCENES.includes(name) && (SCENES === undefined || SCENES.includes(name));
 
@@ -944,8 +938,9 @@ async function scenes(chrome, play, text, prefix) {
 		}
 	};
 	// pi's clicks can leave the app scrolled sideways, and its drawing under the canvas's hint or controls: undo the
-	// scroll, then Excalidraw's own Zoom to fit (Shift+1) and one step of its Zoom out show the whole drawing clear of
-	// them, as the user would. Zoom to fit alone fills the canvas, under its controls.
+	// scroll, then Excalidraw's own Zoom to fit (Shift+1) and one step of its Zoom out (Ctrl or Cmd and minus) show the
+	// whole drawing clear of them, as the user would. Zoom to fit alone fills the canvas, under its controls. By keys:
+	// the zoom label's wrapper can cover the Zoom out button.
 	await live("diagram", "https://excalidraw.com/", {
 		show: async (page) => {
 			await page.evaluate(() => {
@@ -955,22 +950,51 @@ async function scenes(chrome, play, text, prefix) {
 			await page.keyboard.press("Escape");
 			await page.keyboard.press("Shift+Digit1");
 			await sleep(500);
-			await page.locator(".zoom-out-button").click();
-			// Off the button, or its tooltip shows: to the canvas's empty right edge.
+			await page.keyboard.press("ControlOrMeta+Minus");
+			// Clear of the controls, or a tooltip shows: to the canvas's empty right edge.
 			await page.mouse.move(page.viewportSize().width - 8, page.viewportSize().height / 2);
 			await sleep(1000);
 		},
 	});
-	// pi can end the notebook scrolled to its notes, past the chart.
 	await live("notebook", "https://jupyter.org/try-jupyter/lab/", {
+		// JupyterLab's View > Appearance, as a user would set up the workspace first: one document at a time, without
+		// the side and status bars, so the notebook takes the page's width and its toolbar one line.
+		prepare: async (page) => {
+			await page.locator(".jp-LabShell").waitFor({ timeout: 60_000 });
+			for (const [label, on] of [
+				["Simple Interface", true],
+				["Show Left Sidebar", false],
+				["Show Left Activity Bar", false],
+				["Show Right Sidebar", false],
+				["Show Right Activity Bar", false],
+				["Show Status Bar", false],
+			]) {
+				await page.click('.lm-MenuBar-itemLabel:text-is("View")');
+				await page.hover('.lm-Menu .lm-Menu-itemLabel:text-is("Appearance")');
+				const item = page.locator(`.lm-Menu .lm-Menu-item:has(> .lm-Menu-itemLabel:text-is("${label}"))`);
+				if ((await item.getAttribute("class")).includes("lm-mod-toggled") !== on) await item.click();
+				else {
+					// Already as wanted: close the submenu, then the menu.
+					await page.keyboard.press("Escape");
+					await page.keyboard.press("Escape");
+				}
+			}
+		},
+		// pi can finish with a dialog open (JupyterLab asks for a name on a notebook's first save): close it, as the
+		// user would. pi can end the notebook scrolled to its notes, past the chart: the chart with the end of the code
+		// that drew it above, when the whole chart fits with room to spare; else the chart alone, centred.
 		show: async (page) => {
-			// An open file browser leaves the chart small: close it with its tab, as the user would. Lumino's tab bar
-			// takes a real pointer, not a click() from the page.
-			const files = page.locator(".jp-SideBar.jp-mod-left .lm-TabBar-tab.lm-mod-current");
-			if ((await files.count()) > 0) await files.click();
-			await page.evaluate(() =>
-				document.querySelector(".jp-OutputArea-output img")?.scrollIntoView({ block: "center" }),
-			);
+			if (await page.locator(".jp-Dialog").isVisible()) {
+				console.log("notebook still: closed a dialog pi left open");
+				await page.keyboard.press("Escape");
+			}
+			await page.evaluate(() => {
+				const chart = document.querySelector(".jp-OutputArea-output img");
+				if (chart === null) return;
+				const end = innerHeight - chart.getBoundingClientRect().height > 160;
+				chart.scrollIntoView({ block: end ? "end" : "center" });
+				if (end) chart.closest(".jp-WindowedPanel-outer")?.scrollBy(0, 12);
+			});
 		},
 	});
 	await live("summary", "https://paulgraham.com/greatwork.html");
@@ -984,8 +1008,6 @@ async function scenes(chrome, play, text, prefix) {
 			await page.evaluate(close);
 		},
 	});
-	await live("issues", "https://github.com/microsoft/vscode/issues");
-
 	// Table: one script reads a table of Wikipedia, counts its rows by decade, and marks the 2020s; the answer's numbers
 	// and chart are what the script returned.
 	if (scene("table")) {

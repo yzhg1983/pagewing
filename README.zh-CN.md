@@ -71,44 +71,23 @@ npm run build             # 构建到 dist/
 
 ### 总结网页
 
-*“用 5 个简短的要点总结这个页面。”* 在 Paul Graham 的文章《How to Do Great Work》旁，pi 读完整页，很快给出要点，还能在同一个对话里接着追问。
+*“用 5 个简短的要点总结这个页面。”* 在 Paul Graham 的文章[《How to Do Great Work》](https://paulgraham.com/greatwork.html)旁，pi 读完整页，很快给出要点，还能在同一个对话里接着追问。
 
 ![pi-aside 在 Paul Graham 的文章 How to Do Great Work 旁：用 5 个简短的要点总结全文](docs/images/zh-CN-summary.png)
 
 ### 在白板上画图
 
-*“画一张简洁、彩色的图，说明网页请求是怎么到达服务器的：浏览器、CDN、负载均衡、应用服务器、缓存和数据库。画大一点，方便看清。”* 在 Excalidraw 上，pi 用脚本画图，截图检查效果，再把整张图放进视野。
+*“画一张简洁、彩色的图，说明网页请求是怎么到达服务器的：浏览器、CDN、负载均衡、应用服务器、缓存和数据库。画大一点，方便看清。”* 在 [Excalidraw](https://excalidraw.com/) 上，pi 用脚本画图，截图检查效果，再把整张图放进视野。
 
 ![动画：pi-aside 在 Excalidraw 旁画出一张彩色架构图，网页请求从浏览器经过 CDN、负载均衡、应用服务器，再到缓存和数据库](docs/images/zh-CN-diagram.webp)
 
 <sub>已加速播放。[完成后的静态截图](docs/images/zh-CN-diagram.png)。</sub>
 
-### 做出能用的小应用
-
-*“在这里做一个番茄钟：开始、暂停、重置，带进度圆环和柔和的配色，然后运行它，并把结果放大显示。”* 在 JSFiddle 上，pi 把 HTML、CSS 和 JavaScript 写进编辑器，运行后把结果放大显示。
-
-![动画：pi-aside 在 JSFiddle 旁写出一个番茄钟，运行后放大显示](docs/images/zh-CN-app.webp)
-
-<sub>已加速播放。[完成后的静态截图](docs/images/zh-CN-app.png)。</sub>
-
-### 在笔记本里分析数据
-
-*“新建一个 Python 笔记本，载入泰坦尼克号乘客数据（一个 CSV 链接），按舱位等级和性别画出生还率，再告诉我有什么值得注意的。”* JupyterLite 直接在网页里运行 Python；pi 写好代码单元、运行、读图，说明数据呈现了什么，不妄下因果结论。
-
-![动画：pi-aside 在 JupyterLite 笔记本旁写好并运行代码单元，画出泰坦尼克号按舱位和性别的生还率，并给出分析](docs/images/zh-CN-notebook.webp)
-
-<sub>已加速播放。[完成后的静态截图](docs/images/zh-CN-notebook.png)。</sub>
-
-### 一眼看懂整个仓库
-
-*“最新的 100 个未关闭 issue 分属哪些领域？画个图，并在这个页面上标出讨论最多的 5 个。”* 在 VS Code 的 issue 页面，一段脚本读完四页 issue；pi 把它们归入各个领域，在对话里画出分布图，并在页面上标出这 100 个里讨论最多的 5 个。
-
-![动画：pi-aside 在 VS Code 的 GitHub issue 页面旁读完最新 100 个未关闭 issue，在对话里画出按领域分布的图，并在页面上标出讨论最多的 5 个](docs/images/zh-CN-issues.webp)
-
-<sub>已加速播放。[完成后的静态截图](docs/images/zh-CN-issues.png)。</sub>
-
 ### 还可以试试
 
+- *“在这里做一个番茄钟：开始、暂停、重置，带进度圆环和柔和的配色，然后运行它。”* 在 [JSFiddle](https://jsfiddle.net/) 上，pi 写好 HTML、CSS 和 JavaScript，运行后测试各个按钮。
+- *“新建一个 Python 笔记本，载入泰坦尼克号乘客数据 https://raw.githubusercontent.com/mwaskom/seaborn-data/master/titanic.csv ，按舱位等级和性别画出生还率，再列出 3 个主要发现，每个一句短话。”* [JupyterLite](https://jupyter.org/try-jupyter/lab/) 直接在网页里运行 Python；pi 写好代码单元、运行，再解读图表。
+- *“最新的 100 个未关闭 issue 分属哪些领域？在这个网页上画出领域分布图，并标出讨论最多的 5 个。”* 在 [VS Code 的 issue 页面](https://github.com/microsoft/vscode/issues)，pi 读完最新的 100 个 issue，归入各个领域，再把分布图加到页面上。
 - *“用中文简单解释这段话，并画一张图。”* 选中一段文字，pi 用大白话讲清楚，并在回答里画一张图。
 - *“对比一下这个标签页组里的三台笔记本：价格、重量、续航和接口。”* pi 逐个读取标签页，整理成一张表。
 - *“这些国家里，2010 年以来谁的可再生能源发电占比涨得最多？”* pi 截图读取图表，比较各国的变化。

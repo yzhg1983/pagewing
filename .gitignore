@@ -5,3 +5,12 @@ dist.old/
 .pi/
 # Private notes, a clone of pi-aside-internal.
 /internal/
+# Store-only screenshots (scripts/screenshots.mjs writes them here; the private notes keep the store's copies).
+/docs/images/app.png
+/docs/images/app.webp
+/docs/images/notebook.png
+/docs/images/notebook.webp
+/docs/images/zh-CN-app.png
+/docs/images/zh-CN-app.webp
+/docs/images/zh-CN-notebook.png
+/docs/images/zh-CN-notebook.webp
