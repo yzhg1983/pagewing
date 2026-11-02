@@ -88,8 +88,9 @@ search that finds nothing links to the button.
 ## Asking about a page
 
 Select text on a page and right-click "Ask pi", or press `Ctrl+Shift+Y`. With nothing selected, right-click the page:
-"Ask pi about this page" attaches it, and a prompt such as "Summarize" sends with the page attached. Settings > Sending
-> Ask pi chooses whether "Ask pi" sends at once or puts the question in the message box to edit first.
+"Ask pi about this page" attaches it, and a prompt such as "Summarize" sends with the page attached.
+`Settings > Sending > Ask pi` chooses whether "Ask pi" sends at once or puts the question in the message box to edit
+first.
 
 ## Images and text files
 
@@ -214,9 +215,10 @@ pi reads the page you open it on. For any other page it needs Chrome's access to
 - **Always allow pi on a site.** The pin button on the page chip in the message box lets pi read that site's pages
   without a click, also after you leave and come back. Chrome may ask first.
 - **During a task.** When pi needs a site it has no access to, a card in the chat asks you first.
-- **Settings > Advanced > Sites** lists the sites pi uses without asking. Remove takes Chrome's access away, and pi asks
-  again when it needs the site; what pi already read stays in the chat. **Allow all sites** asks Chrome for every
-  site at once. The list also shows the sites pi can reach because of your providers.
+- **Settings > Advanced > Sites** lists the sites pi uses without asking. Remove revokes that grant, not other grants
+  that cover the same site: while all sites are allowed, pi can still reach it. What pi already read stays in the
+  chat. **Allow all sites** asks Chrome for every site at once. The list also shows the sites pi can reach because of
+  your providers.
 
 Site access is only about reading and reaching pages. Whether pi may click, type, or run scripts there is still set
 by Settings > Tools: in Ask, pi asks before it acts.
