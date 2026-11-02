@@ -296,7 +296,7 @@ async function start(lang, expected, seed = false) {
 	equal(
 		`${lang}: native manifest text`,
 		[native.manifest.description, native.manifest.action.default_title, native.manifest.default_locale],
-		[message("manifestDescription"), message("openPi"), "en"],
+		[message("manifestDescription"), message("actionTitle"), "en"],
 	);
 	for (const [name, key] of [
 		["ask-selection", "commandAsk"],
