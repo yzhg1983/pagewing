@@ -54,6 +54,7 @@ function setup() {
 				deepseek: { key: false, permission: false, plan: false, planModels: null },
 			},
 			chatgpt: { waiting: false, account: null, ended: false },
+			models: { updatedAt: null },
 			wake: { active: false, at: null },
 			keepaliveEnabled: true,
 			keepalive: false,

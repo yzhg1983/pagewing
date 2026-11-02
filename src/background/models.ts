@@ -23,6 +23,7 @@ import { MAX_IMAGES } from "../shared/images.ts";
 import {
 	isProvider,
 	type ModelChoice,
+	type ModelsUpdated,
 	PLAN_MODEL,
 	PROVIDERS,
 	type ProviderId,
@@ -32,6 +33,7 @@ import {
 	THINKING_LEVELS,
 	type Thinking,
 } from "../shared/protocol.ts";
+import { catalogReady, updateCatalog, withDownloads } from "./catalog.ts";
 import { chatgptOAuth, fetchPlanModels, PLAN_ORIGINS, TokenError } from "./chatgpt.ts";
 import { ChromeCredentialStore } from "./credentials.ts";
 import { openaiSearch } from "./web-search.ts";
@@ -112,7 +114,7 @@ export const models: MutableModels = createModels({
 	authContext: { env: async () => undefined, fileExists: async () => false },
 });
 
-const openai = openaiProvider();
+const openai = withDownloads(openaiProvider());
 
 /**
  * A ChatGPT plan's context windows, by model ID, from pi-ai's Codex catalog. pi-aside's sign-in reaches the plan
@@ -136,8 +138,15 @@ function withPlanWindows<T extends { readonly id: string }>(list: readonly T[]):
 		return { ...model, contextWindow: window };
 	});
 }
-const planChatModels = withPlanWindows(openai.getModels());
-const planAllModels = withPlanWindows(openai.getAllModels?.() ?? openai.getModels());
+/** `withPlanWindows()` once per list: OpenAI's lists change only with a downloaded catalog (design 6.43). */
+const planLists = new WeakMap<readonly object[], unknown[]>();
+function planWindows<T extends { readonly id: string }>(list: readonly T[]): T[] {
+	const cached = planLists.get(list) as T[] | undefined;
+	if (cached !== undefined) return cached;
+	const next = withPlanWindows(list);
+	planLists.set(list, next);
+	return next;
+}
 
 /**
  * Reads whether the OpenAI credential is a ChatGPT sign-in, so OpenAI's models carry a plan's windows or the API's:
@@ -165,8 +174,11 @@ function onPlan(apiKey: string | undefined, source: AssistantMessageEventStream)
 }
 const openaiWithPlan: Provider<"openai-responses"> = {
 	...openai,
-	getModels: () => (onPlanWindows ? planChatModels : openai.getModels()),
-	getAllModels: () => (onPlanWindows ? planAllModels : (openai.getAllModels?.() ?? openai.getModels())),
+	getModels: () => (onPlanWindows ? planWindows(openai.getModels()) : openai.getModels()),
+	getAllModels: () => {
+		const all = openai.getAllModels();
+		return onPlanWindows ? planWindows(all) : all;
+	},
 	// pi-ai's own sign-in imports `node:http`; this one runs in the worker.
 	auth: {
 		...openai.auth,
@@ -192,12 +204,31 @@ const openaiWithPlan: Provider<"openai-responses"> = {
 	},
 };
 models.setProvider(openaiWithPlan);
-models.setProvider(anthropicProvider());
-models.setProvider(openrouterProvider());
-models.setProvider(deepseekProvider());
+models.setProvider(withDownloads(anthropicProvider()));
+models.setProvider(withDownloads(openrouterProvider()));
+models.setProvider(withDownloads(deepseekProvider()));
+
+/**
+ * Updates the model list from pi.dev (design 6.43). `keyed` names the providers whose new models count; `planModels`
+ * are a ChatGPT plan's OpenAI models, or null.
+ */
+export function updateModels(
+	keyed: readonly ProviderId[],
+	planModels: readonly string[] | null,
+): Promise<ModelsUpdated> {
+	// With a ChatGPT plan, the picker offers only the plan's OpenAI models: a new one outside it is not new to the user.
+	return updateCatalog(
+		(provider) =>
+			provider === "openai" && planModels !== null
+				? models.getModels(provider).filter((model) => planModels.includes(model.id))
+				: models.getModels(provider),
+		keyed,
+	);
+}
 
 /** Rejects, before admission, a send that could not reach the model. Saving a key never sends anything. */
 export async function checkModel({ provider, modelId }: ModelRef): Promise<void> {
+	await catalogReady();
 	if (!isProvider(provider) || models.getModel(provider, modelId) === undefined) {
 		throw new Error(t("modelUnknown", [provider, modelId]));
 	}

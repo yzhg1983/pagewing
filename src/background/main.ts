@@ -34,6 +34,7 @@ import {
 	type ToolModes,
 } from "../shared/protocol.ts";
 import { RECOVERY_ALARM } from "./active-work.ts";
+import { catalogReady, catalogUpdatedAt } from "./catalog.ts";
 import {
 	CALLBACK_PAGE,
 	cancelSignIn,
@@ -67,6 +68,7 @@ import {
 	signInEnded,
 	signInModel,
 	syncPlanWindows,
+	updateModels,
 	verifyKey,
 } from "./models.ts";
 import { bounded, chromePageAccess, noteLead, PAGE_TIMEOUT_MS, pageMove, watchLeads } from "./page.ts";
@@ -865,6 +867,7 @@ async function hello(port: chrome.runtime.Port, message: Extract<PageMessage, { 
 			}),
 			drafts.load(),
 			loadAccess(),
+			catalogReady(),
 			tabs.load(),
 			storageFull.load(),
 			wake("panel").then(
@@ -1034,6 +1037,7 @@ async function run(command: Command, tabId: number | null): Promise<unknown> {
 			return undefined;
 		case "set-model": {
 			const { provider, modelId } = command.model;
+			await catalogReady();
 			if (!isProvider(provider) || models.getModel(provider, modelId) === undefined) {
 				throw new Error(t("modelUnknown", [provider, modelId]));
 			}
@@ -1121,7 +1125,21 @@ async function run(command: Command, tabId: number | null): Promise<unknown> {
 			);
 			return check;
 		}
+		case "update-models": {
+			await loadAccess();
+			const keyed = (Object.keys(PROVIDERS) as ProviderId[]).filter((provider) => access?.[provider].key);
+			const { plan, planModels } = access?.openai ?? { plan: false, planModels: null };
+			const updated = await updateModels(keyed, plan ? planModels : null);
+			// The update is stored and in use: a log that cannot be written must not report it failed.
+			await appendLog(
+				currentSession()?.harness,
+				`models updated: ${updated.added} new${updated.failed.length > 0 ? `, failed: ${updated.failed.join(", ")}` : ""}`,
+			).catch(() => {});
+			schedule();
+			return updated;
+		}
 		case "list-models":
+			await catalogReady();
 			return (Object.keys(PROVIDERS) as ProviderId[]).flatMap((provider) =>
 				models.getModels(provider).map(
 					(model): ModelInfo => ({
@@ -1344,6 +1362,7 @@ function status(): Status {
 				]),
 			) as Status["access"]),
 		chatgpt,
+		models: { updatedAt: catalogUpdatedAt() },
 		wake: latest === undefined ? null : { active: latest.active, at: latest.at ?? null },
 		keepaliveEnabled: activeWork.enabled,
 		keepalive: activeWork.keepalive,

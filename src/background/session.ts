@@ -7,6 +7,7 @@ import { userScriptsAllowed } from "../shared/user-scripts.ts";
 import { ActiveWork } from "./active-work.ts";
 import { Asks } from "./asks.ts";
 import { checkRestarts, MAX_AUTOMATIC_RECOVERIES, MAX_BACKGROUND_RECOVERIES } from "./breaker.ts";
+import { catalogReady } from "./catalog.ts";
 import { Chats, QUEUE_SETTINGS, serial } from "./chats.ts";
 import { stopMarkers, unmarkStopping } from "./credentials.ts";
 import { checkModel, imageLimit, models, syncPlanWindows, thinkingFor } from "./models.ts";
@@ -272,8 +273,10 @@ async function open(current: number): Promise<Opened> {
 			changed,
 		});
 		await installPageTools(await loadSettings());
-		// A ChatGPT plan's context windows, before a resumed answer compacts by them.
+		// A ChatGPT plan's context windows, before a resumed answer compacts by them; a downloaded model, before a resumed
+		// answer looks it up (design 6.43).
 		await syncPlanWindows().catch(() => {});
+		await catalogReady();
 		// Read Wake again after the breaker and registry changes; only now may a local deadline resume work.
 		await activeWork.start();
 		harness.resume();
