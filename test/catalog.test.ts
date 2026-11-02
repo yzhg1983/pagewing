@@ -95,14 +95,18 @@ describe("the stored download", () => {
 describe("catalogModels", () => {
 	const bundled = models.getModels("openrouter");
 
-	it("keeps the provider asked for, and drops headers and OpenRouter's routing", () => {
+	it("keeps the provider asked for, and drops headers, OpenRouter's routing, and Anthropic's fallbacks", () => {
 		const [model] = catalogModels(
 			"openrouter",
 			[
 				entry("a/b", {
 					provider: "anthropic",
 					headers: { authorization: "Bearer someone-else" },
-					compat: { openRouterRouting: { data_collection: "allow" }, supportsStore: false },
+					compat: {
+						openRouterRouting: { data_collection: "allow" },
+						allowedFallbackModels: ["claude-opus-5-5"],
+						supportsStore: false,
+					},
 				}),
 			],
 			bundled,
@@ -129,11 +133,12 @@ describe("catalogModels", () => {
 		expect(ids(kept)).toEqual(["completions", "messages"]);
 	});
 
-	it("takes chat models only, an entry without a type as one, from an array or an object by ID", () => {
+	it("takes chat models only, an entry without a type as one, from an array, {models}, or an object by ID", () => {
 		const { type: _, ...untyped } = entry("untyped");
 		const body = { chat: entry("chat"), untyped, image: entry("image", { type: "image" }) };
 		expect(ids(catalogModels("openrouter", body, bundled))).toEqual(["chat", "untyped"]);
 		expect(ids(catalogModels("openrouter", Object.values(body), bundled))).toEqual(["chat", "untyped"]);
+		expect(ids(catalogModels("openrouter", { models: Object.values(body) }, bundled))).toEqual(["chat", "untyped"]);
 		expect(catalogModels("openrouter", "not a catalog", bundled)).toEqual([]);
 	});
 
