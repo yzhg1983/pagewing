@@ -1461,7 +1461,22 @@
 		"message": "Chrome 中 pi 的“允许用户脚本”已开启。"
 	},
 	"userScriptsOff": {
-		"message": "Chrome 中 pi 的“允许用户脚本”已关闭，pi 无法运行脚本。请在 pi 的扩展详情页中开启。"
+		"message": "Chrome 中 pi 的“允许用户脚本”已关闭，pi 无法运行脚本。请打开 pi 的扩展详情页，向下滚动并开启。"
+	},
+	"scriptsSetupTitle": {
+		"message": "让 pi 在网页上运行脚本"
+	},
+	"scriptsSetupText": {
+		"message": "脚本让 pi 能从网页中提取数据、填写和修改网页。请在 pi 的扩展详情页中（向下滚动）开启“允许用户脚本”，然后回到这里。"
+	},
+	"scriptsSetupAsk": {
+		"message": "“运行脚本”设为“询问”时，每个脚本运行前都会先由你确认。"
+	},
+	"skip": {
+		"message": "跳过"
+	},
+	"scriptsEnabled": {
+		"message": "已在 Chrome 中启用脚本"
 	},
 	"diagram": {
 		"message": "图表"

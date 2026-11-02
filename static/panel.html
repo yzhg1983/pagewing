@@ -121,6 +121,20 @@
 				</div>
 				<p id="setup-result" class="result" role="status"></p>
 			</section>
+			<!-- The setup step after it, once the provider is ready: Chrome's Allow User Scripts for pi, which Run script
+			     needs (design 6.23). Skip ends the step and changes no setting. -->
+			<section id="scripts-setup" class="card setup" aria-labelledby="scripts-setup-title" hidden>
+				<h3 id="scripts-setup-title" data-i18n="scriptsSetupTitle">Let pi run scripts on pages</h3>
+				<p data-i18n="scriptsSetupText">Scripts let pi pull data out of pages, fill in pages and change them. Turn on "Allow User Scripts" on pi's Chrome details page (scroll down), then come back.</p>
+				<p id="scripts-setup-ask" class="note" data-i18n="scriptsSetupAsk">With Run script on Ask, you review each script before it runs.</p>
+				<div class="row">
+					<button type="button" id="scripts-setup-open" class="primary small-button" data-i18n="openDetails">Open pi's Chrome details page</button>
+					<button type="button" id="scripts-setup-skip" class="small-button" data-i18n="skip">Skip</button>
+				</div>
+				<p id="scripts-setup-result" class="result" role="status"></p>
+			</section>
+			<!-- Outside the card, which closes: "Scripts enabled in Chrome" stays a few seconds; panel.ts announces it. -->
+			<p id="scripts-enabled" class="note-bar confirm"></p>
 
 			<div class="transcript-wrap">
 				<main id="transcript" aria-label="Chat" data-i18n-aria-label="chat"></main>

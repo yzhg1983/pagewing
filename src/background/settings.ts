@@ -28,6 +28,7 @@ export function defaultSettings(): Settings {
 		// run_script is offered only while Chrome's Allow User Scripts switch is on too (design 6.23).
 		tools: { read: "on", observe: "on", act: "ask", script: "ask", screenshot: "on" },
 		callsPerAnswer: CALLS_PER_ANSWER.default,
+		scriptsOnboarded: false,
 	};
 }
 
@@ -39,7 +40,8 @@ export function readSettings(stored: unknown, defaults: Settings): Settings {
 		unknown
 	>;
 	const { provider, modelId } = model;
-	const { selectionAction, enterWhileBusy, defaultPreset, language, thinking, callsPerAnswer } = value;
+	const { selectionAction, enterWhileBusy, defaultPreset, language, thinking, callsPerAnswer, scriptsOnboarded } =
+		value;
 	const prompts = readPrompts(value.prompts) ?? defaults.prompts;
 	// The default is a prompt that is on: Ask pi and the hotkey use it.
 	const known = (id: unknown): id is string => prompts.some((preset) => preset.id === id && presetOn(preset));
@@ -66,6 +68,7 @@ export function readSettings(stored: unknown, defaults: Settings): Settings {
 			typeof callsPerAnswer === "number" && Number.isInteger(callsPerAnswer)
 				? Math.min(CALLS_PER_ANSWER.max, Math.max(CALLS_PER_ANSWER.min, callsPerAnswer))
 				: defaults.callsPerAnswer,
+		scriptsOnboarded: typeof scriptsOnboarded === "boolean" ? scriptsOnboarded : defaults.scriptsOnboarded,
 	};
 }
 

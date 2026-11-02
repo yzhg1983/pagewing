@@ -90,6 +90,8 @@ const results = [];
 /** The newest user message of each request, as the model got it. */
 const asked = [];
 let offered = [];
+/** The system messages of the newest request. */
+let system = "";
 let callIds = 0;
 const provider = createServer(
 	{ key: readFileSync(join(dir, "key.pem")), cert: readFileSync(join(dir, "cert.pem")) },
@@ -109,6 +111,7 @@ const provider = createServer(
 			const request = JSON.parse(body);
 			const { messages } = request;
 			offered = (request.tools ?? []).map((tool) => tool.function.name);
+			system = JSON.stringify(messages.filter((message) => message.role === "system"));
 			const user = messages.findLast((message) => message.role === "user");
 			if (user !== undefined)
 				asked.push(
@@ -637,6 +640,17 @@ try {
 	await attach();
 	got = await turn("Script", [call("observe_page", {})]);
 	check("run_script is still not offered", !offered.includes("run_script"), offered);
+	check(
+		"the model is told Chrome's switch keeps scripts back, and where it is",
+		system.includes("Script execution is unavailable because Chrome has not enabled user scripts for pi") &&
+			system.includes("Allow User Scripts"),
+		system.slice(0, 2000),
+	);
+	// The setup step (design 6.23): shown with the provider ready, Run script on Ask, and the switch off.
+	check(
+		"the setup step asks for Allow User Scripts, and says Ask still shows each script",
+		(await panel.locator("#scripts-setup").isVisible()) && (await panel.locator("#scripts-setup-ask").isVisible()),
+	);
 	await panel.click("#open-settings");
 	check(
 		"Settings says run_script needs Chrome's switch",
@@ -662,6 +676,18 @@ try {
 				}
 			}),
 		"Allow User Scripts on",
+	);
+	// The panel stays open beside the details page and sees the switch on: the step closes, and the confirmation stays
+	// outside it.
+	await poll(
+		async () => (await panel.locator("#scripts-enabled").textContent()) === "Scripts enabled in Chrome",
+		"Scripts enabled in Chrome",
+	);
+	check("the setup step closes once the switch is on", !(await panel.locator("#scripts-setup").isVisible()));
+	await poll(
+		() =>
+			worker.evaluate(async () => (await chrome.storage.local.get("settings")).settings?.scriptsOnboarded === true),
+		"the step saved as done",
 	);
 	await details.close();
 	await web.bringToFront();
@@ -958,6 +984,33 @@ try {
 		"a wait cut off by the worker's stop waits again for its first run's video and deadline",
 		closed && value.met === true && value.reason === "after" && value.position >= to && value.waitedSec >= 7,
 		{ closed, result: got.at(-1), to, tookSec: (Date.now() - startedAt) / 1000 },
+	);
+	// The user turns the switch off again: the setup step, done, does not come back; Settings says it is off.
+	const again = await context.newPage();
+	await again.goto(`chrome://extensions/?id=${id}`);
+	await again.locator("#allow-user-scripts").click();
+	await poll(
+		() =>
+			worker.evaluate(() => {
+				try {
+					chrome.userScripts.getScripts().catch(() => {});
+					return false;
+				} catch {
+					return true;
+				}
+			}),
+		"Allow User Scripts off",
+	);
+	await again.close();
+	// Coming back to the panel: it reads the switch again on focus.
+	await panel.evaluate(() => window.dispatchEvent(new Event("focus")));
+	await poll(
+		async () => (await panel.locator("#user-scripts").textContent()).includes("is off"),
+		"Settings sees the switch off",
+	);
+	check(
+		"a done setup step stays closed when the switch goes off",
+		!(await panel.locator("#scripts-setup").isVisible()),
 	);
 	check("no panel errors", problems.length === 0, problems);
 	console.log(`${passed} checks passed.`);

@@ -71,6 +71,7 @@ function setup() {
 			prompts: [...PRESETS],
 			tools: { read: "on", observe: "on", act: "ask", script: "off", screenshot: "on" },
 			callsPerAnswer: 50,
+			scriptsOnboarded: false,
 		},
 		chat: { ...EMPTY_CHAT, conversationId: 1, entries: [entry(1)] },
 		drafts: [],

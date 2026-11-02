@@ -162,7 +162,11 @@ try {
 	await poll(() => worker.evaluate(() => Boolean(globalThis.__piDiagrams)).catch(() => false), "hooks");
 	await worker.evaluate(async () => {
 		await chrome.storage.local.set({ credentials: { openrouter: { type: "api_key", key: "not-a-real-key" } } });
-		await globalThis.__piDiagrams.saveSettings({ model: { provider: "openrouter", modelId: "diagram-test" } });
+		// The setup step for Allow User Scripts is done: its card would take the top of the chat view this suite measures.
+		await globalThis.__piDiagrams.saveSettings({
+			model: { provider: "openrouter", modelId: "diagram-test" },
+			scriptsOnboarded: true,
+		});
 	});
 	const page = await context.newPage();
 	await page.goto(origin);

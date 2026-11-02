@@ -187,6 +187,12 @@ export type PageAccess = {
  */
 export type PageToolSettings = Pick<Settings, "tools" | "callsPerAnswer">;
 
+/**
+ * What the page tools are installed with: the modes offered and the call limit, and whether Chrome's Allow User Scripts
+ * switch is all that keeps run_script from being offered, while Run script is Ask or On (design 6.23).
+ */
+export type PageToolOffer = PageToolSettings & { scriptsBlocked?: boolean };
+
 /** Why the page tools do not use the tab's top page `top`, which is not on a site (about:blank, data:). */
 export function notSiteText(top: { url: string }): string {
 	return `The tab shows ${top.url.slice(0, MAX_URL_CHARS)}, which the page tools cannot use.`;

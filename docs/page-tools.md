@@ -353,6 +353,17 @@ buttons, and fields of the page." replaces the sentences on working on the page,
 left out. With observe_page Off, "Call act_on_page to scroll, press keys, or go to a page of the same site." replaces
 them. In On, the two sentences on approving and denying scripts are left out.
 
+While Run script is Ask or On but Chrome's Allow User Scripts is off for pi, run_script is not offered and the
+sentences that name it are left out, as with Off; in their place, the instructions say why, without naming a tool:
+
+```text
+Script execution is unavailable because Chrome has not enabled user scripts for pi: the "Allow User Scripts" switch on
+pi's Chrome details page is off (pi's Settings > Tools opens that page). If this materially limits the requested task,
+explain the limitation and where to enable it. Otherwise, use the available tools without mentioning it.
+```
+
+With Run script Off, the instructions say nothing about scripts.
+
 ## The cards and the chat
 
 - Act on page in Ask: "Allow pi to act on <site> in this answer?", then "It may click and type there by itself, also
@@ -389,9 +400,32 @@ there, and send what it reads to other sites. Ask: pi shows each script first; "
 the next ones on that site run without asking until the answer, or the chat, ends (a new chat, Chrome closing, or a
 change here). On: scripts run without asking. Stop does not end a script that is already running." Under it: "Needs
 Chrome's "Allow User Scripts" for pi", replaced once the panel checks by "Chrome's "Allow User Scripts" for pi is on."
-or "Chrome's "Allow User Scripts" for pi is off, so pi can't run scripts. Turn it on in pi's Chrome details page.", and
-a button, "Open pi's Chrome details page". Run script is Ask by default, but the switch is off for every new install:
-until the user turns it on, the model sees neither run_script nor the instructions about it, as with Off.
+or "Chrome's "Allow User Scripts" for pi is off, so pi can't run scripts. Open pi's Chrome details page, scroll down,
+and turn it on.", and a button, "Open pi's Chrome details page". Run script is Ask by default, but the switch is off for
+every new install: until the user turns it on, the model sees neither run_script nor the instructions about it, only
+the note above on why scripts are unavailable.
+
+## Setup: Allow User Scripts
+
+Scripts are part of setup. Once the chat's provider has its key and Chrome lets pi reach it, the chat view shows one
+more card, while Run script is Ask or On and Chrome's Allow User Scripts is off for pi:
+
+> **Let pi run scripts on pages**
+> Scripts let pi pull data out of pages, fill in pages and change them. Turn on "Allow User Scripts" on pi's Chrome
+> details page (scroll down), then come back.
+> With Run script on Ask, you review each script before it runs. *(only while Run script is Ask)*
+> [Open pi's Chrome details page] [Skip]
+
+- The card does not block the message box: the user can send while it shows.
+- Chrome has no event for the switch, so the panel reads it when it gets focus or is shown again, and every second
+  while the card shows (the details page opens in a tab, and the panel may stay open beside it).
+- When the panel sees the switch on, the card closes and "Scripts enabled in Chrome" shows under where it was for a few
+  seconds; screen readers hear it. The next message offers run_script; nothing is retried.
+- Skip closes the card and changes no setting: Run script stays as it was, and Settings > Tools and the note to the
+  model stay.
+- pi saves only that the step is done, when the switch is seen on or the user skips, never the switch itself. The card
+  does not come back, also when the user turns the switch off later; Settings > Tools then says it is off.
+- The card does not show while the switch is already on, which also marks the step done, or while Run script is Off.
 
 Under Screenshot page: "The image shows what is on screen, also what you typed into fields, and goes to the model's
 provider. pi may scroll the page first, also with Act on page Off. Works after you open pi on the site with its toolbar

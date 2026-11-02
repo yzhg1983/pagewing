@@ -1461,7 +1461,22 @@
 		"message": "Chrome's \"Allow User Scripts\" for pi is on."
 	},
 	"userScriptsOff": {
-		"message": "Chrome's \"Allow User Scripts\" for pi is off, so pi can't run scripts. Turn it on in pi's Chrome details page."
+		"message": "Chrome's \"Allow User Scripts\" for pi is off, so pi can't run scripts. Open pi's Chrome details page, scroll down, and turn it on."
+	},
+	"scriptsSetupTitle": {
+		"message": "Let pi run scripts on pages"
+	},
+	"scriptsSetupText": {
+		"message": "Scripts let pi pull data out of pages, fill in pages and change them. Turn on \"Allow User Scripts\" on pi's Chrome details page (scroll down), then come back."
+	},
+	"scriptsSetupAsk": {
+		"message": "With Run script on Ask, you review each script before it runs."
+	},
+	"skip": {
+		"message": "Skip"
+	},
+	"scriptsEnabled": {
+		"message": "Scripts enabled in Chrome"
 	},
 	"diagram": {
 		"message": "Diagram"
