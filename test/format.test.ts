@@ -59,15 +59,15 @@ it("translates presentation but keeps model tags, history groups, content, and r
 	});
 	const model: ModelInfo = {
 		provider: "openai",
-		id: "gpt-5.4-mini",
-		name: "GPT-5.4 mini",
+		id: "gpt-6-luna",
+		name: "GPT-6 Luna",
 		api: "x",
 		reasoning: true,
 		thinking: THINKS,
 		contextWindow: 128_000,
 	};
 	expect(modelTags(model, { provider: "openai", modelId: model.id })).toEqual(["current", "recommended"]);
-	expect(modelName(model)).toBe("GPT-5.4 mini");
+	expect(modelName(model)).toBe("GPT-6 Luna");
 	expect(providerStatus({ key: true, permission: true, plan: false, ended: false, waiting: false }).text).toBe("就绪");
 	expect(verifyText({ result: "accepted" }).text).toBe("已接受");
 	expect(verifyText({ result: "no_key" }).text).toBe("没有密钥");
@@ -75,7 +75,7 @@ it("translates presentation but keeps model tags, history groups, content, and r
 	expect(thinkingPicker(model, "high").title).toMatch(/^思考：High。/);
 	// The levels keep their English names in Chinese (design 6.36).
 	expect(thinkingPicker({ ...model, thinking: { ...THINKS, medium: "low" } }, "medium").levels.medium.title).toBe(
-		"GPT-5.4 mini 没有 Medium 级别，将使用 Low。",
+		"GPT-6 Luna 没有 Medium 级别，将使用 Low。",
 	);
 	expect(siteName("<all_urls>")).toBe("所有网站");
 	expect(siteName("https://github.com/*")).toBe("github.com");
@@ -201,7 +201,7 @@ it("shows the most important composer status", () => {
 		tone: "bad",
 	});
 	expect(text({ error: "Not connected", note: "x" })).toEqual({ text: "Not connected", tone: "bad" });
-	expect(text({ setup: "key", busy: true }).text).toBe("Add a key to send");
+	expect(text({ setup: "key", busy: true }).text).toBe("Add an API key or sign in with ChatGPT to send");
 	expect(text({ setup: "permission" }).text).toBe("Allow access to send");
 	// Manual check 9: a loaded draft's note outranks the setup text.
 	expect(text({ setup: "key", note: "No OpenRouter key: add one to send" }).text).toBe(
@@ -240,7 +240,7 @@ it("lists models with short names and tags, and says why one cannot be used", ()
 	});
 	const catalog = [
 		model("openrouter", "anthropic/claude-haiku-4.5", "Anthropic: Claude Haiku 4.5"),
-		model("openrouter", "~anthropic/claude-haiku-latest", "Anthropic: Claude Haiku Latest"),
+		model("openrouter", "anthropic/claude-haiku-5.5", "Anthropic: Claude Haiku 5.5"),
 		model("openrouter", "openai/gpt-5.1-mini", "OpenAI: GPT-5.1 mini"),
 		model("openai", "gpt-5.4-mini", "GPT-5.4 mini"),
 		model("anthropic", "claude-haiku-5-5", "Claude Haiku 5.5"),
@@ -252,16 +252,16 @@ it("lists models with short names and tags, and says why one cannot be used", ()
 	// Every word, in the name or in provider/model.
 	expect(ids(all, " HAIKU ")).toEqual([
 		"openrouter/anthropic/claude-haiku-4.5",
-		"openrouter/~anthropic/claude-haiku-latest",
+		"openrouter/anthropic/claude-haiku-5.5",
 		"anthropic/claude-haiku-5-5",
 	]);
 	expect(ids(all, "anthropic/")).toEqual([
 		"openrouter/anthropic/claude-haiku-4.5",
-		"openrouter/~anthropic/claude-haiku-latest",
+		"openrouter/anthropic/claude-haiku-5.5",
 		"anthropic/claude-haiku-5-5",
 	]);
 	expect(ids(all, "openai gpt-5")).toEqual(["openrouter/openai/gpt-5.1-mini", "openai/gpt-5.4-mini"]);
-	expect(ids(all, "haiku 5.5")).toEqual(["anthropic/claude-haiku-5-5"]);
+	expect(ids(all, "haiku 5.5")).toEqual(["openrouter/anthropic/claude-haiku-5.5", "anthropic/claude-haiku-5-5"]);
 	// A word does not match across the end of the name and the start of the ID: "…Flash" + "deepseek/…".
 	expect(ids(all, "flashdeepseek")).toEqual([]);
 	// Only the providers with a key.
@@ -272,7 +272,7 @@ it("lists models with short names and tags, and says why one cannot be used", ()
 	expect(ids(new Set(), "")).toEqual([]);
 	expect(catalog.map(modelName)).toEqual([
 		"Claude Haiku 4.5",
-		"Claude Haiku Latest",
+		"Claude Haiku 5.5",
 		"GPT-5.1 mini",
 		"GPT-5.4 mini",
 		"Claude Haiku 5.5",
@@ -283,7 +283,8 @@ it("lists models with short names and tags, and says why one cannot be used", ()
 		["current"],
 		["recommended"],
 		[],
-		["recommended"],
+		// GPT-5.4 mini: OpenAI now recommends GPT-6 Luna.
+		[],
 		["recommended"],
 		["recommended"],
 	]);
@@ -295,7 +296,7 @@ it("lists models with short names and tags, and says why one cannot be used", ()
 	expect(state({ selected: undefined })).toEqual({ enabled: false, reason: "" });
 	// The worker allows the chat's own model while busy; the panel has nothing to change.
 	expect(state({ selected: current, busy: true })).toEqual({ enabled: false, reason: "This chat uses it" });
-	expect(state({ hasKey: false }).reason).toBe("Add a DeepSeek key in Settings first");
+	expect(state({ hasKey: false }).reason).toBe("Add a key for DeepSeek in Settings first");
 	expect(state({ busy: true })).toEqual({ enabled: false, reason: "Wait for the answer, or stop it" });
 });
 

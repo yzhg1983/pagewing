@@ -321,9 +321,16 @@ try {
 	const problems = [];
 	panel.on("pageerror", (error) => problems.push(error.message));
 	await panel.waitForSelector("#setup:not([hidden])");
+	// The fake provider stands in for openrouter.ai; the card starts on the first provider, OpenAI.
+	await panel.click('#setup-providers label:has-text("OpenRouter")');
 	await panel.fill("#setup-key .key-field input", "sk-or-e2e-fake");
 	await panel.click("#setup-key button.primary");
 	await panel.waitForSelector("#setup", { state: "hidden" });
+	// The fake provider serves chat completions only; the recommended pinned Haiku goes through Anthropic's messages API.
+	await panel.click("#model");
+	await panel.fill("#model-filter", "haiku latest");
+	await panel.click('#model-list [title="openrouter/~anthropic/claude-haiku-latest"]');
+	await panel.waitForSelector("#model-popup", { state: "hidden" });
 
 	/** pi attaches the tab's page, as after "Ask pi" in its context menu. */
 	const attach = async () => {

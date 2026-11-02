@@ -867,7 +867,7 @@
 		"message": "All $1 sites"
 	},
 	"addKeySend": {
-		"message": "Add a key to send"
+		"message": "Add an API key or sign in with ChatGPT to send"
 	},
 	"allowAccessSend": {
 		"message": "Allow access to send"
@@ -942,7 +942,7 @@
 		"message": "This chat uses it"
 	},
 	"addProviderKeyFirst": {
-		"message": "Add a $1 key in Settings first"
+		"message": "Add a key for $1 in Settings first"
 	},
 	"waitOrStopAnswer": {
 		"message": "Wait for the answer, or stop it"

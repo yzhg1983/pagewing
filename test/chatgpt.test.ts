@@ -23,12 +23,14 @@ import {
 	checkModel,
 	credentials,
 	models,
-	startingModel,
+	planStartingModel,
+	signInModel,
 	syncPlanWindows,
 	verifyKey,
 } from "../src/background/models.ts";
+import { defaultSettings } from "../src/background/settings.ts";
 import { t } from "../src/shared/i18n.ts";
-import { CHATGPT, PROVIDERS, RECOMMENDED_MODELS } from "../src/shared/protocol.ts";
+import { CHATGPT, PLAN_MODEL, PROVIDERS, RECOMMENDED_MODELS } from "../src/shared/protocol.ts";
 
 const API = PROVIDERS.openai.origin;
 const ALL = [API, CHATGPT.auth, CHATGPT.loopback];
@@ -697,15 +699,31 @@ it("reads the plan's listed models, and nothing from an answer of another shape"
 	expect(await fetchPlanModels("at-1")).toEqual({ status: 401, models: null });
 });
 
-it("starts a sign-in on the recommended model, or on the plan's first known one, or on none", () => {
-	expect(startingModel("openai", null)).toBe(RECOMMENDED_MODELS.openai);
-	expect(startingModel("openai", ["gpt-5.5", RECOMMENDED_MODELS.openai])).toBe(RECOMMENDED_MODELS.openai);
+it("starts a sign-in on the plan model, or the recommended one, or the plan's first known one, or on none", () => {
+	expect(planStartingModel(null)).toBe(PLAN_MODEL);
+	expect(planStartingModel(["gpt-5.5", RECOMMENDED_MODELS.openai, PLAN_MODEL])).toBe(PLAN_MODEL);
+	expect(planStartingModel(["gpt-5.5", RECOMMENDED_MODELS.openai])).toBe(RECOMMENDED_MODELS.openai);
 	const known = models.getModels("openai").map((model) => model.id);
-	const [first, second] = known.filter((id) => id !== RECOMMENDED_MODELS.openai);
-	expect(startingModel("openai", [String(second), String(first), "unknown"])).toBe(
+	const [first, second] = known.filter((id) => id !== RECOMMENDED_MODELS.openai && id !== PLAN_MODEL);
+	expect(planStartingModel([String(second), String(first), "unknown"])).toBe(
 		known.indexOf(String(first)) < known.indexOf(String(second)) ? first : second,
 	);
-	expect(startingModel("openai", ["unknown"])).toBeNull();
+	expect(planStartingModel(["unknown"])).toBeNull();
+});
+
+it("moves the default to the plan's starting model when its provider had no credential before the sign-in", () => {
+	const luna = { provider: "openai" as const, modelId: RECOMMENDED_MODELS.openai };
+	// A fresh profile: the default is OpenAI's already, and the sign-in being saved must not count (found in review).
+	expect(signInModel(defaultSettings().model, false, null)).toBe(PLAN_MODEL);
+	expect(signInModel(luna, false, [RECOMMENDED_MODELS.openai, PLAN_MODEL])).toBe(PLAN_MODEL);
+	expect(signInModel({ provider: "anthropic", modelId: RECOMMENDED_MODELS.anthropic }, false, null)).toBe(PLAN_MODEL);
+	// The default's provider had a credential: the default stays, unless the plan does not list it.
+	expect(signInModel(luna, true, [RECOMMENDED_MODELS.openai, PLAN_MODEL])).toBeNull();
+	expect(signInModel(luna, true, null)).toBeNull();
+	expect(signInModel({ provider: "anthropic", modelId: RECOMMENDED_MODELS.anthropic }, true, [PLAN_MODEL])).toBeNull();
+	expect(signInModel(luna, true, [PLAN_MODEL])).toBe(PLAN_MODEL);
+	// pi knows none of the plan's models.
+	expect(signInModel(luna, false, ["unknown"])).toBeNull();
 });
 
 it("sends with a sign-in only with access to the API and the token endpoint, never once it ended, nor for another provider", async () => {

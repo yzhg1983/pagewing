@@ -18,7 +18,7 @@ const SETTINGS_KEY = "settings";
 export function defaultSettings(): Settings {
 	return {
 		openaiWebSearch: true,
-		model: { provider: "openrouter", modelId: RECOMMENDED_MODELS.openrouter },
+		model: { provider: "openai", modelId: RECOMMENDED_MODELS.openai },
 		selectionAction: "send",
 		enterWhileBusy: "steer",
 		defaultPreset: DEFAULT_PRESET,

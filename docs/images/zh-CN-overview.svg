@@ -28,7 +28,7 @@
 <rect x="64" y="260" width="151" height="36" rx="18" fill="#ffffff" fill-opacity="0.07" stroke="#ffffff" stroke-opacity="0.18"/>
 <path transform="translate(78 270)" d="M5.2 7.8a3.2 3.2 0 1 0 0.01 0z M7.6 9.1 14 2.7 M12.2 4.5l1.6 1.6 M10.4 6.3l1.4 1.4" fill="none" stroke="#9fb3ff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
 <text x="102" y="283.5" font-size="15" fill="#fff">用你自己的密钥</text>
-<text x="64" y="344" font-size="14" fill="#8f9cc6">ChatGPT 订阅，或 OpenRouter、OpenAI、Anthropic、DeepSeek 的 API 密钥。</text>
+<text x="64" y="344" font-size="14" fill="#8f9cc6">ChatGPT 订阅，或 OpenAI、Anthropic、OpenRouter、DeepSeek 的 API 密钥。</text>
 <text x="64" y="366" font-size="14" fill="#8f9cc6">没有 pi-aside 服务器：请求直接发往模型服务商。</text>
 <rect x="640" y="54" width="516" height="338" rx="14" fill="#fff" filter="url(#shadow)"/>
 <path d="M640 68 a14 14 0 0 1 14 -14 H1142 a14 14 0 0 1 14 14 V94 H640 Z" fill="#e8ebf3"/>

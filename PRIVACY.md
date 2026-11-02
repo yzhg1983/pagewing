@@ -13,7 +13,7 @@ Last updated: 2026-10-30.
 
 ## What goes to your AI provider
 
-pi-aside works with OpenRouter, OpenAI, Anthropic, and DeepSeek. When you send a message, pi-aside sends the request to
+pi-aside works with OpenAI, Anthropic, OpenRouter, and DeepSeek. When you send a message, pi-aside sends the request to
 the provider of the model you picked, and to no one else. Depending on what you ask and which tools you allow
 (Settings > Tools), a request can contain:
 
