@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="640" viewBox="0 0 1200 640" role="img" aria-label="pi-aside 在维基百科的全球最高票房电影列表旁：读表格，运行脚本前先询问，在页面上标出 2020 年代的行，再按年代画出图表">
 <defs>
 <filter id="marker" x="-0.02" y="0.08" width="1.04" height="0.9"><feFlood flood-color="#ffe08a"/></filter>
-<filter id="shadow" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="10" stdDeviation="16" flood-color="#3b3326" flood-opacity="0.16"/></filter>
+<filter id="shadow" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#3b3326" flood-opacity="0.08"/></filter>
 </defs>
 <style>
 @keyframes row2 { 0%, 37.73% { fill: #fff; } 40.00%, 93.64% { fill: #ffe08a; } 96.82%, 100% { fill: #fff; } } .row2 { animation: row2 11s infinite both; }

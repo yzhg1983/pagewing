@@ -119,7 +119,7 @@ const svg = (w, h, label, defs, style, body) =>
 	`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" role="img" aria-label="${esc(label)}">
 <defs>
 <filter id="marker" x="-0.02" y="0.08" width="1.04" height="0.9"><feFlood flood-color="${YELLOW}"/></filter>
-<filter id="shadow" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="10" stdDeviation="16" flood-color="#3b3326" flood-opacity="0.16"/></filter>
+<filter id="shadow" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#3b3326" flood-opacity="0.08"/></filter>
 ${defs}</defs>
 ${style ? `<style>\n${style}\n</style>\n` : ""}<rect x="0.5" y="0.5" width="${w - 1}" height="${h - 1}" rx="18" fill="${PAPER}" stroke="${BORDER}"/>
 <g font-family="${FONT}">

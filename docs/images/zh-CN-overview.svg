@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="440" viewBox="0 0 1200 440" role="img" aria-label="pi-aside：每个网页旁的 AI 智能体。读懂网页、操作网页、编写并运行脚本、先问再做，用你自己的密钥。旁边是一篇文章，pi 直接在页面上标出了其中的论断，并注明两处没有出处。">
 <defs>
 <filter id="marker" x="-0.02" y="0.08" width="1.04" height="0.9"><feFlood flood-color="#ffe08a"/></filter>
-<filter id="shadow" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="10" stdDeviation="16" flood-color="#3b3326" flood-opacity="0.16"/></filter>
+<filter id="shadow" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#3b3326" flood-opacity="0.08"/></filter>
 </defs>
 <rect x="0.5" y="0.5" width="1199" height="439" rx="18" fill="#f7f4ee" stroke="#c8c1b5"/>
 <g font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif">
