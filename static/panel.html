@@ -124,12 +124,18 @@
 			<!-- The setup step after it, once the provider is ready: Chrome's Allow User Scripts for pi, which Run script
 			     needs (design 6.23). Skip ends the step and changes no setting. -->
 			<section id="scripts-setup" class="card setup" aria-labelledby="scripts-setup-title" hidden>
-				<h3 id="scripts-setup-title" data-i18n="scriptsSetupTitle">Let pi run scripts on pages</h3>
-				<p data-i18n="scriptsSetupText">Scripts let pi pull data out of pages, fill in pages and change them. Turn on "Allow User Scripts" on pi's Chrome details page (scroll down), then come back.</p>
-				<p id="scripts-setup-ask" class="note" data-i18n="scriptsSetupAsk">With Run script on Ask, you review each script before it runs.</p>
+				<h3 id="scripts-setup-title" data-i18n="scriptsSetupTitle">Allow pi to run scripts (optional)</h3>
+				<p data-i18n="scriptsSetupText">Scripts let pi do more than read and click: it writes a small piece of code and runs it on the page. First, turn on Chrome's "Allow User Scripts" switch for pi:</p>
+				<ol class="setup-steps">
+					<li data-i18n="scriptsSetupStep1">Click "Open pi's Chrome details page".</li>
+					<li data-i18n="scriptsSetupStep2">Scroll down and turn on "Allow User Scripts".</li>
+					<li data-i18n="scriptsSetupStep3">Come back here. This card closes automatically.</li>
+				</ol>
+				<p id="scripts-setup-ask" class="note" data-i18n="scriptsSetupAsk">In Ask mode (the default), pi shows you the code and asks before running scripts.</p>
+				<p class="note" data-i18n="scriptsSetupLater">Without this switch, pi can still read pages, click, and type. You can open this Chrome page later from Settings > Tools.</p>
 				<div class="row">
 					<button type="button" id="scripts-setup-open" class="primary small-button" data-i18n="openDetails">Open pi's Chrome details page</button>
-					<button type="button" id="scripts-setup-skip" class="small-button" data-i18n="skip">Skip</button>
+					<button type="button" id="scripts-setup-skip" class="small-button" data-i18n="skipForNow">Skip for now</button>
 				</div>
 				<p id="scripts-setup-result" class="result" role="status"></p>
 			</section>

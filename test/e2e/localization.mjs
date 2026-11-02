@@ -462,7 +462,7 @@ async function scriptsSetup(first) {
 			await panel.locator("#scripts-setup-open").textContent(),
 			await panel.locator("#scripts-setup-skip").textContent(),
 		],
-		[message("scriptsSetupTitle"), true, message("openDetails"), message("skip")],
+		[message("scriptsSetupTitle"), true, message("openDetails"), message("skipForNow")],
 	);
 	check(`${code}: the scripts step does not block the message box`, !(await panel.locator("#setup").isVisible()));
 	await panel.locator("#scripts-setup-skip").click();

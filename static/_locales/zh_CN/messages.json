@@ -1464,16 +1464,28 @@
 		"message": "Chrome 中 pi 的“允许用户脚本”已关闭，pi 无法运行脚本。请打开 pi 的扩展详情页，向下滚动并开启。"
 	},
 	"scriptsSetupTitle": {
-		"message": "让 pi 在网页上运行脚本"
+		"message": "允许 pi 运行网页脚本（可选）"
 	},
 	"scriptsSetupText": {
-		"message": "脚本让 pi 能从网页中提取数据、填写和修改网页。请在 pi 的扩展详情页中（向下滚动）开启“允许用户脚本”，然后回到这里。"
+		"message": "有了脚本，pi 不只能读网页、点按钮：它会写一小段代码，直接在网页上运行。要使用脚本，需要先在 Chrome 中打开一个开关："
 	},
 	"scriptsSetupAsk": {
-		"message": "“运行脚本”设为“询问”时，每个脚本运行前都会先由你确认。"
+		"message": "在“询问”模式下（默认），pi 运行脚本前会先展示代码，由你确认。"
 	},
-	"skip": {
-		"message": "跳过"
+	"scriptsSetupStep1": {
+		"message": "点击“打开 pi 的扩展详情页”。"
+	},
+	"scriptsSetupStep2": {
+		"message": "向下滚动，打开“允许用户脚本”。"
+	},
+	"scriptsSetupStep3": {
+		"message": "回到这里，卡片会自动关闭。"
+	},
+	"scriptsSetupLater": {
+		"message": "不开启这个开关，pi 仍然可以读取网页、点击和输入。之后需要时，可以从“设置 > 工具”打开扩展详情页再开启。"
+	},
+	"skipForNow": {
+		"message": "暂时跳过"
 	},
 	"scriptsEnabled": {
 		"message": "已在 Chrome 中启用脚本"

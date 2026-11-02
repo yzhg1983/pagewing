@@ -75,7 +75,7 @@ settings, keys, and chats are kept.
 2. Pick a provider, paste an API key, and Save; allow access when Chrome asks. For a ChatGPT plan, choose OpenAI, then
    **Continue with ChatGPT**.
 3. Type a question or a task in the message box, and send it. For other ways, see [How to start](#how-to-start).
-4. Let pi run scripts: when the card **Let pi run scripts on pages** asks, open pi-aside's Chrome details page, turn on
+4. Let pi run scripts: when the card **Allow pi to run scripts (optional)** asks, open pi-aside's Chrome details page, turn on
    **Allow User Scripts** (scroll down), and come back. Skipped it? Settings > Tools links to the same page.
 
 ### How to start

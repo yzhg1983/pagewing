@@ -410,18 +410,26 @@ the note above on why scripts are unavailable.
 Scripts are part of setup. Once the chat's provider has its key and Chrome lets pi reach it, the chat view shows one
 more card, while Run script is Ask or On and Chrome's Allow User Scripts is off for pi:
 
-> **Let pi run scripts on pages**
-> Scripts let pi pull data out of pages, fill in pages and change them. Turn on "Allow User Scripts" on pi's Chrome
-> details page (scroll down), then come back.
-> With Run script on Ask, you review each script before it runs. *(only while Run script is Ask)*
-> [Open pi's Chrome details page] [Skip]
+> **Allow pi to run scripts (optional)**
+> Scripts let pi do more than read and click: it writes a small piece of code and runs it on the page. First, turn on
+> Chrome's "Allow User Scripts" switch for pi:
+> 1. Click "Open pi's Chrome details page".
+> 2. Scroll down and turn on "Allow User Scripts".
+> 3. Come back here. This card closes automatically.
+>
+> In Ask mode (the default), pi shows you the code and asks before running scripts. *(only while Run script is Ask)*
+>
+> Without this switch, pi can still read pages, click, and type. You can open this Chrome page later from Settings >
+> Tools.
+>
+> [Open pi's Chrome details page] [Skip for now]
 
 - The card does not block the message box: the user can send while it shows.
 - Chrome has no event for the switch, so the panel reads it when it gets focus or is shown again, and every second
   while the card shows (the details page opens in a tab, and the panel may stay open beside it).
 - When the panel sees the switch on, the card closes and "Scripts enabled in Chrome" shows under where it was for a few
   seconds; screen readers hear it. The next message offers run_script; nothing is retried.
-- Skip closes the card and changes no setting: Run script stays as it was, and Settings > Tools and the note to the
+- Skip for now closes the card and changes no setting: Run script stays as it was, and Settings > Tools and the note to the
   model stay.
 - pi saves only that the step is done, when the switch is seen on or the user skips, never the switch itself. The card
   does not come back, also when the user turns the switch off later; Settings > Tools then says it is off.

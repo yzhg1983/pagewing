@@ -1464,16 +1464,28 @@
 		"message": "Chrome's \"Allow User Scripts\" for pi is off, so pi can't run scripts. Open pi's Chrome details page, scroll down, and turn it on."
 	},
 	"scriptsSetupTitle": {
-		"message": "Let pi run scripts on pages"
+		"message": "Allow pi to run scripts (optional)"
 	},
 	"scriptsSetupText": {
-		"message": "Scripts let pi pull data out of pages, fill in pages and change them. Turn on \"Allow User Scripts\" on pi's Chrome details page (scroll down), then come back."
+		"message": "Scripts let pi do more than read and click: it writes a small piece of code and runs it on the page. First, turn on Chrome's \"Allow User Scripts\" switch for pi:"
 	},
 	"scriptsSetupAsk": {
-		"message": "With Run script on Ask, you review each script before it runs."
+		"message": "In Ask mode (the default), pi shows you the code and asks before running scripts."
 	},
-	"skip": {
-		"message": "Skip"
+	"scriptsSetupStep1": {
+		"message": "Click \"Open pi's Chrome details page\"."
+	},
+	"scriptsSetupStep2": {
+		"message": "Scroll down and turn on \"Allow User Scripts\"."
+	},
+	"scriptsSetupStep3": {
+		"message": "Come back here. This card closes automatically."
+	},
+	"scriptsSetupLater": {
+		"message": "Without this switch, pi can still read pages, click, and type. You can open this Chrome page later from Settings > Tools."
+	},
+	"skipForNow": {
+		"message": "Skip for now"
 	},
 	"scriptsEnabled": {
 		"message": "Scripts enabled in Chrome"

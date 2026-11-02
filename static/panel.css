@@ -709,6 +709,12 @@ button.danger {
 	margin: 0 0 8px;
 }
 
+/* The numbered steps of a setup card, such as the scripts step. */
+.setup-steps {
+	margin: 0 0 8px;
+	padding-left: 20px;
+}
+
 /* A key field with Show inside, Save, and a note with "Get a key". */
 .key-form {
 	margin-top: 8px;
