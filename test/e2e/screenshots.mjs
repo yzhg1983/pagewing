@@ -456,6 +456,21 @@ try {
 			await page.title(),
 		);
 	};
+	/** Saves the fake OpenRouter key on the setup card and picks a model the fake provider serves. */
+	async function setUp(panel) {
+		await panel.waitForSelector("#setup:not([hidden])");
+		// The fake provider stands in for openrouter.ai; the card starts on the first provider, OpenAI.
+		await panel.click('#setup-providers label:has-text("OpenRouter")');
+		await panel.fill("#setup-key .key-field input", "sk-or-e2e-fake");
+		await panel.click("#setup-key button.primary");
+		await panel.waitForSelector("#setup", { state: "hidden" });
+		// The fake provider serves chat completions only; the recommended pinned Haiku goes through Anthropic's messages
+		// API.
+		await panel.click("#model");
+		await panel.fill("#model-filter", "haiku latest");
+		await panel.click('#model-list [title="openrouter/~anthropic/claude-haiku-latest"]');
+		await panel.waitForSelector("#model-popup", { state: "hidden" });
+	}
 	let turns = 0;
 	/** Sends `text` with these model steps; `during` runs while the answer goes on. Returns the results of the turn. */
 	async function turn(panel, text, steps, during) {
@@ -529,10 +544,7 @@ try {
 		}));
 	}, tab);
 	console.log("tabs", JSON.stringify(placement));
-	await panel.waitForSelector("#setup:not([hidden])");
-	await panel.fill("#setup-key .key-field input", "sk-or-e2e-fake");
-	await panel.click("#setup-key button.primary");
-	await panel.waitForSelector("#setup", { state: "hidden" });
+	await setUp(panel);
 	await attach(web, panel);
 
 	// Settings: On by default, with its note.
@@ -1379,10 +1391,7 @@ try {
 		() => wide.context.pages().find((page) => page.url() === widePanelUrl),
 		"all-sites panel",
 	);
-	await widePanel.waitForSelector("#setup:not([hidden])");
-	await widePanel.fill("#setup-key .key-field input", "sk-or-e2e-fake");
-	await widePanel.click("#setup-key button.primary");
-	await widePanel.waitForSelector("#setup", { state: "hidden" });
+	await setUp(widePanel);
 	await wide.worker.evaluate(async (url) => {
 		const [tab] = await chrome.tabs.query({ url });
 		await globalThis.__piTest.begin("context-menu", tab, { frameId: 0, url, top: url }).resolved;
