@@ -356,8 +356,8 @@
 	"manifestDescription": {
 		"message": "侧边栏里的通用 AI 智能体：看网页时随时提问，有事直接交给它：它会点按钮、填表单，必要时还会自己写脚本并运行。基于 pi-durable 构建。"
 	},
-	"openPi": {
-		"message": "打开 pi"
+	"actionTitle": {
+		"message": "pi-aside：侧边栏里的 AI 智能体"
 	},
 	"commandAsk": {
 		"message": "向 pi 询问选中文本（默认提示词）"
