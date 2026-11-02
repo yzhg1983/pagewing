@@ -249,8 +249,8 @@ mistakes. Keep Ask for email, banking, admin pages, and anywhere a wrong click m
 
 ## Learn more
 
-- [User guide](docs/guide.md): images and text files, chats and History, prompts and slash commands, models and
-  thinking, editing a question, diagrams, web search, shortcuts, languages, and limits.
+- [User guide](docs/guide.md): settings, images and text files, chats and History, prompts and slash commands, models
+  and thinking, editing a question, diagrams, web search, shortcuts, languages, and limits.
 - [CONTRIBUTING.md](CONTRIBUTING.md): building, checks, and tests.
 
 pi-aside is unofficial: the pi project, which makes pi-durable, does not make or endorse it.

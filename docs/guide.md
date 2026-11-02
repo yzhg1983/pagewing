@@ -88,8 +88,8 @@ search that finds nothing links to the button.
 ## Asking about a page
 
 Select text on a page and right-click "Ask pi", or press `Ctrl+Shift+Y`. With nothing selected, right-click the page:
-"Ask pi about this page" attaches it, and a prompt such as "Summarize" sends with the page attached. Settings > When
-you select text chooses whether "Ask pi" sends at once or puts the question in the message box to edit first.
+"Ask pi about this page" attaches it, and a prompt such as "Summarize" sends with the page attached. Settings > Sending
+> Ask pi chooses whether "Ask pi" sends at once or puts the question in the message box to edit first.
 
 ## Images and text files
 
@@ -124,8 +124,9 @@ them all, and keeps your settings, keys, and sign-in.
 The built-in prompts are Explain, Summarize, Translate, Proofread, and Draft a reply. Settings > Prompts edits them,
 adds your own, orders them in the right-click menu, and stars the one "Ask pi" uses. Every prompt is in the menu both
 for selected text and for the page. The switch at the end of a prompt's row turns it off: it leaves the menu and the
-`/` list but stays in Settings, ready to turn on again. The starred prompt stays on. A prompt can ask a question or set a task, as in
-[the saved prompts](../README.md#saved-prompts).
+`/` list but stays in Settings, ready to turn on again. The starred prompt stays on. Delete removes a prompt, also a
+built-in one; Reset to built-in prompts brings the built-in ones back and deletes your changes and the prompts you
+added. A prompt can ask a question or set a task, as in [the saved prompts](../README.md#saved-prompts).
 
 A prompt puts the selected text where it says `{{selection}}` (or the whole page, with nothing selected), the page's
 title and address where it says `{{title}}` and `{{url}}`, and the answer language where it says `{{language}}`.
@@ -143,8 +144,9 @@ The model chip in the message box picks the model, from every provider you have 
 that can think does so. New installations start at Medium; a level you chose, Off included, is kept. Longer thinking
 can help with hard questions and longer tasks, but answers start later and cost more; lower levels can reduce delay and
 cost, depending on the model. On a model that cannot turn thinking off, Off uses the provider's default. For tasks,
-choose a model that is good at using tools; small models can lose their way. The line above the message box shows the chat's tokens, estimated cost, and how full the model's context is; near the limit, pi
-summarizes older messages by itself.
+choose a model that is good at using tools; small models can lose their way. The line above the message box shows the
+chat's tokens, estimated cost, and how full the model's context is; near the limit, pi summarizes older messages by
+itself.
 
 ## Editing a question
 
@@ -184,6 +186,45 @@ The interface follows Chrome's language: English or Simplified Chinese; other la
 Chrome after changing its language. Settings > Answers > Answer language sets the language of answers and the
 Translate target only: "Auto (Chrome language)" by default, or English or Chinese. Proofread keeps the text's own
 language, and Draft a reply uses the original's.
+
+## Settings
+
+Open Settings with the button at the top of the panel. The defaults below are those of a new installation.
+
+| Part | What it sets | Default |
+| --- | --- | --- |
+| Providers | API keys and the ChatGPT sign-in ([Setting up a provider](#setting-up-a-provider)), [Update model list](#update-the-model-list), and OpenAI's [web search](#openai-web-search) | No API key or ChatGPT sign-in; web search On |
+| Answers | Answer language, also the Translate target ([Languages](#languages)) | Auto (Chrome language) |
+| Sending | **Ask pi**: Send at once or Edit first ([Asking about a page](#asking-about-a-page)). **While pi works**: what Enter does with a message, Join the task or Wait; Alt+Enter does the other ([How the agent works](#how-the-agent-works)) | Send at once; Join the task |
+| Prompts | The right-click menu and the `/` list: edit, add, delete, reorder, star, switch off, reset ([Prompts](#prompts)) | The 5 built-in prompts, all on, Explain starred |
+| Tools | Read page, Observe page, Screenshot page: Off or On. Act on page, Run script: Off, Ask, or On. Page tool calls per answer, 5 to 200 ([How the agent works](#how-the-agent-works)) | Read page, Observe page, Screenshot page On; Act on page, Run script Ask; 50 calls |
+| Advanced > Sites | The sites pi uses without asking: remove one, or Allow all sites ([Sites](#sites)) | None |
+| Advanced > Shortcuts | Shows the current shortcuts, and opens Chrome's page to change them ([Shortcuts](#shortcuts)) | - |
+| Advanced > Diagnostics | Opens the extension's status, test probes, and log ([Diagnostics](#diagnostics)) | - |
+| Advanced > Data | Delete all chats; settings, keys, and sign-in stay ([Chats and History](#chats-and-history)) | - |
+
+The model and the thinking level are not in Settings: they are in the message box ([Models and
+thinking](#models-and-thinking)). Run script also needs Chrome's own Allow User Scripts switch, which is off for a new
+installation ([How the agent works](#how-the-agent-works)).
+
+### Sites
+
+pi reads the page you open it on. For any other page it needs Chrome's access to the site:
+
+- **Always allow pi on a site.** The pin button on the page chip in the message box lets pi read that site's pages
+  without a click, also after you leave and come back. Chrome may ask first.
+- **During a task.** When pi needs a site it has no access to, a card in the chat asks you first.
+- **Settings > Advanced > Sites** lists the sites pi uses without asking. Remove takes Chrome's access away, and pi asks
+  again when it needs the site; what pi already read stays in the chat. **Allow all sites** asks Chrome for every
+  site at once. The list also shows the sites pi can reach because of your providers.
+
+Site access is only about reading and reaching pages. Whether pi may click, type, or run scripts there is still set
+by Settings > Tools: in Ask, pi asks before it acts.
+
+### Diagnostics
+
+Settings > Advanced > Diagnostics opens a page with the extension's status, test probes, and its log. Open it when you
+report a problem.
 
 ## Storage
 
