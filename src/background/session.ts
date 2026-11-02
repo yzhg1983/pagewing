@@ -117,14 +117,19 @@ let installed = "";
 const installTools = serial();
 /**
  * Offers the page tools that are not Off in `settings`, from every chat's next request (design 6.23), and run_script
- * only while Chrome's Allow User Scripts switch is on: Chrome has no event for it, so a send checks it again. The tools
- * check the settings as they are at each call themselves; this keeps what the model is told in step. False when the
- * tools installed already match.
+ * only while Chrome's Allow User Scripts switch is on; while only the switch keeps it back, the model is told so.
+ * Chrome has no event for the switch, so a send checks it again. The tools check the settings as they are at each call
+ * themselves; this keeps what the model is told in step. False when the tools installed already match.
  */
 export function installPageTools(settings: Settings): Promise<boolean> {
 	return installTools(async () => {
-		const offered = { ...settings, tools: offeredModes(settings.tools, userScriptsAllowed()) };
-		const key = JSON.stringify([offered.tools, offered.callsPerAnswer]);
+		const scripts = userScriptsAllowed();
+		const offered = {
+			...settings,
+			tools: offeredModes(settings.tools, scripts),
+			scriptsBlocked: !scripts && settings.tools.script !== "off",
+		};
+		const key = JSON.stringify([offered.tools, offered.callsPerAnswer, offered.scriptsBlocked]);
 		if (key === installed) return false;
 		await activeWork.admit(async () => registry.install(pageExtension(pageDeps, offered)));
 		installed = key;

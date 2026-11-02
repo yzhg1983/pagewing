@@ -70,6 +70,19 @@ it("accepts only automatic or canonical answer language choices", () => {
 	for (const value of ["Chinese", "English"]) expect(readSettings({ language: value }, defaults).language).toBe(value);
 });
 
+it("keeps the Allow User Scripts setup step as done or not, never Chrome's switch (design 6.23)", () => {
+	const defaults = defaultSettings();
+	// A new install has the step to do, and Run script on Ask, which the step is for.
+	expect(defaults.scriptsOnboarded).toBe(false);
+	expect(defaults.tools.script).toBe("ask");
+	for (const value of [undefined, null, "true", 1])
+		expect(readSettings({ scriptsOnboarded: value }, defaults).scriptsOnboarded).toBe(false);
+	expect(readSettings({ scriptsOnboarded: true }, defaults).scriptsOnboarded).toBe(true);
+	// Skipping changes no other setting: the step's flag is all a save of it carries.
+	const skipped = readSettings({ ...defaults, scriptsOnboarded: true }, defaults);
+	expect({ ...skipped, scriptsOnboarded: false }).toEqual(defaults);
+});
+
 it.each(["en", "zh-CN", "fr", "zh-TW"])(
 	"resolves auto in %s with the same supported locale as interface labels",
 	(browserLocale) => {

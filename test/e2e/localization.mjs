@@ -442,6 +442,39 @@ async function menus(previous = []) {
 	}
 	return expected;
 }
+/**
+ * The setup step for Chrome's Allow User Scripts (design 6.23), which this suite never turns on. A new profile with its
+ * provider ready shows it, in this locale; Skip closes it and changes no setting; a restart does not bring it back.
+ */
+async function scriptsSetup(first) {
+	await settingsView(false);
+	const card = panel.locator("#scripts-setup");
+	if (!first) {
+		check(`${code}: a skipped scripts step stays closed after a restart`, !(await card.isVisible()));
+		return;
+	}
+	await card.waitFor();
+	equal(
+		`${code}: the scripts step, its Ask line, and its buttons`,
+		[
+			await card.locator("h3").textContent(),
+			await panel.locator("#scripts-setup-ask").isVisible(),
+			await panel.locator("#scripts-setup-open").textContent(),
+			await panel.locator("#scripts-setup-skip").textContent(),
+		],
+		[message("scriptsSetupTitle"), true, message("openDetails"), message("skip")],
+	);
+	check(`${code}: the scripts step does not block the message box`, !(await panel.locator("#setup").isVisible()));
+	await panel.locator("#scripts-setup-skip").click();
+	await poll(() => state().then((s) => s.settings.scriptsOnboarded === true), "scripts step skipped");
+	const after = await state();
+	check(
+		`${code}: Skip closes the step and leaves Run script on Ask, with no confirmation`,
+		!(await card.isVisible()) &&
+			after.settings.tools.script === "ask" &&
+			(await panel.locator("#scripts-enabled").textContent()) === "",
+	);
+}
 async function ui() {
 	await staticLabels();
 	await sweep("empty chat");
@@ -1114,6 +1147,7 @@ async function draftSnapshot() {
 }
 try {
 	await start("en", "en", true);
+	await scriptsSetup(true);
 	await ui();
 	await scriptCards();
 	await validation();
@@ -1150,6 +1184,7 @@ try {
 		await stored(),
 		saved,
 	);
+	await scriptsSetup(false);
 	await ui();
 	await scriptCards();
 	await menus(oldMenus);

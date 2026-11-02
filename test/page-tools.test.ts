@@ -34,6 +34,7 @@ import {
 	OBSERVE_PAGE,
 	type PageAccess,
 	PageReadsDoc,
+	type PageToolOffer,
 	type PageToolSettings,
 	READ_PAGE,
 	RUN_SCRIPT,
@@ -51,7 +52,14 @@ import type {
 	ScrollResult,
 	Step,
 } from "../src/background/page-agent.ts";
-import { letterOf, offeredModes, pageExtension, RefMapsDoc, skipReason } from "../src/background/page-tools.ts";
+import {
+	letterOf,
+	offeredModes,
+	pageExtension,
+	RefMapsDoc,
+	SCRIPTS_BLOCKED,
+	skipReason,
+} from "../src/background/page-tools.ts";
 import { MESSAGE_KIND } from "../src/background/projection.ts";
 import { CaptureQueue, type Crop } from "../src/background/screenshot.ts";
 import { runScript } from "../src/background/script-runner.ts";
@@ -126,7 +134,7 @@ const IMAGE = "aW1hZ2U=";
 
 /** `model`: the chat's model "one", as the faux provider has it. */
 async function setup(
-	settings: PageToolSettings = ALL_ON,
+	settings: PageToolOffer = ALL_ON,
 	timeoutMs?: number,
 	model: Omit<FauxModelDefinition, "id"> = {},
 ) {
@@ -3823,6 +3831,43 @@ it("run_script is offered only while Chrome's Allow User Scripts switch is on; o
 	await tab.send(withPage("r1", "Hi", attach(1, tabs.get(1)!)));
 	await idle();
 	expect(JSON.stringify(systems)).not.toContain(RUN_SCRIPT);
+});
+
+it("while only Chrome's switch keeps run_script back, the model is told why and where, without a tool to call", async () => {
+	const told = async (settings: PageToolOffer) => {
+		const { tab, faux, tabs, idle } = await setup(settings);
+		let systems: SystemMessage[] = [];
+		faux.setResponses([
+			(transcript: TranscriptContext) => {
+				systems = transcript.messages.filter((message): message is SystemMessage => message.role === "system");
+				return fauxAssistantMessage("ok");
+			},
+		]);
+		await tab.send(withPage("r1", "Hi", attach(1, tabs.get(1)!)));
+		await idle();
+		return {
+			text: JSON.stringify(systems),
+			names: systems.flatMap((message) => message.toolsAdded ?? []).map((tool) => tool.name),
+		};
+	};
+	// Run script Ask, the switch off: no run_script, and the restrained note, which names no tool.
+	const blocked = await told({
+		...scripts("ask"),
+		tools: offeredModes(scripts("ask").tools, false),
+		scriptsBlocked: true,
+	});
+	expect(blocked.names).not.toContain(RUN_SCRIPT);
+	expect(blocked.text).not.toContain(RUN_SCRIPT);
+	expect(blocked.text).toContain(JSON.stringify(SCRIPTS_BLOCKED).slice(1, -1));
+	expect(SCRIPTS_BLOCKED).toContain("Allow User Scripts");
+	expect(SCRIPTS_BLOCKED).toContain("If this materially limits the requested task");
+	expect(SCRIPTS_BLOCKED).toContain("Otherwise, use the available tools without mentioning it.");
+	// Run script Off by the user: nothing about scripts. The switch on: run_script, and no note.
+	const off = await told(scripts("off"));
+	expect(off.text).not.toContain("Script execution is unavailable");
+	const on = await told(scripts("ask"));
+	expect(on.names).toContain(RUN_SCRIPT);
+	expect(on.text).not.toContain("Script execution is unavailable");
 });
 
 it("a switch turned off after run_script was offered refuses the call before its card shows", async () => {

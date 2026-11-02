@@ -510,6 +510,17 @@ ul {
 	flex: 1;
 }
 
+/* "Scripts enabled in Chrome", after the setup step for Allow User Scripts closes; empty, it takes no space. */
+.note-bar.confirm {
+	margin-bottom: 0;
+	color: var(--ok);
+	padding: 6px 10px;
+}
+
+.note-bar.confirm:empty {
+	display: none;
+}
+
 /* Views: the chat, History, and Settings take the space under the header in turn. */
 
 .view {

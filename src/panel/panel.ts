@@ -129,6 +129,12 @@ const ui = {
 	setupPlan: element("setup-plan"),
 	setupChatGPT: element<HTMLButtonElement>("setup-chatgpt"),
 	setupResult: element("setup-result"),
+	scriptsSetup: element("scripts-setup"),
+	scriptsSetupAsk: element("scripts-setup-ask"),
+	scriptsSetupOpen: element<HTMLButtonElement>("scripts-setup-open"),
+	scriptsSetupSkip: element<HTMLButtonElement>("scripts-setup-skip"),
+	scriptsSetupResult: element("scripts-setup-result"),
+	scriptsEnabled: element("scripts-enabled"),
 	transcript: element("transcript"),
 	jump: element<HTMLButtonElement>("jump"),
 	viewer: element<HTMLDialogElement>("viewer"),
@@ -378,6 +384,7 @@ function render(next: PanelState): void {
 	ui.notice.hidden = next.notice === null;
 	ui.noticeText.textContent = next.notice?.text ?? "";
 	renderSetup(next);
+	renderScriptsSetup(next);
 	renderTranscript(next);
 	renderDrafts(next);
 	renderComposer();
@@ -703,6 +710,86 @@ ui.setupGrant.addEventListener("click", () => {
 		(granted) => showResult(ui.setupResult, granted ? "" : NOT_ALLOWED, granted ? null : false),
 		(error: Error) => showResult(ui.setupResult, error.message, false),
 	);
+});
+
+// Setup, its last step: Chrome's Allow User Scripts for pi, which Run script needs (design 6.23). It shows once the
+// chat's provider is ready, while Run script is Ask or On and the switch is off, until the switch is seen on or the user
+// skips it. Only that the step is done is saved, never the switch, which is read from Chrome each time: turning it off
+// later does not bring the step back. Skip changes no setting.
+
+/** The switch as last read. Chrome has no event for it: the panel reads it again on focus, and while the step shows. */
+let scriptsAllowed = userScriptsAllowed();
+/** The save of the step as done, once sent: renders do not send another, and the card stays closed meanwhile. */
+let scriptsOnboarding: Promise<boolean> | undefined;
+let scriptsPoll: ReturnType<typeof setInterval> | undefined;
+let scriptsEnabledTimer: ReturnType<typeof setTimeout> | undefined;
+/** How long "Scripts enabled in Chrome" stays after the card closes. */
+const SCRIPTS_ENABLED_MS = 6000;
+
+function renderScriptsSetup(next: PanelState): void {
+	const { scriptsOnboarded, tools } = next.settings;
+	if (!scriptsOnboarded && scriptsAllowed) {
+		// Turned on while the step showed: said outside the card, which closes. On before it showed: done, silently.
+		if (!ui.scriptsSetup.hidden) confirmScriptsEnabled();
+		void finishScriptsSetup();
+	}
+	const show =
+		!scriptsOnboarded &&
+		scriptsOnboarding === undefined &&
+		!scriptsAllowed &&
+		tools.script !== "off" &&
+		missing(next) === null;
+	ui.scriptsSetup.hidden = !show;
+	ui.scriptsSetupAsk.hidden = tools.script !== "ask";
+	if (!show) showResult(ui.scriptsSetupResult, "", null);
+	// The details page opens in a tab, and the panel may stay open beside it: while the step shows, look every second.
+	if (show && scriptsPoll === undefined) scriptsPoll = setInterval(syncUserScripts, 1000);
+	else if (!show && scriptsPoll !== undefined) {
+		clearInterval(scriptsPoll);
+		scriptsPoll = undefined;
+	}
+}
+
+/** Saves the step as done; false if it could not be. */
+function finishScriptsSetup(): Promise<boolean> {
+	scriptsOnboarding ??= client.request({ type: "set-settings", settings: { scriptsOnboarded: true } }).then(
+		() => true,
+		(error: Error) => {
+			scriptsOnboarding = undefined;
+			// A skip that failed shows the card again, with why. With the switch on, the next render tries again.
+			if (scriptsAllowed || state === undefined) return false;
+			renderScriptsSetup(state);
+			showResult(ui.scriptsSetupResult, t("notSaved", [error.message]), false);
+			return false;
+		},
+	);
+	return scriptsOnboarding;
+}
+
+/** Outside the card, which closes now: seen for a few seconds, and announced. */
+function confirmScriptsEnabled(): void {
+	clearTimeout(scriptsEnabledTimer);
+	const text = t("scriptsEnabled");
+	ui.scriptsEnabled.textContent = text;
+	announce(text);
+	scriptsEnabledTimer = setTimeout(() => {
+		ui.scriptsEnabled.textContent = "";
+	}, SCRIPTS_ENABLED_MS);
+}
+
+/** pi's details page, where Chrome's Allow User Scripts switch for pi is; why not in `line`, if Chrome refuses. */
+function openDetailsPage(line: HTMLElement): void {
+	chrome.tabs.create({ url: `chrome://extensions/?id=${chrome.runtime.id}` }).catch((error: Error) => {
+		showResult(line, t("detailsFailed", [error.message]), false);
+	});
+}
+
+ui.scriptsSetupOpen.addEventListener("click", () => openDetailsPage(ui.scriptsSetupResult));
+ui.scriptsSetupSkip.addEventListener("click", () => {
+	void finishScriptsSetup();
+	if (state !== undefined) renderScriptsSetup(state);
+	// The card and its focused button are gone: the caret goes where the user writes.
+	ui.composer.focus();
 });
 
 // Settings > Providers: one row per provider. Remove asks first, since it cannot be undone.
@@ -3463,16 +3550,16 @@ function syncUserScripts(): void {
 	ui.userScripts.textContent = t(allowed ? "userScriptsOn" : "userScriptsOff");
 	ui.userScriptsRow.classList.toggle("attention", attention);
 	ui.openDetails.classList.toggle("primary", attention);
+	// The setup step follows the switch too.
+	const changed = allowed !== scriptsAllowed;
+	scriptsAllowed = allowed;
+	if (changed && state !== undefined) renderScriptsSetup(state);
 }
 syncUserScripts();
 // The switch is on pi's details page, in a tab: the panel looks again when the user comes back.
 window.addEventListener("focus", syncUserScripts);
 document.addEventListener("visibilitychange", syncUserScripts);
-ui.openDetails.addEventListener("click", () => {
-	chrome.tabs.create({ url: `chrome://extensions/?id=${chrome.runtime.id}` }).catch((error: Error) => {
-		showResult(ui.toolsSaved, t("detailsFailed", [error.message]), false);
-	});
-});
+ui.openDetails.addEventListener("click", () => openDetailsPage(ui.toolsSaved));
 ui.callsPerAnswer.addEventListener("change", () => {
 	const calls = Number(ui.callsPerAnswer.value);
 	if (!Number.isInteger(calls) || calls < CALLS_PER_ANSWER.min || calls > CALLS_PER_ANSWER.max) {

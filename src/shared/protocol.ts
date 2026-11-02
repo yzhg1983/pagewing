@@ -169,6 +169,11 @@ export type Settings = {
 	tools: ToolModes;
 	/** From `CALLS_PER_ANSWER.min` to `.max`. */
 	callsPerAnswer: number;
+	/**
+	 * The setup step for Chrome's Allow User Scripts is done: the switch was seen on, or the user skipped it (design
+	 * 6.23). Only the step is stored, never the switch, which pi reads from Chrome each time.
+	 */
+	scriptsOnboarded: boolean;
 };
 
 /** A change from Settings: the modes it names replace those saved, the others stay. */

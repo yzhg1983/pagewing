@@ -19,6 +19,10 @@ answers there, until a new chat or Chrome closes. A script card shows the code, 
 | Run script | Runs JavaScript that pi writes, to pull data out of a page or compute over it. | Ask | No |
 | Screenshot page | Captures the tab, or one part of it. | On | Yes |
 
+Run script also needs Chrome's **Allow User Scripts** switch for pi, which is off for a new install. Setup asks for it
+with a card after the provider (**Let pi run scripts on pages**); Skip leaves Run script as it is, and Settings > Tools
+links to the switch later. Until it is on, pi offers no scripts, and the model says so only when a task needs one.
+
 Safe to replay: if Chrome stops pi in the middle of the step, pi-durable runs it again, because running it twice does
 no harm. A step that is not safe to replay is not repeated; the model is told it may have happened and to check the
 page first (see [When Chrome stops pi](#when-chrome-stops-pi)). What the model is told about each tool, word for word,

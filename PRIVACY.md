@@ -66,7 +66,8 @@ None of this leaves your computer, except as part of a request to your AI provid
 With Run script allowed, pi-aside can run a script that the model writes on a page you are visiting. It runs as you,
 with your login on that site, so it could change things there or send page data to other sites. pi-aside shows each
 script and asks before running it, unless you choose to let the next ones run for the rest of an answer or chat, or
-set Run script to On. Run script also needs Chrome's "Allow User Scripts" switch for pi-aside, which is off by default.
+set Run script to On. Run script also needs Chrome's "Allow User Scripts" switch for pi-aside, which is off by default:
+setup asks you to turn it on, and you can skip it.
 
 ## Access to pages
 
