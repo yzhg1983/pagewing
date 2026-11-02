@@ -392,9 +392,7 @@ function render(next: PanelState): void {
 	for (const row of keyRows) row.update(next);
 	const { updatedAt } = next.status.models;
 	ui.modelsUpdated.textContent =
-		updatedAt === null
-			? t("modelsNotUpdated")
-			: t("modelsUpdatedAt", [new Date(updatedAt).toLocaleString(interfaceLocale())]);
+		updatedAt === null ? t("modelsNotUpdated") : t("modelsUpdatedAt", [updateTime(updatedAt)]);
 	if (previous === undefined || settingsChanged(previous.settings, next.settings)) syncSettings(next.settings);
 	// The "Current" tag follows the chat's model; the list, the providers with a key and the plan's models.
 	if (
@@ -4103,7 +4101,15 @@ ui.confirmDelete.addEventListener("click", () => {
 		});
 });
 
-// Settings > Providers: Update model list (design 6.43).
+/** When the model list was updated, short: no seconds, and the year only when it is not this year's. */
+function updateTime(updatedAt: number): string {
+	const date = new Date(updatedAt);
+	const year = date.getFullYear() === new Date().getFullYear() ? {} : { year: "numeric" as const };
+	const options = { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", ...year } as const;
+	return new Intl.DateTimeFormat(interfaceLocale(), options).format(date);
+}
+
+// Settings > Models: Update (design 6.43).
 ui.updateModels.addEventListener("click", () => {
 	ui.updateModels.disabled = true;
 	showResult(ui.updateModelsResult, t("updatingModels"), null);

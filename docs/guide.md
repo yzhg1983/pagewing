@@ -81,10 +81,10 @@ removes that access when the sign-in ends. Sign in at OpenAI and click Continue.
 
 ### Update the model list
 
-pi-aside comes with a list of each provider's models. When a provider adds a model after that, Settings > Providers >
-Update model list downloads the current list from pi.dev, the pi project's catalog, and the model picker lists the new
-models. Nothing of yours is sent; the line below the button says when the list was last updated. In the picker, a
-search that finds nothing links to the button.
+pi-aside comes with a list of each provider's models. When a provider adds a model after that, Settings > Models >
+Update downloads the current list from pi.dev, the pi project's catalog, and the model picker lists the new models.
+Nothing of yours is sent; the line below says when the list was last updated and how many models are new. In the
+picker, a search that finds nothing links to the button.
 
 ## Asking about a page
 
@@ -195,7 +195,8 @@ Open Settings with the button at the top of the panel. The defaults below are th
 
 | Part | What it sets | Default |
 | --- | --- | --- |
-| Providers | API keys and the ChatGPT sign-in ([Setting up a provider](#setting-up-a-provider)), [Update model list](#update-the-model-list), and OpenAI's [web search](#openai-web-search) | No API key or ChatGPT sign-in; web search On |
+| Providers | API keys and the ChatGPT sign-in ([Setting up a provider](#setting-up-a-provider)), and OpenAI's [web search](#openai-web-search) | No API key or ChatGPT sign-in; web search On |
+| Models | The model list: Update downloads the current one ([Update the model list](#update-the-model-list)) | The list that came with pi-aside |
 | Answers | Answer language, also the Translate target ([Languages](#languages)) | Auto (Chrome language) |
 | Sending | **Ask pi**: Send at once or Edit first ([Asking about a page](#asking-about-a-page)). **While pi works**: what Enter does with a message, Join the task or Wait; Alt+Enter does the other ([How the agent works](#how-the-agent-works)) | Send at once; Join the task |
 | Prompts | The right-click menu and the `/` list: edit, add, delete, reorder, star, switch off, reset ([Prompts](#prompts)) | The 5 built-in prompts, all on, Explain starred |

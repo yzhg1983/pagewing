@@ -152,32 +152,35 @@
 	"providers": {
 		"message": "Providers"
 	},
-	"providersNote": {
-		"message": "An API key, or your ChatGPT plan for OpenAI. The model picker lists their models."
+	"modelList": {
+		"message": "Model list"
+	},
+	"update": {
+		"message": "Update"
 	},
 	"updateModels": {
 		"message": "Update model list"
 	},
 	"updateModelsNote": {
-		"message": "Downloads the model list from pi.dev, the pi project's catalog. Sends no key or chat."
+		"message": "Update downloads it from pi.dev."
 	},
 	"modelsNotUpdated": {
-		"message": "Not updated yet: the list came with pi-aside."
+		"message": "The list came with pi-aside."
 	},
 	"modelsUpdatedAt": {
-		"message": "Last updated $1."
+		"message": "Updated $1."
 	},
 	"updatingModels": {
 		"message": "Updating..."
 	},
 	"modelsUpdated": {
-		"message": "Model list updated ($1 new)."
+		"message": "$1 new."
 	},
 	"modelsNotUpdatedFor": {
 		"message": "Not updated: $1."
 	},
 	"modelsUpdateFailed": {
-		"message": "Could not update the model list: $1"
+		"message": "Could not update: $1"
 	},
 	"modelNotListed": {
 		"message": "Not listed? Update the model list in Settings."
@@ -1477,9 +1480,6 @@
 	},
 	"scriptsSetupStep2": {
 		"message": "Scroll down and turn on \"Allow User Scripts\"."
-	},
-	"scriptsSetupStep3": {
-		"message": "Come back here. This card closes automatically."
 	},
 	"scriptsSetupLater": {
 		"message": "Without this switch, pi can still read pages, click, and type. You can open this Chrome page later from Settings > Tools."

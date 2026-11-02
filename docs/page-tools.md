@@ -415,7 +415,6 @@ more card, while Run script is Ask or On and Chrome's Allow User Scripts is off 
 > Chrome's "Allow User Scripts" switch for pi:
 > 1. Click "Open pi's Chrome details page".
 > 2. Scroll down and turn on "Allow User Scripts".
-> 3. Come back here. This card closes automatically.
 >
 > In Ask mode (the default), pi shows you the code and asks before running scripts. *(only while Run script is Ask)*
 >

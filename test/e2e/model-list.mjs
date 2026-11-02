@@ -186,16 +186,16 @@ try {
 	const updated = () => panel.locator("#models-updated").textContent();
 	check(
 		"before an update, Settings says the list came with pi-aside",
-		(await updated()).startsWith("Not updated yet"),
+		(await updated()) === "The list came with pi-aside.",
 	);
 	await panel.click("#update-models");
 	const result = await poll(async () => {
 		const text = await panel.locator("#update-models-result").textContent();
-		return text.startsWith("Model list updated") ? text : false;
+		return text.endsWith("new.") || text.includes("new. ") ? text : false;
 	}, "update result");
 	check(
 		"the result counts the new models and names the provider pi.dev failed for",
-		result === "Model list updated (2 new). Not updated: OpenAI.",
+		result === "2 new. Not updated: OpenAI.",
 		result,
 	);
 	check(
@@ -207,7 +207,11 @@ try {
 			catalogRequests.every((request) => request.cookie === undefined && request.referer === undefined),
 		catalogRequests,
 	);
-	check("Settings shows when the list was updated", (await updated()).startsWith("Last updated"), await updated());
+	check(
+		"Settings shows when the list was updated",
+		/^Updated [A-Z][a-z]{2} \d{1,2}, \d{1,2}:\d{2}\s?[AP]M\.$/.test(await updated()),
+		await updated(),
+	);
 	await panel.click("#close-settings");
 
 	/** Opens the picker filtered by `text`; returns the IDs listed and whether "Not listed?" shows. */
@@ -233,7 +237,7 @@ try {
 	);
 	await panel.click("#model-not-listed button");
 	check(
-		"the link opens Settings at Update model list",
+		"the link opens Settings at the model list's Update",
 		(await panel.locator("#settings").isVisible()) &&
 			(await panel.evaluate(() => document.activeElement?.id)) === "update-models",
 	);
@@ -269,7 +273,7 @@ try {
 	await panel.reload();
 	// The picker opens once the panel has the worker's state, which also fills Settings' last-update line.
 	const restarted = await poll(async () => (await updated()) || false, "state after the restart");
-	check("after the restart, Settings still shows the last update", restarted.startsWith("Last updated"), restarted);
+	check("after the restart, Settings still shows the last update", restarted.startsWith("Updated "), restarted);
 	found = await listed("second");
 	check(
 		"after the restart, the picker still lists the downloaded models",
