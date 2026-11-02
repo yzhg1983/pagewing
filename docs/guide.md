@@ -66,7 +66,7 @@ nothing happening, on a crash, or during an update, and everything in its memory
 
 ## Setting up a provider
 
-The setup card, or Settings > Providers, takes an API key for OpenRouter, OpenAI, Anthropic, or DeepSeek ("Get a key"
+The setup card, or Settings > Providers, takes an API key for OpenAI, Anthropic, OpenRouter, or DeepSeek ("Get a key"
 opens the provider's key page). After Save, Chrome asks you to let pi-aside reach that provider: allow it. Anthropic
 takes API keys only, not a Claude subscription.
 

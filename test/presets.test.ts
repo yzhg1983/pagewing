@@ -19,7 +19,7 @@ import {
 	presetName,
 	unknownVariables,
 } from "../src/shared/presets.ts";
-import { CHATGPT, PROVIDERS, type ProviderId, RECOMMENDED_MODELS } from "../src/shared/protocol.ts";
+import { CHATGPT, PLAN_MODEL, PROVIDERS, type ProviderId, RECOMMENDED_MODELS } from "../src/shared/protocol.ts";
 
 it("fills the allowlisted variables in one pass and keeps any other placeholder as written", () => {
 	const values = { selection: "see {{url}} and {{title}}", title: "T", url: "https://x/", language: "German" };
@@ -261,6 +261,7 @@ it("recommends models that are in the catalog the worker registers", () => {
 	for (const [provider, modelId] of Object.entries(RECOMMENDED_MODELS)) {
 		expect(models.getModel(provider as ProviderId, modelId), `${provider}/${modelId}`).toBeDefined();
 	}
+	expect(models.getModel("openai", PLAN_MODEL)?.api).toBe("openai-responses");
 	// Every provider has its models, and only the four do.
 	expect(
 		models

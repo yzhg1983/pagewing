@@ -15,11 +15,6 @@ export const MAX_UNACKED = 4;
 
 /** `keysUrl`: where the provider's API keys are made, linked from the setup card and Settings. In Settings order. */
 export const PROVIDERS = {
-	openrouter: {
-		name: "OpenRouter",
-		origin: "https://openrouter.ai/*",
-		keysUrl: "https://openrouter.ai/settings/keys",
-	},
 	openai: {
 		name: "OpenAI",
 		origin: "https://api.openai.com/*",
@@ -29,6 +24,11 @@ export const PROVIDERS = {
 		name: "Anthropic",
 		origin: "https://api.anthropic.com/*",
 		keysUrl: "https://platform.claude.com/settings/keys",
+	},
+	openrouter: {
+		name: "OpenRouter",
+		origin: "https://openrouter.ai/*",
+		keysUrl: "https://openrouter.ai/settings/keys",
 	},
 	deepseek: {
 		name: "DeepSeek",
@@ -40,11 +40,19 @@ export type ProviderId = keyof typeof PROVIDERS;
 
 /** The model a new key's provider starts with: fast, cheap, and in pi-ai's catalog (`test/presets.test.ts`). */
 export const RECOMMENDED_MODELS: Record<ProviderId, string> = {
-	openrouter: "~anthropic/claude-haiku-latest",
-	openai: "gpt-5.4-mini",
+	openai: "gpt-6-luna",
 	anthropic: "claude-haiku-5-5",
+	// Pinned, not "~anthropic/claude-haiku-latest": the alias moves, and its price with it, without a pi-aside release.
+	// pi-ai sends it through OpenRouter's Anthropic messages endpoint, not chat completions (checked live, 2026-11-02).
+	openrouter: "anthropic/claude-haiku-5.5",
 	deepseek: "deepseek-flash",
 };
+
+/**
+ * The model a ChatGPT sign-in starts with, with Medium thinking: a plan has no per-token bill, so it starts on the
+ * strongest model rather than the cheapest (`test/presets.test.ts` checks it is in pi-ai's catalog).
+ */
+export const PLAN_MODEL = "gpt-6.1-sol";
 
 /**
  * Sign in with ChatGPT (design 6.20): the host access it adds to OpenAI's API origin, the token endpoint's and the

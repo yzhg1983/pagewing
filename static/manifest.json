@@ -31,9 +31,9 @@
 		"unlimitedStorage"
 	],
 	"optional_host_permissions": [
-		"https://openrouter.ai/*",
 		"https://api.openai.com/*",
 		"https://api.anthropic.com/*",
+		"https://openrouter.ai/*",
 		"https://api.deepseek.com/*",
 		"https://auth.openai.com/*",
 		"http://127.0.0.1:1455/*",

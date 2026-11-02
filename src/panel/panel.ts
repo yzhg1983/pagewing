@@ -40,6 +40,7 @@ import {
 	type ModelInfo,
 	type PageMove,
 	type PanelState,
+	PLAN_MODEL,
 	PROVIDERS,
 	type ProviderId,
 	type QueuedInput,
@@ -602,7 +603,7 @@ function renderSetup(next: PanelState): void {
 		setupSignIn = false;
 		// The worker made the plan's starting model the default when the default's provider had no credential.
 		const { model } = next.settings;
-		const modelId = model.provider === "openai" ? model.modelId : RECOMMENDED_MODELS.openai;
+		const modelId = model.provider === "openai" ? model.modelId : PLAN_MODEL;
 		if (lack !== null) {
 			void useSavedProvider("openai", t("signedIn"), modelId).then((result) => {
 				showResult(ui.setupResult, result.text, result.ok);

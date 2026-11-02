@@ -65,7 +65,7 @@ import {
 	models,
 	sentThinking,
 	signInEnded,
-	startingModel,
+	signInModel,
 	syncPlanWindows,
 	verifyKey,
 } from "./models.ts";
@@ -1230,25 +1230,21 @@ async function beginSignIn(tabId: number | null, another: boolean): Promise<void
 }
 
 /**
- * Like a first key (7.1), a sign-in sets the default model when its provider has no credential; also when it is an
- * OpenAI model the plan does not offer. Not when pi knows none of the plan's models.
+ * Like a first key (7.1), a sign-in sets the default model when its provider had no credential before it; also when it
+ * is an OpenAI model the plan does not offer (`signInModel()`). Not when pi knows none of the plan's models.
  */
 async function completeSignIn(search: string): Promise<{ ok: true; welcome: boolean } | { ok: false; error: string }> {
 	try {
 		// A removal cut short by a worker stop: its work stops before a sign-in can take over.
 		await credentialChanges(() => finishStop("openai"));
+		const { model } = await loadSettings();
+		const hadCredential = (await credentials.read(model.provider)) !== undefined;
 		const { welcome, credential } = await finishSignIn(search, credentials);
 		await refreshAccess();
-		const planModels = credential.planModels ?? null;
-		const { provider, modelId } = (await loadSettings()).model;
-		const starting = startingModel("openai", planModels);
-		if (
-			starting !== null &&
-			(access?.[provider].key === false ||
-				(provider === "openai" && planModels !== null && !planModels.includes(modelId)))
-		) {
-			settings = await saveSettings({ model: { provider: "openai", modelId: starting } });
-		}
+		const modelId = signInModel(model, hadCredential, credential.planModels ?? null);
+		// A plan has no per-token bill, so its starting model thinks too.
+		if (modelId !== null)
+			settings = await saveSettings({ model: { provider: "openai", modelId }, thinking: "medium" });
 		await appendLog((await session()).harness, "ChatGPT sign-in saved");
 		return { ok: true, welcome };
 	} catch (error) {

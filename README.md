@@ -9,7 +9,7 @@ types, moves through a site and its tab group, writes and runs its own scripts w
 you every step. It is a general agent: everything it does comes from the same few tools (read the page, observe it, act
 on it, run a script, take a screenshot).
 
-**Use your ChatGPT plan**, or your own OpenRouter, OpenAI, Anthropic, or DeepSeek API key. There is no pi-aside server:
+**Use your ChatGPT plan**, or your own OpenAI, Anthropic, OpenRouter, or DeepSeek API key. There is no pi-aside server:
 requests go straight from your browser to your provider.
 
 [Install](#install) · [Quick start](#quick-start) · [Examples](#examples)

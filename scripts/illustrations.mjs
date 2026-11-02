@@ -31,7 +31,7 @@ const TEXT = {
 			tagline: "An AI agent beside every page.",
 			chips: ["Reads the page", "Operates the page", "Writes and runs scripts", "Asks first", "Your own key"],
 			providers: [
-				"Your ChatGPT plan, or an OpenRouter, OpenAI, Anthropic, or DeepSeek key.",
+				"Your ChatGPT plan, or an OpenAI, Anthropic, OpenRouter, or DeepSeek key.",
 				"No pi-aside server: requests go straight to your provider.",
 			],
 			title: "The four-day week works",
@@ -72,7 +72,7 @@ const TEXT = {
 			tagline: "每个网页旁的 AI 智能体。",
 			chips: ["读懂网页", "操作网页", "编写并运行脚本", "先问再做", "用你自己的密钥"],
 			providers: [
-				"ChatGPT 订阅，或 OpenRouter、OpenAI、Anthropic、DeepSeek 的 API 密钥。",
+				"ChatGPT 订阅，或 OpenAI、Anthropic、OpenRouter、DeepSeek 的 API 密钥。",
 				"没有 pi-aside 服务器：请求直接发往模型服务商。",
 			],
 			title: "The four-day week works",

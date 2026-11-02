@@ -867,7 +867,7 @@
 		"message": "所有 $1 网站"
 	},
 	"addKeySend": {
-		"message": "添加密钥后即可发送"
+		"message": "添加 API 密钥或登录 ChatGPT 后即可发送"
 	},
 	"allowAccessSend": {
 		"message": "允许访问后即可发送"

@@ -22,6 +22,8 @@ import { t } from "../shared/i18n.ts";
 import { MAX_IMAGES } from "../shared/images.ts";
 import {
 	isProvider,
+	type ModelChoice,
+	PLAN_MODEL,
 	PROVIDERS,
 	type ProviderId,
 	RECOMMENDED_MODELS,
@@ -109,7 +111,6 @@ export const models: MutableModels = createModels({
 	credentials: requestCredentials,
 	authContext: { env: async () => undefined, fileExists: async () => false },
 });
-models.setProvider(openrouterProvider());
 
 const openai = openaiProvider();
 
@@ -192,6 +193,7 @@ const openaiWithPlan: Provider<"openai-responses"> = {
 };
 models.setProvider(openaiWithPlan);
 models.setProvider(anthropicProvider());
+models.setProvider(openrouterProvider());
 models.setProvider(deepseekProvider());
 
 /** Rejects, before admission, a send that could not reach the model. Saving a key never sends anything. */
@@ -213,13 +215,28 @@ export async function checkModel({ provider, modelId }: ModelRef): Promise<void>
 }
 
 /**
- * The model a provider starts with: the recommended one, unless the ChatGPT plan's list leaves it out; then the plan's
- * first model that pi-ai knows, or none (design 6.20).
+ * The model a ChatGPT sign-in starts with: `PLAN_MODEL`, unless the plan's list leaves it out; then the recommended
+ * OpenAI model, then the plan's first model that pi-ai knows, or none (design 6.20).
  */
-export function startingModel(provider: ProviderId, planModels: readonly string[] | null): string | null {
-	const recommended = RECOMMENDED_MODELS[provider];
-	if (planModels === null || planModels.includes(recommended)) return recommended;
-	return models.getModels(provider).find((model) => planModels.includes(model.id))?.id ?? null;
+export function planStartingModel(planModels: readonly string[] | null): string | null {
+	if (planModels === null || planModels.includes(PLAN_MODEL)) return PLAN_MODEL;
+	if (planModels.includes(RECOMMENDED_MODELS.openai)) return RECOMMENDED_MODELS.openai;
+	return models.getModels("openai").find((model) => planModels.includes(model.id))?.id ?? null;
+}
+
+/**
+ * The OpenAI model a ChatGPT sign-in makes the default, or null to keep the default: when the default's provider had no
+ * credential before the sign-in, or the default is an OpenAI model the plan does not list (design 6.20).
+ * `hadCredential` is from before the sign-in saved its own: on a fresh profile the default is already OpenAI's.
+ */
+export function signInModel(
+	current: ModelChoice,
+	hadCredential: boolean,
+	planModels: readonly string[] | null,
+): string | null {
+	const starting = planStartingModel(planModels);
+	const unlisted = current.provider === "openai" && planModels !== null && !planModels.includes(current.modelId);
+	return starting !== null && (!hadCredential || unlisted) ? starting : null;
 }
 
 /** pi-ai's thinking levels, lowest first. */
@@ -277,7 +294,6 @@ const bearer = (key: string) => ({ authorization: `Bearer ${key}` });
  * as an OpenAI key without `api.model.read`, while sends still work (design 6.19).
  */
 const VERIFY: Record<ProviderId, { url: string; headers: (key: string) => Record<string, string> }> = {
-	openrouter: { url: "https://openrouter.ai/api/v1/key", headers: bearer },
 	openai: { url: "https://api.openai.com/v1/models", headers: bearer },
 	anthropic: {
 		url: "https://api.anthropic.com/v1/models",
@@ -287,6 +303,7 @@ const VERIFY: Record<ProviderId, { url: string; headers: (key: string) => Record
 			"anthropic-dangerous-direct-browser-access": "true",
 		}),
 	},
+	openrouter: { url: "https://openrouter.ai/api/v1/key", headers: bearer },
 	deepseek: { url: "https://api.deepseek.com/models", headers: bearer },
 };
 
