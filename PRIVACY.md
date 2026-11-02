@@ -36,7 +36,7 @@ Providers > OpenAI), OpenAI may search the web for a request.
 
 ## The model list from pi.dev
 
-When you click Update model list (Settings > Providers), pi-aside downloads the list of models for each provider from
+When you click Update in Settings > Models, pi-aside downloads the list of models for each provider from
 pi.dev, the model catalog of the pi project that pi-aside is built on. The request carries no key, message, page,
 cookie, or referrer; like any web request, it shows pi.dev your IP address and browser. pi-aside never contacts pi.dev
 on its own.
