@@ -132,8 +132,11 @@ export function catalogModels(provider: ProviderId, body: unknown, bundled: read
 	});
 }
 
+/** An array, `{models: [...]}` as pi's own client also reads, or an object keyed by ID. */
 function entries(body: unknown): unknown[] {
-	return Array.isArray(body) ? body : isRecord(body) ? Object.values(body) : [];
+	if (Array.isArray(body)) return body;
+	if (!isRecord(body)) return [];
+	return Array.isArray(body.models) ? body.models : Object.values(body);
 }
 
 function catalogModel(provider: ProviderId, entry: unknown, routes: ReadonlySet<string>): Model<Api> | undefined {
@@ -154,8 +157,9 @@ function catalogModel(provider: ProviderId, entry: unknown, routes: ReadonlySet<
 	}
 	if (isInputLimits(entry.inputLimits)) model.inputLimits = entry.inputLimits;
 	if (isRecord(entry.compat)) {
-		// It can allow data collection and choose OpenRouter's upstream providers: a privacy change, not a model fact.
-		const { openRouterRouting: _, ...compat } = entry.compat;
+		// Routing can allow data collection and choose OpenRouter's upstream providers; fallbacks let Anthropic answer
+		// with another, possibly pricier model: choices for the user, not model facts.
+		const { openRouterRouting: _, allowedFallbackModels: __, ...compat } = entry.compat;
 		model.compat = compat;
 	}
 	return model;
