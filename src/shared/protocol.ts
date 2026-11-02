@@ -9,7 +9,7 @@
 
 import type { Preset } from "./presets.ts";
 
-export const PROTOCOL_VERSION = 41;
+export const PROTOCOL_VERSION = 42;
 export const PANEL_PORT = "panel";
 export const MAX_UNACKED = 4;
 
@@ -369,6 +369,8 @@ export type Command =
 	/** Returns `{revoked}`: whether OpenAI confirmed the end of the session. */
 	| { type: "chatgpt-sign-out" }
 	| { type: "list-models" }
+	/** Returns `ModelsUpdated`: downloads the model list from pi.dev (design 6.43). */
+	| { type: "update-models" }
 	| { type: "set-keepalive"; enabled: boolean }
 	| { type: "conformance" }
 	| { type: "clear-log" };
@@ -393,6 +395,9 @@ export type ModelInfo = {
 	contextWindow: number;
 };
 
+/** What Update model list did: the models it added for the providers with a key, and the providers it could not update. */
+export type ModelsUpdated = { added: number; failed: ProviderId[] };
+
 export type ProviderAccess = { key: boolean; permission: boolean; plan: boolean; planModels: string[] | null };
 
 export type Status = {
@@ -412,6 +417,8 @@ export type Status = {
 	 * in to, kept after sign-out, or null. `ended`: OpenAI ended the stored sign-in; only a new one helps.
 	 */
 	chatgpt: { waiting: boolean; account: { email: string | null } | null; ended: boolean };
+	/** When the model list was last updated from pi.dev, or null (design 6.43). */
+	models: { updatedAt: number | null };
 	/** Last Harness Wake; null before attachment or after close. Deadlines are epoch milliseconds. */
 	wake: { active: boolean; at: number | null } | null;
 	/** Diagnostics switch: off lets Chrome stop the worker during long requests. */

@@ -1269,6 +1269,15 @@ body.callback h1 {
 	border-top: 1px solid var(--border);
 }
 
+/* Update model list and its result, on one line while they fit (design 6.43). */
+.models-update {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 4px 8px;
+	margin-top: 8px;
+}
+
 .key-toggle {
 	display: flex;
 	align-items: center;

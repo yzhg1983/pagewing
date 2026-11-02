@@ -3,13 +3,14 @@
 pi-aside is a Chrome extension that sends your questions, and the parts of web pages you choose, to an AI provider
 that you set up. This policy says what it handles, where that goes, and how to delete it.
 
-Last updated: 2026-10-30.
+Last updated: 2026-11-02.
 
 ## In short
 
 - pi-aside has no server. Its developer receives none of your data: no messages, pages, keys, usage, or analytics.
 - What you ask goes from your browser straight to the AI provider you chose, with your own key or sign-in.
 - Everything pi-aside keeps stays in your Chrome profile, until you delete it or remove the extension.
+- Update model list (Settings) downloads the public list of models from pi.dev, and sends nothing of yours.
 
 ## What goes to your AI provider
 
@@ -33,6 +34,13 @@ in a password field. A screenshot shows what the tab shows, and a script you all
 The provider handles this under its own privacy policy and terms. With OpenAI's web search turned on (Settings >
 Providers > OpenAI), OpenAI may search the web for a request.
 
+## The model list from pi.dev
+
+When you click Update model list (Settings > Providers), pi-aside downloads the list of models for each provider from
+pi.dev, the model catalog of the pi project that pi-aside is built on. The request carries no key, message, page,
+cookie, or referrer; like any web request, it shows pi.dev your IP address and browser. pi-aside never contacts pi.dev
+on its own.
+
 ## Keys and sign-in
 
 - API keys are sent only to the provider they belong to, to verify them and to send requests.
@@ -46,6 +54,7 @@ Providers > OpenAI), OpenAI may search the web for a request.
 - **Chats**, in the extension's own database: your messages and what you attached to them, the answers, and what
   pi-aside read or did on pages (page text, screenshots, scripts and their results), until you delete all chats.
 - **Settings and prompts**, in `chrome.storage.local`.
+- **The model list** downloaded from pi.dev, in `chrome.storage.local`, until the next update.
 - **Unsent messages** and which chat each tab shows, in `chrome.storage.session`, until the browser closes or the
   extension reloads.
 - **A diagnostics log** of the extension's own events and errors, without keys, shown on its Diagnostics page.

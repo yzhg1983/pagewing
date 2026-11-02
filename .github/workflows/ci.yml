@@ -137,3 +137,7 @@ jobs:
         if: ${{ !cancelled() && steps.chrome.outcome == 'success' }}
         env:
           CHROME: ${{ steps.chrome.outputs.chrome-path }}
+      - run: npm run test:model-list
+        if: ${{ !cancelled() && steps.chrome.outcome == 'success' }}
+        env:
+          CHROME: ${{ steps.chrome.outputs.chrome-path }}

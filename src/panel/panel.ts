@@ -38,6 +38,7 @@ import {
 	type MessageAttachment,
 	type ModelChoice,
 	type ModelInfo,
+	type ModelsUpdated,
 	type PageMove,
 	type PanelState,
 	PLAN_MODEL,
@@ -151,6 +152,7 @@ const ui = {
 	modelFilter: element<HTMLInputElement>("model-filter"),
 	modelList: element("model-list"),
 	modelMissing: element("model-missing"),
+	modelNotListed: element("model-not-listed"),
 	modelResult: element("model-result"),
 	thinkingPicker: element("thinking-picker"),
 	thinking: element<HTMLSelectElement>("thinking"),
@@ -195,6 +197,9 @@ const ui = {
 	confirmDelete: element<HTMLButtonElement>("confirm-delete"),
 	cancelDelete: element<HTMLButtonElement>("cancel-delete"),
 	deleteResult: element("delete-result"),
+	updateModels: element<HTMLButtonElement>("update-models"),
+	updateModelsResult: element("update-models-result"),
+	modelsUpdated: element("models-updated"),
 	closeSettings: element<HTMLButtonElement>("close-settings"),
 	announcer: element("announcer"),
 };
@@ -378,6 +383,11 @@ function render(next: PanelState): void {
 	renderComposer();
 	if (previous === undefined) focusIdleComposer();
 	for (const row of keyRows) row.update(next);
+	const { updatedAt } = next.status.models;
+	ui.modelsUpdated.textContent =
+		updatedAt === null
+			? t("modelsNotUpdated")
+			: t("modelsUpdatedAt", [new Date(updatedAt).toLocaleString(interfaceLocale())]);
 	if (previous === undefined || settingsChanged(previous.settings, next.settings)) syncSettings(next.settings);
 	// The "Current" tag follows the chat's model; the list, the providers with a key and the plan's models.
 	if (
@@ -386,8 +396,13 @@ function render(next: PanelState): void {
 			JSON.stringify(previous.status.access) !== JSON.stringify(next.status.access))
 	)
 		renderModels();
-	// A ChatGPT sign-in gives OpenAI's models its plan's context windows, an API key the API's: read the catalog again.
-	if (previous !== undefined && previous.status.access.openai.plan !== next.status.access.openai.plan) {
+	// A ChatGPT sign-in gives OpenAI's models its plan's context windows, an API key the API's; an update from pi.dev
+	// changes the models (design 6.43): read the catalog again.
+	if (
+		previous !== undefined &&
+		(previous.status.access.openai.plan !== next.status.access.openai.plan ||
+			previous.status.models.updatedAt !== next.status.models.updatedAt)
+	) {
 		catalog = undefined;
 		catalogReads += 1;
 		void loadCatalog().then(() => renderModels());
@@ -3142,6 +3157,8 @@ function renderModels(): void {
 		catalogError ??
 		(catalog === undefined ? t("loadingModels") : keyed.size === 0 ? t("addKeyListModels") : t("noModelsMatch"));
 	ui.modelList.replaceChildren(...(groups.length > 0 ? groups : [node("div", "none", none)]));
+	// Also without a search: a ChatGPT plan can offer only models the bundled list does not know.
+	ui.modelNotListed.hidden = groups.length > 0 || catalog === undefined || keyed.size === 0;
 	const keyless = PROVIDER_IDS.filter((provider) => !access[provider].key);
 	ui.modelMissing.hidden = keyed.size === 0 || keyless.length === 0;
 	ui.modelMissing.replaceChildren(
@@ -3997,6 +4014,32 @@ ui.confirmDelete.addEventListener("click", () => {
 			ui.confirmDelete.disabled = false;
 			ui.cancelDelete.disabled = false;
 		});
+});
+
+// Settings > Providers: Update model list (design 6.43).
+ui.updateModels.addEventListener("click", () => {
+	ui.updateModels.disabled = true;
+	showResult(ui.updateModelsResult, t("updatingModels"), null);
+	client
+		.request<ModelsUpdated>({ type: "update-models" })
+		.then(
+			({ added, failed }) => {
+				const done = t("modelsUpdated", [String(added)]);
+				const names = failed.map((provider) => PROVIDERS[provider].name).join(", ");
+				const text = failed.length === 0 ? done : `${done} ${t("modelsNotUpdatedFor", [names])}`;
+				showResult(ui.updateModelsResult, text, failed.length === 0);
+				announce(text);
+			},
+			(error: Error) => showResult(ui.updateModelsResult, t("modelsUpdateFailed", [error.message]), false),
+		)
+		.finally(() => {
+			ui.updateModels.disabled = false;
+		});
+});
+ui.modelNotListed.querySelector("button")?.addEventListener("click", () => {
+	openSettings();
+	ui.updateModels.scrollIntoView({ block: "center" });
+	ui.updateModels.focus();
 });
 
 ui.openDiagnostics.addEventListener(

@@ -155,6 +155,33 @@
 	"providersNote": {
 		"message": "An API key, or your ChatGPT plan for OpenAI. The model picker lists their models."
 	},
+	"updateModels": {
+		"message": "Update model list"
+	},
+	"updateModelsNote": {
+		"message": "Downloads the model list from pi.dev, the pi project's catalog. Sends no key or chat."
+	},
+	"modelsNotUpdated": {
+		"message": "Not updated yet: the list came with pi-aside."
+	},
+	"modelsUpdatedAt": {
+		"message": "Last updated $1."
+	},
+	"updatingModels": {
+		"message": "Updating..."
+	},
+	"modelsUpdated": {
+		"message": "Model list updated ($1 new)."
+	},
+	"modelsNotUpdatedFor": {
+		"message": "Not updated: $1."
+	},
+	"modelsUpdateFailed": {
+		"message": "Could not update the model list: $1"
+	},
+	"modelNotListed": {
+		"message": "Not listed? Update the model list in Settings."
+	},
 	"answers": {
 		"message": "Answers"
 	},
@@ -1179,7 +1206,7 @@
 		"message": "This page shows no tab's chat"
 	},
 	"modelUnknown": {
-		"message": "Unknown model $1/$2"
+		"message": "Unknown model $1/$2: pick another model"
 	},
 	"questionGone": {
 		"message": "The question is gone"

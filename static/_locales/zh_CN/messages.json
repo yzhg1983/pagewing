@@ -155,6 +155,33 @@
 	"providersNote": {
 		"message": "使用 API 密钥，或使用 ChatGPT 套餐访问 OpenAI。模型选择器会列出对应模型。"
 	},
+	"updateModels": {
+		"message": "更新模型列表"
+	},
+	"updateModelsNote": {
+		"message": "从 pi 项目的模型目录 pi.dev 下载模型列表，不发送密钥或对话。"
+	},
+	"modelsNotUpdated": {
+		"message": "尚未更新：当前列表随 pi-aside 一起提供。"
+	},
+	"modelsUpdatedAt": {
+		"message": "上次更新：$1。"
+	},
+	"updatingModels": {
+		"message": "正在更新..."
+	},
+	"modelsUpdated": {
+		"message": "模型列表已更新（新增 $1 个）。"
+	},
+	"modelsNotUpdatedFor": {
+		"message": "未能更新：$1。"
+	},
+	"modelsUpdateFailed": {
+		"message": "无法更新模型列表：$1"
+	},
+	"modelNotListed": {
+		"message": "没有找到？可在“设置”中更新模型列表。"
+	},
 	"answers": {
 		"message": "回答"
 	},
@@ -1179,7 +1206,7 @@
 		"message": "此页面没有显示任何标签页的对话"
 	},
 	"modelUnknown": {
-		"message": "未知模型 $1/$2"
+		"message": "未知模型 $1/$2：请选择其他模型"
 	},
 	"questionGone": {
 		"message": "此请求已不存在"

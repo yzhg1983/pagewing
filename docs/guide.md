@@ -74,6 +74,13 @@ To use a ChatGPT plan instead of an OpenAI key, choose OpenAI, then "Continue wi
 OpenAI and to `127.0.0.1:1455`, the address OpenAI sends the sign-in back to; pi-aside catches it inside Chrome, and
 removes that access when the sign-in ends. Sign in at OpenAI and click Continue.
 
+### Update the model list
+
+pi-aside comes with a list of each provider's models. When a provider adds a model after that, Settings > Providers >
+Update model list downloads the current list from pi.dev, the pi project's catalog, and the model picker lists the new
+models. Nothing of yours is sent; the line below the button says when the list was last updated. In the picker, a
+search that finds nothing links to the button.
+
 ## Asking about a page
 
 Select text on a page and right-click "Ask pi", or press `Ctrl+Shift+Y`. With nothing selected, right-click the page:

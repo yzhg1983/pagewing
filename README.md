@@ -263,6 +263,7 @@ mistakes. Keep Ask for email, banking, admin pages, and anywhere a wrong click m
 ## Privacy
 
 - No pi-aside server and no analytics. Requests go straight to the provider you choose.
+- Update model list (Settings) downloads the public model list from pi.dev; it sends no key, chat, or page.
 - Chats, settings, and keys stay in your Chrome profile. Keys are stored unencrypted there.
 - Chats are kept until you delete them all (Settings > Advanced > Data). Details: [PRIVACY.md](PRIVACY.md).
 

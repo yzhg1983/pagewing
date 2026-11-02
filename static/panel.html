@@ -137,6 +137,7 @@
 					<input id="model-filter" type="text" class="filter" placeholder="Filter models" data-i18n-placeholder="filterModels" aria-label="Filter models" data-i18n-aria-label="filterModels" autocomplete="off" spellcheck="false" />
 					<div id="model-list" class="listbox" role="listbox" aria-label="Models" data-i18n-aria-label="models" tabindex="0"></div>
 					<p id="model-missing" class="note" hidden></p>
+					<p id="model-not-listed" class="note" hidden><button type="button" class="link" data-i18n="modelNotListed">Not listed? Update the model list in Settings.</button></p>
 					<p id="model-result" class="result" role="status"></p>
 				</div>
 				<!-- What the whole chat spent; each answer's own part is in its tooltip. -->
@@ -237,6 +238,12 @@
 					<h3 id="keys-title" data-i18n="providers">Providers</h3>
 					<ul id="keys" class="keys"></ul>
 					<p class="note" data-i18n="providersNote">An API key, or your ChatGPT plan for OpenAI. The model picker lists their models.</p>
+					<div class="models-update">
+						<button type="button" id="update-models" class="small-button" data-i18n="updateModels">Update model list</button>
+						<span id="update-models-result" class="result" role="status"></span>
+					</div>
+					<p id="models-updated" class="note"></p>
+					<p class="note" data-i18n="updateModelsNote">Downloads the model list from pi.dev, the pi project's catalog. Sends no key or chat.</p>
 				</section>
 
 				<section class="group" aria-labelledby="answers-title">
