@@ -71,11 +71,13 @@ it("reads stored settings over the defaults, field by field", () => {
 	expect(defaults.enterWhileBusy).toBe("steer");
 	expect(readSettings({ enterWhileBusy: "followUp" }, defaults).enterWhileBusy).toBe("followUp");
 	expect(readSettings({ enterWhileBusy: "reject" }, defaults).enterWhileBusy).toBe("steer");
-	expect(defaults.thinking).toBe("off");
+	// Thinking defaults to Medium; a saved level, Off included, stays (design 6.16).
+	expect(defaults.thinking).toBe("medium");
+	expect(readSettings({ thinking: "off" }, defaults).thinking).toBe("off");
 	expect(readSettings({ thinking: "high" }, defaults).thinking).toBe("high");
 	expect(readSettings({ thinking: "max" }, defaults).thinking).toBe("max");
 	// Only the levels in the list: "minimal" is a pi-ai level, not one of the picker's.
-	expect(readSettings({ thinking: "minimal" }, defaults).thinking).toBe("off");
+	expect(readSettings({ thinking: "minimal" }, defaults).thinking).toBe("medium");
 	// Only the languages in the list: one stored before it, such as "German", reads as the default.
 	expect(
 		readSettings(

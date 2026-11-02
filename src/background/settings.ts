@@ -23,7 +23,8 @@ export function defaultSettings(): Settings {
 		enterWhileBusy: "steer",
 		defaultPreset: DEFAULT_PRESET,
 		language: "auto",
-		thinking: "off",
+		// Medium suits page tasks, which plan actions and scripts; Low and Off are one click away (design 6.16).
+		thinking: "medium",
 		prompts: [...PRESETS],
 		// run_script is offered only while Chrome's Allow User Scripts switch is on too (design 6.23).
 		tools: { read: "on", observe: "on", act: "ask", script: "ask", screenshot: "on" },

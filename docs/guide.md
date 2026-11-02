@@ -140,9 +140,9 @@ Type `/` in the message box for a list of your prompts. `/summarize` alone runs 
 ## Models and thinking
 
 The model chip in the message box picks the model, from every provider you have set up. The bulb sets how long a model
-that can think does so; longer thinking can help with hard questions and longer tasks, but answers start later and cost
-more. For tasks, choose a model that is good at using tools; small models can lose their way. The line above the
-message box shows the chat's tokens, estimated cost, and how full the model's context is; near the limit, pi
+that can think does so, Medium unless you change it; longer thinking can help with hard questions and longer tasks, but
+answers start later and cost more. Low or Off gives faster, cheaper answers. For tasks, choose a model that is good at
+using tools; small models can lose their way. The line above the message box shows the chat's tokens, estimated cost, and how full the model's context is; near the limit, pi
 summarizes older messages by itself.
 
 ## Editing a question
