@@ -267,7 +267,9 @@ try {
 	);
 	await sleep(500);
 	await panel.reload();
-	await panel.waitForSelector("#composer");
+	// The picker opens once the panel has the worker's state, which also fills Settings' last-update line.
+	const restarted = await poll(async () => (await updated()) || false, "state after the restart");
+	check("after the restart, Settings still shows the last update", restarted.startsWith("Last updated"), restarted);
 	found = await listed("second");
 	check(
 		"after the restart, the picker still lists the downloaded models",
