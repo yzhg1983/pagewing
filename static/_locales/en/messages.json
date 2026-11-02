@@ -1482,7 +1482,7 @@
 		"message": "Come back here. This card closes automatically."
 	},
 	"scriptsSetupLater": {
-		"message": "Without this switch, pi can still read pages, click, and type. You can open this Chrome page later from Settings > Tools."
+		"message": "Without this switch, pi can still read pages, click, and type. You can open this Chrome page later from Settings > Tools."
 	},
 	"skipForNow": {
 		"message": "Skip for now"
