@@ -36,11 +36,14 @@ requests go straight from your browser to your provider.
 
 pi-aside needs Chrome 140 or later.
 
+**From the Chrome Web Store:** [pi-aside](https://chromewebstore.google.com/detail/pi-aside/eamkpenaglckggljpkdljhillecgpjlp), then **Add to Chrome**. Chrome keeps it up to date.
+
 **From a release:** download `pi-aside-<version>.zip` from
 [Releases](https://github.com/yzhg1983/pi-aside/releases) and unzip it into a new folder. Open `chrome://extensions`,
 turn on Developer mode, click **Load unpacked**, and choose that folder. To update, unzip the new version into the same
-folder, replacing its files, and press the reload icon on pi-aside's card. Keep the folder where it is: Chrome treats a
-folder in another place as another extension, without your settings, keys, and chats.
+folder and press the reload icon on pi-aside's card. Keep the folder where it is: Chrome treats a folder in another
+place as another extension, without your settings, keys, and chats. The same goes between a store install and an
+unzipped one.
 
 **From source** (Node.js 22.19+):
 
