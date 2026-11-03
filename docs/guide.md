@@ -128,7 +128,7 @@ adds your own, orders them in the right-click menu, and stars the one "Ask pi" u
 for selected text and for the page. The switch at the end of a prompt's row turns it off: it leaves the menu and the
 `/` list but stays in Settings, ready to turn on again. The starred prompt stays on. Delete removes a prompt, also a
 built-in one; Reset to built-in prompts brings the built-in ones back and deletes your changes and the prompts you
-added. A prompt can ask a question or set a task, as in [the saved prompts](../README.md#saved-prompts).
+added. A prompt can ask a question or set a task, as in [the prompt recipes](prompts.md).
 
 A prompt puts the selected text where it says `{{selection}}` (or the whole page, with nothing selected), the page's
 title and address where it says `{{title}}` and `{{url}}`, and the answer language where it says `{{language}}`.

@@ -18,9 +18,9 @@
 // question about a selection, and a JupyterLite notebook) with the test browser's own ChatGPT session: the first run
 // prints a sign-in link for the owner's browser, and ~/.cache/pi-aside-live keeps the session. RECORD=diagram also
 // records that scene's run as an animated WebP.
-// The README shows diagram and summary: LIVE=1 SCENES=diagram,summary RECORD=diagram. App and notebook are for the store
-// only (git ignores their files; the private notes keep the store's copies): LIVE=1 SCENES=app,notebook. Explain and
-// the scenes without LIVE make images that nothing uses at present.
+// The README shows diagram, a drawing on Excalidraw: LIVE=1 SCENES=diagram RECORD=diagram. Summary, app, and notebook
+// are for the store only (git ignores their files; the private notes keep the store's copies): LIVE=1
+// SCENES=summary,app,notebook. Explain and the scenes without LIVE make images that nothing uses at present.
 
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -204,7 +204,7 @@ const TEXT = {
 			rank: [["One script, ", "the whole page", ""], "It reads every story, ranks them, and marks the top 5."],
 			chart: [["Read ", "charts", ", too"], "When the answer is in a picture, pi takes a screenshot."],
 			control: [["You decide ", "when it acts", ""], "pi clicks or types on a site only after you allow it."],
-			diagram: [["Draw on ", "a whiteboard", ""], "Ask for a diagram, and pi draws it right on Excalidraw."],
+			diagram: [["Draw on ", "a whiteboard", ""], "Ask for a drawing, and pi draws it right on Excalidraw."],
 			notebook: [["Analyze data in ", "a notebook", ""], "pi writes the code, runs it, and reads the chart."],
 			summary: [["Summarize ", "any page", ""], "The key points in seconds, then ask a follow-up."],
 			app: [["Build ", "a working app", ""], "pi writes the HTML, CSS, and JavaScript, and it runs right away."],
@@ -217,7 +217,7 @@ const TEXT = {
 			ask: "Build a Pomodoro timer here: start, pause, and reset, a progress ring, and a calm color theme. Then run it, and show the result large.",
 		},
 		diagram: {
-			ask: "Draw a simple, colorful diagram of how a web request reaches the server: browser, CDN, load balancer, app server, cache, and database. Make it big and easy to read.",
+			ask: "Draw a cute cartoon pig, big and colorful: a round pink body, floppy ears, a snout with two nostrils, rosy cheeks, a curly tail, and a happy smile. Then add a small sign next to it that says 'Hello from pi'.",
 		},
 		table: {
 			ask: "When did these come out? Chart them by decade, and highlight the ones from the 2020s.",
@@ -267,7 +267,7 @@ const TEXT = {
 			rank: [["一段脚本，", "读完整页", ""], "读取每条新闻，排好顺序，并在页面上标出前 5 条。"],
 			chart: [["", "图表", "也能读"], "答案在图里时，pi 会截图细看。"],
 			control: [["动手之前，", "先问你", ""], "pi 在网站上点击或输入之前，先征得你的同意。"],
-			diagram: [["在白板上", "画图", ""], "让 pi 画一张架构图，它直接画在 Excalidraw 上。"],
+			diagram: [["在白板上", "画图", ""], "想要什么画，跟 pi 说一声，它直接画在 Excalidraw 上。"],
 			notebook: [["在笔记本里", "分析数据", ""], "pi 写代码、运行，再解读图表。"],
 			summary: [["一键", "总结全文", ""], "几秒读懂要点，还能接着追问。"],
 			app: [["做出", "能用的小应用", ""], "pi 写好 HTML、CSS 和 JavaScript，马上就能运行。"],
@@ -278,7 +278,7 @@ const TEXT = {
 		summary: { ask: "用 5 个简短的要点总结这个页面。" },
 		app: { ask: "在这里做一个番茄钟：开始、暂停、重置，带进度圆环和柔和的配色，然后运行它，并把结果放大显示。" },
 		diagram: {
-			ask: "画一张简洁、彩色的图，说明网页请求是怎么到达服务器的：浏览器、CDN、负载均衡、应用服务器、缓存和数据库。画大一点，方便看清。",
+			ask: "画一只可爱的卡通小猪，大一点、色彩鲜艳：圆滚滚的粉色身体、耷拉的耳朵、带两个鼻孔的猪鼻子、红扑扑的脸蛋、卷卷的尾巴，还有开心的笑脸。再在旁边加一块小牌子，写上“Hello from pi”。",
 		},
 		table: {
 			ask: "这些电影是哪年上映的？按年代画张图，并把 2020 年代的标出来。",

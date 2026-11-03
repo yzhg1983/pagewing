@@ -12,44 +12,29 @@ on it, run a script, take a screenshot).
 **Use your ChatGPT plan**, or your own OpenAI, Anthropic, OpenRouter, or DeepSeek API key. There is no pi-aside server:
 requests go straight from your browser to your provider.
 
+<sub>pi-aside is an experimental project built on [pi-durable](https://www.npmjs.com/package/@earendil-works/pi-durable).</sub>
+
 [Install](#install) · [Quick start](#quick-start) · [Examples](#examples)
 
 ## Why pi-aside
 
-**What it can do**
-
-- **It reads the page with you.** Select text or open pi on a page to summarize, explain, translate, proofread, or draft
-  a reply. pi can also take a screenshot to read a chart, and you can paste or drop in an image or a text file, such as
-  a CSV or a log. Answers can include tables, code, and diagrams.
-- **It does tasks, not just answers.** pi clicks, types, picks options, and moves from page to page and across the tabs
-  in your tab group. After each step it checks what happened, and it keeps going until the task is done.
-- **It can program the page.** When clicking would be slow or impossible, pi writes a short script and runs it on the
-  page. It can rewrite the page in place (translate it, highlight what matters, add notes), collect every row of a long
-  table or of many pages at once, fetch data from the site with your login, and work out exact answers from it. By
-  default, you see the code before it runs.
-- **Your prompts become one-click tools.** Save a task as a prompt and it appears in the right-click menu and as a
-  `/command`, such as [translating a page in place](#translate-a-page-in-place) or
-  [summarizing a YouTube video](#summarize-a-youtube-video).
+- **It reads the page with you.** Summarize, explain, translate, proofread, or draft a reply, from selected text or
+  the whole page. pi can also read a chart from a screenshot, or an image or text file you drop in.
+- **It does tasks, not just answers.** pi clicks, types, picks options, and moves across pages and the tabs in your
+  tab group, checking each step until the task is done.
+- **It can program the page.** When clicking is slow or impossible, pi writes a short script: it rewrites the page in
+  place, collects every row of a long table, or fetches data with your login. By default, you see the code first.
+- **Tasks keep going.** pi-aside runs on [pi-durable](https://www.npmjs.com/package/@earendil-works/pi-durable), the
+  pi project's durable agent runtime. Every step is saved as it happens, so a task goes on while you switch tabs or
+  chats, and picks up again if Chrome stops pi's background worker.
+- **Your model, no middleman.** Your ChatGPT plan or one of four API providers, a different model per message if you
+  like, and each chat's cost shown as it grows. Open source (MIT), no analytics.
 
 ![An animation of pi-aside beside Wikipedia's list of highest-grossing films: it reads the table, asks before running a script, marks the 2020s rows on the page, and charts the films by decade](docs/images/agent.svg)
 
-**How it is different**
-
-- **Tasks that keep going, built on pi-durable.** pi-aside runs on
-  [pi-durable](https://www.npmjs.com/package/@earendil-works/pi-durable), the durable agent runtime from the pi project.
-  Every step is saved in your browser as it happens, so a task goes on while you switch tabs or chats, several chats
-  can work at once, and a task picks up again if Chrome stops pi's background worker.
-- **Use your ChatGPT plan.** Sign in with ChatGPT and pi runs on the plan you already pay for: no API key, no
-  per-token bill.
-- **Guardrails in code, not just in the prompt.** pi asks before it acts on a site, shows a script's full code before
-  it runs, never types into password, card, or one-time-code fields, refuses to click what something else covers, and
-  stops a task's remaining steps once one fails. [More](#you-stay-in-control)
-- **Your model, no middleman.** Four providers besides ChatGPT, a different model per message if you like, and each
-  chat's cost shown as it grows. Open source (MIT), no analytics.
-
 ## Install
 
-pi-aside is an early release. It needs Chrome 140 or later.
+pi-aside needs Chrome 140 or later.
 
 **From a release:** download `pi-aside-<version>.zip` from
 [Releases](https://github.com/yzhg1983/pi-aside/releases) and unzip it into a new folder. Open `chrome://extensions`,
@@ -74,8 +59,10 @@ settings, keys, and chats are kept.
 1. Click pi-aside's toolbar button, or press `Ctrl+Shift+U` (`Cmd+Shift+U` on a Mac).
 2. Pick a provider, paste an API key, and Save; allow access when Chrome asks. For a ChatGPT plan, choose OpenAI, then
    **Continue with ChatGPT**.
-3. Type a question or a task in the message box, and send it. For other ways, see [How to start](#how-to-start).
-4. Let pi run scripts: when the card **Allow pi to run scripts (optional)** asks, open pi-aside's Chrome details page, turn on
+3. Optional: Settings > Answers > **Answer language** sets the language pi answers in and translates into. By default,
+   it follows Chrome's language.
+4. Type a question or a task in the message box, and send it. For other ways, see [How to start](#how-to-start).
+5. Let pi run scripts: when the card **Allow pi to run scripts (optional)** asks, open pi-aside's Chrome details page, turn on
    **Allow User Scripts** (scroll down), and come back. Skipped it? Settings > Tools links to the same page.
 
 ### How to start
@@ -101,20 +88,19 @@ Results and timing vary by model and run.</sub>
 
 ### Summarize a page
 
-*"Summarize this page in 5 short bullet points."* Beside Paul Graham's essay [*How to Do Great Work*](https://paulgraham.com/greatwork.html), pi reads the page
-and answers in seconds. Ask a follow-up in the same chat.
-
-![pi-aside beside Paul Graham's essay How to Do Great Work: a summary in 5 short points](docs/images/summary.png)
+*"Summarize this page in 5 short bullet points."* Beside Paul Graham's essay
+[*How to Do Great Work*](https://paulgraham.com/greatwork.html), pi reads the page and answers in seconds. Ask a
+follow-up in the same chat.
 
 ### Draw on a whiteboard
 
-*"Draw a simple, colorful diagram of how a web request reaches the server: browser, CDN, load balancer, app server,
-cache, and database. Make it big and easy to read."* On [Excalidraw](https://excalidraw.com/), pi draws with a script, checks the result with a
-screenshot, and fits it in view.
+*"Draw a cute cartoon pig, big and colorful: a round pink body, floppy ears, a snout with two nostrils, rosy cheeks, a
+curly tail, and a happy smile. Then add a small sign next to it that says 'Hello from pi'."* On
+[Excalidraw](https://excalidraw.com/), pi draws it with one script, as shapes you can edit, and fits it in view.
 
-![An animation of pi-aside beside Excalidraw: pi draws a colorful diagram of a web request going from the browser through a CDN, a load balancer, and an app server to a cache and a database](docs/images/diagram.webp)
+![An animation of pi-aside beside Excalidraw: pi draws a cute pink cartoon pig with rosy cheeks and a curly tail, next to a sign that says Hello from pi](docs/images/diagram.webp)
 
-<sub>Sped up. [The finished diagram as a still image](docs/images/diagram.png).</sub>
+<sub>Sped up. [The finished drawing as a still image](docs/images/diagram.png).</sub>
 
 ### More to try
 
@@ -127,93 +113,12 @@ screenshot, and fits it in view.
 - *"Which areas do the 100 newest open issues fall in? Chart them on this page, and highlight the 5
   most-discussed."* On [VS Code's issues](https://github.com/microsoft/vscode/issues), pi reads the 100 newest issues,
   sorts them into areas, and adds the chart to the page.
-- *"Explain this simply, with a diagram."* With a paragraph selected, pi explains it in plain words and draws a
-  diagram in its answer.
 - *"Compare the three laptops in this tab group: price, weight, battery, and ports."* pi reads each tab and makes a
   table.
-- *"Which of these countries increased its renewable electricity share most since 2010?"* pi takes a screenshot of
-  the chart and compares the changes.
 - *"Fill in this form from the details below, and stop before you submit."* pi types into each field and leaves the
   last click to you.
-- *"I get this since upgrading to Vite 3. Is it a known issue? How do I fix it?"* With a screenshot of the error
-  attached, pi searches the repository's issues, reads the one that matches, and says what fixes it.
 
-### Saved prompts
-
-A prompt can set a whole task, scripts included. Add one in Settings > Prompts, and it shows in the right-click menu
-and as a `/command`. Both prompts below run scripts, so they need Allow User Scripts ([Quick start](#quick-start), step
-4); choose **For this chat** on the script card, or set Run script to On, to skip the card next time.
-
-#### Translate a page in place
-
-Translation extensions usually send a page to a translation service piece by piece, so the same name or term can come
-back translated three different ways. With this prompt, the model reads the whole page and translates it as one text,
-then a script puts each translated paragraph under its original on the page.
-
-Add it as "Translate in page", then right-click any article and choose **Translate in page**. `{{selection}}` is the
-whole page when nothing is selected; select a few paragraphs first to translate only those. `{{language}}` is your
-answer language (Settings > Answers).
-
-<details>
-<summary>The prompt</summary>
-
-```text
-Translate the text below into {{language}}, then embed the translation back into the original page, paragraph by paragraph: each translated paragraph right below its original. Keep the original text.
-
-Style each translation like its original: the same kind of element (a heading stays a heading, a list item a list item) with the same classes, but without its id. Add no border, vertical line, quote formatting, background color, or other decoration that the original does not have.
-
-{{selection}}
-```
-
-</details>
-
-It is slower than a translation extension, but the translation reads as one piece, and with a ChatGPT plan it runs on
-your plan instead of a per-token bill. A higher thinking level (the bulb in the message box) can give a more careful
-translation, at the cost of more time.
-
-#### Summarize a YouTube video
-
-pi reads the video's full captions with one script, without opening the transcript panel, and answers from them. By
-default it writes a summary: the main points first, then chapters. Click a chapter's timestamp and the video in the tab
-jumps to that moment, without reloading the page. To catch the player's caption request, the script may turn captions
-off and on once; it leaves them as they were.
-
-Add it as "Summarize video". On a video, right-click the page and choose **Summarize video**, or type
-`/summarize-video`. A question after the command replaces the summary: `/summarize-video what does she say about
-pricing?`
-
-<details>
-<summary>The prompt</summary>
-
-```text
-First check the tab's URL: {{url}}
-If it is not a YouTube video page (www., m. or music.youtube.com with /watch?v= or /shorts/ followed by an ID), reply only with "Open a YouTube video in this tab, then run this again." in {{language}}, and stop: call no tools.
-Otherwise, get the full captions of that video with run_script, then do this task from them: {{selection}}
-If the task is empty or only says the whole page is attached, summarize the video. Do not use the "Show transcript" panel. Any caption language is fine.
-Write ONE script that does all of this, read-only except for step 3:
-
-1. Video ID from ?v= or the path after /shorts/; none: return {notVideo: true} and stop. If globalThis.piCaptions?.videoId is that ID, skip to step 6.
-2. A caption request is usable if its URL contains "/api/timedtext" and "v=" + the ID, and its expire parameter (Unix seconds) is in the future. Look for the newest usable one in performance.getEntriesByType("resource").
-3. If none (that buffer is often full or stale): start a PerformanceObserver with observe({type: "resource"}) that collects usable URLs; note whether .ytp-subtitles-button has aria-pressed="true"; if it was on, click it off and wait 300 ms; click it on; wait up to 6 s for a usable URL; disconnect; click again if needed so CC ends in the state you noted.
-4. No usable URL: if the observer saw only expired ones, return {stalePlayer: true, toggledCC}; else return {capturedRequest: false, toggledCC}. Stop.
-5. Take the usable URL, set fmt=json3, delete tlang, fetch it. Parse json3: for each event in events with segs, text = its segs' utf8 joined, trimmed; skip empty. Line = "[h:mm:ss] text" from tStartMs. Store globalThis.piCaptions = {videoId, language: the URL's lang, auto: kind === "asr", lines}. Empty or non-JSON body: return {status, bytes, hasPot: whether the URL has pot, toggledCC} and stop.
-6. Return {videoId, language, auto, totalLines, from, to, toggledCC, text}, where text is lines from `from` joined by "\n", stopping before 30,000 characters.
-
-Rules:
-* Never return, log, or repeat the caption URL or any of its parameter values (signature, pot, ei, …).
-* notVideo: give the same one-line reply as above. stalePlayer: tell me to reload the tab and try again. Other failures: report the returned fields. Do not guess captions.
-* Video too long for one result: run short follow-up scripts that only read globalThis.piCaptions and return the next slice, until you have what the task needs. Do not fetch again.
-
-How to write the answer (unless the task asks for another form). Readers scan, so put the point first:
-* Start with "**In short:**" and one sentence on what the video is and who speaks, then 3–5 bullets with its main conclusions, most important first.
-* Then "## Chapters", in order. Each heading: "### [12:34](LINK) " + the point as a short statement, e.g. "Open models let countries run their own AI", not a bare topic like "Open models". LINK is the tab's URL above, unchanged except t set to the start in seconds (t=754s), replacing any t it has. Under it, 1–3 bullets, one idea each, under 25 words, starting with who says it ("Huang:") when there are several speakers. Add the example or number that makes the point concrete. Where speakers disagree, give each side its own bullet. 5–10 chapters for an hour; merge topics that come back.
-* Plain words, short sentences; explain a term once if the speakers rely on it. Report claims as the speaker's ("he argues"), without judging them. Keep names and titles as spoken; quote at most a short phrase. No tables, nested bullets, emoji, or filler such as "In this section". Bold at most one key phrase per chapter.
-* End with "**Worth watching:**" 1–3 timestamp links to the parts most worth seeing in full, each with a few words on why.
-
-Answer in {{language}}.
-```
-
-</details>
+Save repeatable tasks as prompts: [page translation and YouTube summaries](docs/prompts.md).
 
 ## You stay in control
 
@@ -251,7 +156,6 @@ mistakes. Keep Ask for email, banking, admin pages, and anywhere a wrong click m
 
 - [User guide](docs/guide.md): settings, images and text files, chats and History, prompts and slash commands, models
   and thinking, editing a question, diagrams, web search, shortcuts, languages, and limits.
-- [CONTRIBUTING.md](CONTRIBUTING.md): building, checks, and tests.
 
 pi-aside is unofficial: the pi project, which makes pi-durable, does not make or endorse it.
 
