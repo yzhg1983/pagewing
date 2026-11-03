@@ -8,16 +8,16 @@
 
 **可以直接用你的 ChatGPT 订阅**，也可以填 OpenAI、Anthropic、OpenRouter 或 DeepSeek 的 API 密钥。pi-aside 没有自己的服务器，请求从浏览器直接发往模型服务商。
 
-<sub>pi-aside 是一个基于 [pi-durable](https://www.npmjs.com/package/@earendil-works/pi-durable) 构建的实验性项目。</sub>
+pi-aside 是一个基于 [pi-durable](https://github.com/earendil-works/pi/tree/main/packages/durable) 构建的实验性项目。
 
-[安装](#安装) · [快速上手](#快速上手) · [使用示例](#使用示例)
+**[添加至 Chrome](https://chromewebstore.google.com/detail/pi-aside/eamkpenaglckggljpkdljhillecgpjlp)**
 
 ## 为什么选 pi-aside
 
 - **陪你一起读网页。** 选中一段文字，或直接在当前页面打开 pi，让它总结、解释、翻译、润色，或者帮你拟一段回复。遇到图表，它会截图来看；你也可以拖入图片或文本文件一起问。
 - **不只回答，还能动手。** 点击、输入、选下拉项、翻页、切换标签页组里的其他标签页，pi 都能自己完成，每做一步都会核对结果，直到把事情办完。
 - **能给网页写脚本。** 点来点去太慢、甚至做不到的事，pi 会现写一段短脚本：直接改写原网页、一次抓下长表格的全部数据，或借你的登录状态取数据。默认情况下，脚本运行前你会先看到代码。
-- **任务不怕中断。** pi-aside 构建在 pi 项目的持久化智能体运行时 [pi-durable](https://www.npmjs.com/package/@earendil-works/pi-durable) 之上。每一步都实时保存：切到别的标签页或对话，任务照常进行；即使 Chrome 停掉了 pi 的后台进程，任务也能接着做完。
+- **任务不怕中断。** pi-aside 构建在 pi 项目的持久化智能体运行时 [pi-durable](https://github.com/earendil-works/pi/tree/main/packages/durable) 之上。每一步都实时保存：切到别的标签页或对话，任务照常进行；即使 Chrome 停掉了 pi 的后台进程，任务也能接着做完。
 - **模型由你选，没有中间商。** 用 ChatGPT 订阅，或另外四家服务商的 API 密钥；每条消息都可以换模型，每个对话花了多少钱随时看得到。代码开源（MIT），不做任何使用统计。
 
 ![动画：pi-aside 在维基百科的全球最高票房电影列表旁读表格，运行脚本前先询问，在页面上标出 2020 年代的行，再按年代画出图表](docs/images/zh-CN-agent.svg)
@@ -26,7 +26,7 @@
 
 pi-aside 需要 Chrome 140 或更高版本。
 
-**从 Chrome 应用商店安装：** 打开 [pi-aside](https://chromewebstore.google.com/detail/pi-aside/eamkpenaglckggljpkdljhillecgpjlp)，点 **添加至 Chrome**。之后 Chrome 会自动更新它。
+**从 Chrome 应用商店安装：** [添加至 Chrome](https://chromewebstore.google.com/detail/pi-aside/eamkpenaglckggljpkdljhillecgpjlp)。
 
 **从发布版安装：** 在 [Releases](https://github.com/yzhg1983/pi-aside/releases) 下载 `pi-aside-<版本号>.zip`，解压到一个新文件夹。打开 `chrome://extensions`，开启右上角的“开发者模式”，点 **加载已解压的扩展程序**，选中这个文件夹。以后更新时，把新版本解压到同一个文件夹、覆盖原有文件，再点一下 pi-aside 卡片上的刷新按钮。请不要移动这个文件夹：换了位置，Chrome 会把它当成另一个扩展，原来的设置、密钥和对话记录都不会跟过去。商店版和解压安装的版本之间也是如此。
 

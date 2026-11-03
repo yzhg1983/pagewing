@@ -51,7 +51,7 @@ is in [Page tools: what the model sees](page-tools.md).
 
 A Chrome extension's background code runs in a worker that Chrome may stop at any time: after about 30 seconds with
 nothing happening, on a crash, or during an update, and everything in its memory goes with it. pi-aside is built on
-[pi-durable](https://www.npmjs.com/package/@earendil-works/pi-durable) so that a task survives this:
+[pi-durable](https://github.com/earendil-works/pi/tree/main/packages/durable) so that a task survives this:
 
 1. **Every step is saved as it happens.** pi-durable writes your message, the running task, each tool call before it
    runs and its result after, and the answer being written (about every 100 ms) to the browser's database (IndexedDB).

@@ -12,9 +12,9 @@ on it, run a script, take a screenshot).
 **Use your ChatGPT plan**, or your own OpenAI, Anthropic, OpenRouter, or DeepSeek API key. There is no pi-aside server:
 requests go straight from your browser to your provider.
 
-<sub>pi-aside is an experimental project built on [pi-durable](https://www.npmjs.com/package/@earendil-works/pi-durable).</sub>
+pi-aside is an experimental project built on [pi-durable](https://github.com/earendil-works/pi/tree/main/packages/durable).
 
-[Install](#install) · [Quick start](#quick-start) · [Examples](#examples)
+**[Add to Chrome](https://chromewebstore.google.com/detail/pi-aside/eamkpenaglckggljpkdljhillecgpjlp)**
 
 ## Why pi-aside
 
@@ -24,9 +24,10 @@ requests go straight from your browser to your provider.
   tab group, checking each step until the task is done.
 - **It can program the page.** When clicking is slow or impossible, pi writes a short script: it rewrites the page in
   place, collects every row of a long table, or fetches data with your login. By default, you see the code first.
-- **Tasks keep going.** pi-aside runs on [pi-durable](https://www.npmjs.com/package/@earendil-works/pi-durable), the
-  pi project's durable agent runtime. Every step is saved as it happens, so a task goes on while you switch tabs or
-  chats, and picks up again if Chrome stops pi's background worker.
+- **Tasks keep going.** pi-aside runs on
+  [pi-durable](https://github.com/earendil-works/pi/tree/main/packages/durable), the pi project's durable agent
+  runtime. Every step is saved as it happens, so a task goes on while you switch tabs or chats, and picks up again if
+  Chrome stops pi's background worker.
 - **Your model, no middleman.** Your ChatGPT plan or one of four API providers, a different model per message if you
   like, and each chat's cost shown as it grows. Open source (MIT), no analytics.
 
@@ -36,7 +37,7 @@ requests go straight from your browser to your provider.
 
 pi-aside needs Chrome 140 or later.
 
-**From the Chrome Web Store:** [pi-aside](https://chromewebstore.google.com/detail/pi-aside/eamkpenaglckggljpkdljhillecgpjlp), then **Add to Chrome**. Chrome keeps it up to date.
+**From the Chrome Web Store:** [Add to Chrome](https://chromewebstore.google.com/detail/pi-aside/eamkpenaglckggljpkdljhillecgpjlp).
 
 **From a release:** download `pi-aside-<version>.zip` from
 [Releases](https://github.com/yzhg1983/pi-aside/releases) and unzip it into a new folder. Open `chrome://extensions`,
