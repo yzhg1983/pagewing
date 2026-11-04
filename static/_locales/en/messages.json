@@ -1482,7 +1482,7 @@
 		"message": "Scroll down and turn on \"Allow User Scripts\"."
 	},
 	"scriptsSetupLater": {
-		"message": "If you skip it, you can open the same page later from Settings > Tools."
+		"message": "If you skip this for now, you can open the same page later from Settings > Tools."
 	},
 	"skipForNow": {
 		"message": "Skip for now"

@@ -418,7 +418,7 @@ more card, while Run script is Ask or On and Chrome's Allow User Scripts is off 
 >
 > By default, pi shows you the code and asks before running a script. *(only while Run script is Ask)*
 >
-> If you skip it, you can open the same page later from Settings > Tools.
+> If you skip this for now, you can open the same page later from Settings > Tools.
 >
 > [Open pi's Chrome details page] [Skip for now]
 
