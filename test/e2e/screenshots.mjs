@@ -556,9 +556,9 @@ try {
 			(await stored())?.tools?.screenshot !== "off",
 	);
 	check(
-		"Settings: the note says what the image shows and when it works",
+		"Settings: the note says the image may include typed text and goes to the provider",
 		(await panel.textContent("#tool-screenshot-note")).includes(
-			"also what you typed into fields, and goes to the model's provider",
+			"The image may include what you typed into fields, and goes to your model's provider.",
 		),
 	);
 	await panel.screenshot({ path: join(dir, `shot-settings-${label}.png`) });

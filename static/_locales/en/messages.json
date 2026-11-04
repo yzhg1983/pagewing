@@ -309,7 +309,7 @@
 		"message": "Captures what the tab shows, as an image."
 	},
 	"screenshotWarning": {
-		"message": "The image shows what is on screen, also what you typed into fields, and goes to the model's provider. pi may scroll the page first, also with Act on page Off. Works after you open pi on the site with its toolbar button, menu, or shortcut, or on any site when Chrome allows pi on all sites (Settings > Advanced > Sites)."
+		"message": "The image may include what you typed into fields, and goes to your model's provider."
 	},
 	"callsPerAnswer": {
 		"message": "Page tool calls per answer"

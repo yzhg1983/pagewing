@@ -433,6 +433,5 @@ more card, while Run script is Ask or On and Chrome's Allow User Scripts is off 
   does not come back, also when the user turns the switch off later; Settings > Tools then says it is off.
 - The card does not show while the switch is already on, which also marks the step done, or while Run script is Off.
 
-Under Screenshot page: "The image shows what is on screen, also what you typed into fields, and goes to the model's
-provider. pi may scroll the page first, also with Act on page Off. Works after you open pi on the site with its toolbar
-button, menu, or shortcut, or on any site when Chrome allows pi on all sites (Settings > Advanced > Sites)."
+Under Screenshot page: "The image may include what you typed into fields, and goes to your model's provider." The
+scrolling and the Chrome access a screenshot needs are in the [user guide](guide.md#how-the-agent-works).

@@ -19,6 +19,11 @@ answers there, until a new chat or Chrome closes. A script card shows the code, 
 | Run script | Runs JavaScript that pi writes, to pull data out of a page or compute over it. | Ask | No |
 | Screenshot page | Captures the tab, or one part of it. | On | Yes |
 
+Screenshot page shows what is on screen, so the image may include what you typed into fields (Read page leaves that
+out), and it goes to your model's provider. pi may scroll the page to the part it captures, also with Act on page Off.
+Chrome lets pi capture a tab only after you open pi on that site with its toolbar button, menu, or shortcut, or on any
+site when you allow pi on all sites (Settings > Advanced > Sites).
+
 Run script also needs Chrome's **Allow User Scripts** switch for pi, which is off for a new install. Setup asks for it
 with a card after the provider (**Allow pi to run scripts (optional)**); Skip for now leaves Run script as it is, and
 Settings > Tools links to the switch later. Until it is on, pi offers no scripts, and the model says so only when a task
