@@ -14,7 +14,7 @@
 	"bugs": "https://github.com/yzhg1983/pagewing/issues",
 	"scripts": {
 		"build": "node build.mjs",
-		"check": "biome check --write . && tsc --noEmit",
+		"check": "biome check --write . && tsc --noEmit && tsc --noEmit -p mcp",
 		"icons": "node scripts/icons.mjs",
 		"illustrations": "node scripts/illustrations.mjs",
 		"screenshots": "node scripts/screenshots.mjs",
@@ -27,6 +27,7 @@
 		"test:page-tools": "node test/e2e/page-tools.mjs",
 		"test:model-list": "node test/e2e/model-list.mjs",
 		"test:selection": "node test/e2e/selection.mjs",
+		"test:local-agents": "node test/e2e/local-agents.mjs",
 		"test:localization": "node test/e2e/localization.mjs",
 		"test:storage": "node test/e2e/storage.mjs",
 		"test:wake": "node test/e2e/wake.mjs"

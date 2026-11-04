@@ -59,6 +59,7 @@ function setup() {
 			keepaliveEnabled: true,
 			keepalive: false,
 			attachment: null,
+			agents: { state: "off", error: null, agents: [] },
 		},
 		settings: {
 			openaiWebSearch: true,
@@ -72,6 +73,7 @@ function setup() {
 			tools: { read: "on", observe: "on", act: "ask", script: "off", screenshot: "on" },
 			callsPerAnswer: 50,
 			scriptsOnboarded: false,
+			localAgents: false,
 		},
 		chat: { ...EMPTY_CHAT, conversationId: 1, entries: [entry(1)] },
 		drafts: [],

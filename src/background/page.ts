@@ -341,7 +341,7 @@ export const tabParameter = () =>
 
 /** Every browser send rechecks native scope, then synchronous policy and Stop, with no intervening await. */
 export function scopedPageAccess(
-	deps: PageDeps,
+	deps: Pick<PageDeps, "access" | "currentSettings" | "groups">,
 	anchor: number,
 	target: number,
 	tool: string,
@@ -535,7 +535,7 @@ const SLOW = `Cannot read the page: the tab did not answer within ${READ_BUDGET_
  * Chrome call after `signal` ends; one that runs may finish. `stopped` is asked right before each document's text is
  * read: a string ends the read with it.
  */
-async function readTab(
+export async function readTab(
 	access: PageAccess,
 	page: PageRef & { documentId: string },
 	signal: AbortSignal,

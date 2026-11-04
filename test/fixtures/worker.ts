@@ -198,6 +198,14 @@ export const workerSession = {
 		opening ??= open();
 		return opening;
 	},
+	/** The local agents' bridge: off; its own test drives the real one. */
+	localAgents: {
+		synced: [] as boolean[],
+		sync(on: boolean, granted: boolean) {
+			workerSession.localAgents.synced.push(on && granted);
+		},
+		status: () => ({ state: "off" as const, error: null, agents: [] as string[] }),
+	},
 	storageFull,
 	tabs,
 	wake: () => workerSession.session(),

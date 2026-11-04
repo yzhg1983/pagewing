@@ -321,7 +321,7 @@
 		"message": "高级"
 	},
 	"advancedSections": {
-		"message": "网站 · 快捷键 · 诊断"
+		"message": "网站 · 本地智能体 · 快捷键 · 诊断"
 	},
 	"sites": {
 		"message": "网站"
@@ -1954,5 +1954,42 @@
 	},
 	"showImage": {
 		"message": "查看 $1 原图"
+	},
+	"localAgents": {
+		"message": "本地智能体"
+	},
+	"localAgentsLabel": {
+		"message": "允许本机程序使用网页工具"
+	},
+	"localAgentsNote": {
+		"message": "供 pi 等编程智能体通过 pi-aside-mcp 使用。它们在自己的标签页组中工作，可访问任何网站，不会询问你；工具中设为关闭的仍然关闭。"
+	},
+	"agentsConnected": {
+		"message": "桥接正在运行。已连接：$NAMES$",
+		"placeholders": {
+			"names": {
+				"content": "$1"
+			}
+		}
+	},
+	"agentsNone": {
+		"message": "桥接正在运行。没有智能体连接。"
+	},
+	"agentsMissing": {
+		"message": "尚未安装桥接。在终端中运行：node <pi-aside>/mcp/src/cli.ts install，然后重启 Chrome。"
+	},
+	"agentsError": {
+		"message": "桥接已停止：$ERROR$。pi-aside 将在 30 秒后重试。",
+		"placeholders": {
+			"error": {
+				"content": "$1"
+			}
+		}
+	},
+	"agentsStarting": {
+		"message": "正在启动桥接…"
+	},
+	"agentsPermission": {
+		"message": "Chrome 不再允许 pi-aside 使用本地消息：请关闭开关再重新打开。"
 	}
 }

@@ -1,0 +1,14 @@
+{
+	"name": "pi-aside-mcp",
+	"version": "0.1.0",
+	"private": true,
+	"license": "MIT",
+	"type": "module",
+	"description": "MCP server that lets local agents, such as pi, use pi-aside's page tools in Chrome",
+	"bin": {
+		"pi-aside-mcp": "src/cli.ts"
+	},
+	"engines": {
+		"node": ">=22.18"
+	}
+}

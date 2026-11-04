@@ -21,6 +21,7 @@ import {
 	unknownVariables,
 } from "../shared/presets.ts";
 import {
+	type AgentsStatus,
 	type AskCard,
 	type AskReply,
 	type AttachedPage,
@@ -196,6 +197,8 @@ const ui = {
 	keys: element("keys"),
 	sites: element("sites"),
 	allowAllSites: element<HTMLButtonElement>("allow-all-sites"),
+	agentsResult: element("agents-result"),
+	agentsStatus: element("agents-status"),
 	sitesResult: element("sites-result"),
 	sitesProviders: element("sites-providers"),
 	sitesHeld: element("sites-held"),
@@ -389,6 +392,7 @@ function render(next: PanelState): void {
 	ui.noticeText.textContent = next.notice?.text ?? "";
 	renderSetup(next);
 	renderScriptsSetup(next);
+	renderAgents(next.status.agents);
 	renderTranscript(next);
 	renderDrafts(next);
 	renderComposer();
@@ -3511,6 +3515,7 @@ function syncSettings(settings: Settings): void {
 	ui.language.value = settings.language;
 	for (const radio of toolRadios) radio.checked = radio.value === settings.tools[toolOf(radio)];
 	if (document.activeElement !== ui.callsPerAnswer) ui.callsPerAnswer.value = String(settings.callsPerAnswer);
+	for (const radio of agentRadios) radio.checked = (radio.value === "on") === settings.localAgents;
 	syncUserScripts();
 	renderPrompts(settings);
 }
@@ -4071,6 +4076,51 @@ ui.allowAllSites.addEventListener("click", () => {
 		(error: Error) => showResult(ui.sitesResult, error.message, false),
 	);
 });
+
+// Settings > Advanced > Local agents (design 6.45): the switch is the consent, so turning it on asks Chrome for native
+// messaging and all sites in the same click; turning it off ends the sessions and gives native messaging back.
+
+const agentRadios = [...document.querySelectorAll<HTMLInputElement>('input[name="local-agents"]')];
+
+for (const radio of agentRadios) {
+	radio.addEventListener("change", () => {
+		if (radio.value === "off") {
+			saveSettings({ localAgents: false }, ui.agentsResult);
+			void chrome.permissions.remove({ permissions: ["nativeMessaging"] }).catch(() => {});
+			return;
+		}
+		// Inside the click: Chrome asks only during a user gesture.
+		chrome.permissions.request({ permissions: ["nativeMessaging"], origins: ["<all_urls>"] }).then(
+			(granted) => {
+				if (granted) saveSettings({ localAgents: true }, ui.agentsResult);
+				else {
+					showResult(ui.agentsResult, t("chromeDenied"), false);
+					if (state !== undefined) syncSettings(state.settings);
+				}
+			},
+			(error: Error) => {
+				showResult(ui.agentsResult, error.message, false);
+				if (state !== undefined) syncSettings(state.settings);
+			},
+		);
+	});
+}
+
+function renderAgents({ state: bridge, error, agents }: AgentsStatus): void {
+	ui.agentsStatus.hidden = bridge === "off";
+	ui.agentsStatus.textContent =
+		bridge === "connected"
+			? agents.length === 0
+				? t("agentsNone")
+				: t("agentsConnected", [agents.join(", ")])
+			: bridge === "permission"
+				? t("agentsPermission")
+				: bridge === "starting"
+					? t("agentsStarting")
+					: bridge === "missing"
+						? t("agentsMissing")
+						: t("agentsError", [error ?? ""]);
+}
 
 // Settings > Shortcuts.
 
