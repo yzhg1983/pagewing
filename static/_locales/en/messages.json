@@ -1473,7 +1473,7 @@
 		"message": "Scripts let pi do more than read and click: it writes a small piece of code and runs it on the page. First, turn on Chrome's \"Allow User Scripts\" switch for pi:"
 	},
 	"scriptsSetupAsk": {
-		"message": "In Ask mode (the default), pi shows you the code and asks before running scripts."
+		"message": "By default, pi shows you the code and asks before running a script."
 	},
 	"scriptsSetupStep1": {
 		"message": "Click \"Open pi's Chrome details page\"."
@@ -1482,7 +1482,7 @@
 		"message": "Scroll down and turn on \"Allow User Scripts\"."
 	},
 	"scriptsSetupLater": {
-		"message": "Without this switch, pi can still read pages, click, and type. You can open this Chrome page later from Settings > Tools."
+		"message": "If you skip it, you can open the same page later from Settings > Tools."
 	},
 	"skipForNow": {
 		"message": "Skip for now"
