@@ -1976,10 +1976,10 @@
 		"message": "Bridge running. No agent connected."
 	},
 	"agentsMissing": {
-		"message": "The bridge is not installed. In a terminal: node <pi-aside>/mcp/src/cli.ts install, then restart Chrome."
+		"message": "Not set up yet: add pi-aside to your agent with the command above, then start the agent. pi-aside connects within 30 s."
 	},
 	"agentsError": {
-		"message": "The bridge stopped: $ERROR$. pi-aside tries again in 30 s.",
+		"message": "The bridge stopped: $ERROR$. pi-aside tries again within 30 s.",
 		"placeholders": {
 			"error": {
 				"content": "$1"
@@ -1991,5 +1991,14 @@
 	},
 	"agentsPermission": {
 		"message": "Chrome no longer lets pi-aside use native messaging: turn the switch off and on again."
+	},
+	"localAgentsSetup": {
+		"message": "To add pi-aside to pi, run in a terminal:"
+	},
+	"localAgentsOther": {
+		"message": "Other MCP clients: add npx -y pi-aside-mcp as a stdio server."
+	},
+	"copyCommand": {
+		"message": "Copy command"
 	}
 }

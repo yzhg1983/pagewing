@@ -1,9 +1,11 @@
-// Local agents end to end (design 6.45): the bridge registered in a test profile, the switch turned on in Settings, and
-// an MCP client that speaks to pi-aside-mcp over stdio. open_tab puts a loopback page in the session's tab group;
-// read_page, observe_page, act_on_page (click, type, navigate), run_script, screenshot_page, list_tabs, and close_tab
-// work there; a tab outside the group is refused; Off in Tools refuses its tool; the switch going off ends the session
-// and leaves the tabs open; with no bridge, a call says how to connect. The user's home, Chrome profile, and
-// ~/.pi-aside are never touched: Chrome and the bridge run with HOME in a temporary folder.
+// Local agents end to end (design 6.45), as a user sets them up: the switch turned on in Settings before the bridge is
+// there, which shows the command that adds pi-aside to pi; then an MCP client starts pi-aside-mcp over stdio, which
+// registers the bridge itself, and its first call waits until pi-aside connects. open_tab puts a loopback page in the
+// session's tab group; read_page, observe_page, act_on_page (click, type, navigate), run_script, screenshot_page,
+// list_tabs, and close_tab work there; a tab outside the group is refused; Off in Tools refuses its tool; the switch
+// going off ends the session and leaves the tabs open, and a new client then hears how to connect. The user's home,
+// Chrome profile, and ~/.pi-aside are never touched: Chrome and the bridge run with HOME in a temporary folder, and
+// the profile is that HOME's Chrome for Testing folder, where pi-aside-mcp registers by default.
 import { spawn } from "node:child_process";
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createServer as createHttp } from "node:http";
@@ -19,9 +21,9 @@ const repo = fileURLToPath(new URL("../../", import.meta.url));
 // Short: the bridge's unix socket path, under HOME, must stay under about 100 bytes.
 const dir = mkdtempSync(join(tmpdir(), "pa-"));
 const ext = join(dir, "ext");
-const profile = join(dir, "profile");
 const home = join(dir, "h");
-mkdirSync(home);
+const profile = join(home, "Library", "Application Support", "Google", "Chrome for Testing");
+mkdirSync(profile, { recursive: true });
 console.log("Artifacts:", dir);
 mkdirSync(ext);
 const common = {
@@ -157,29 +159,14 @@ try {
 	const id = new URL(worker.url()).host;
 	console.log(`chrome ${context.browser().version()}`);
 
-	// Before setup: the switch is off, and a call says how to connect.
-	const early = mcpClient("early");
-	await early.initialize();
-	const notConnected = await early.call("list_tabs");
-	check(
-		"with the switch off, a call says how to turn on Local agents",
-		notConnected.error && /Local agents/.test(notConnected.raw),
-		notConnected,
-	);
-	early.end();
-
-	// Setup, as `npx pi-aside-mcp install --extension-id <id>` does, in the test profile only.
-	const install = spawn(
-		process.execPath,
-		[join(repo, "mcp/src/cli.ts"), "install", "--extension-id", id, "--user-data-dir", profile],
-		{ env: { ...process.env, HOME: home }, stdio: "inherit" },
-	);
-	await new Promise((resolve) => install.once("exit", resolve));
-	if (process.env.DEBUG_HOST) {
-		// The host's stderr, which Chrome does not show, into a file.
-		const script = join(home, ".pi-aside/host.sh");
-		writeFileSync(script, readFileSync(script, "utf8").replace(/\n$/, ` 2>>"${join(dir, "host.log")}"\n`));
-	}
+	// The store ID is allowed by default; this unpacked build's ID is allowed as a developer does, before anything else.
+	const allow = spawn(process.execPath, [join(repo, "mcp/src/cli.ts"), "install", "--extension-id", id], {
+		env: { ...process.env, HOME: home },
+		stdio: "ignore",
+	});
+	await new Promise((resolve) => allow.once("exit", resolve));
+	// As for a user who never ran setup: no helper yet.
+	rmSync(join(home, ".pi-aside"), { recursive: true, force: true });
 
 	const panel = await context.newPage();
 	await panel.goto(`chrome-extension://${id}/panel.html`);
@@ -188,6 +175,34 @@ try {
 	await panel.click("#open-settings");
 	await panel.click("#settings .advanced summary");
 	await panel.click('label:has(input[name="local-agents"][value="on"])');
+	const waiting = await poll(
+		() =>
+			panel
+				.locator("#agents-status")
+				.textContent()
+				.then((text) => (text.startsWith("Not set up yet") ? text : null)),
+		"not set up",
+	);
+	const command = await panel.locator("#agents-command").textContent();
+	check(
+		"the switch on before setup says so, next to the command that adds pi-aside to pi",
+		command === "pi mcp add pi-aside -- npx -y pi-aside-mcp",
+		{ waiting, command },
+	);
+	console.log(`(status before setup: ${waiting})`);
+
+	// The agent's server registers the helper at its start; its first call waits until pi-aside starts it.
+	const agent = mcpClient("e2e-agent");
+	const init = await agent.initialize();
+	check("initialize names pi-aside", init.result?.serverInfo?.name === "pi-aside", init);
+	const started = Date.now();
+	const opened = await agent.call("open_tab", { url: `${A}/form` });
+	check(
+		"the first call waits for pi-aside to connect, then open_tab opens the page and waits for it",
+		!opened.error && opened.text.loaded === true && opened.text.title === "Form page",
+		opened,
+	);
+	console.log(`(first call took ${Math.round((Date.now() - started) / 1000)} s)`);
 	await poll(
 		() =>
 			panel
@@ -195,18 +210,6 @@ try {
 				.textContent()
 				.then((text) => text.includes("Bridge running")),
 		"bridge running",
-	);
-	check("the switch on starts the bridge, and Settings says so once it listens", true);
-
-	const agent = mcpClient("e2e-agent");
-	const init = await agent.initialize();
-	check("initialize names pi-aside", init.result?.serverInfo?.name === "pi-aside", init);
-
-	const opened = await agent.call("open_tab", { url: `${A}/form` });
-	check(
-		"open_tab opens the page and waits for it",
-		!opened.error && opened.text.loaded === true && opened.text.title === "Form page",
-		opened,
 	);
 	const tab = opened.text.tab;
 	const group = await worker.evaluate(async (tab) => {
@@ -332,6 +335,15 @@ try {
 	check("the switch off ends the session; its tabs stay open", after.error && kept, { after, kept });
 	console.log(`(nativeMessaging after Off: ${permission}; required in this test build, so Chrome keeps it)`);
 	agent.end();
+	const late = mcpClient("late");
+	await late.initialize();
+	const notConnected = await late.call("list_tabs");
+	check(
+		"with the switch off, a call says to turn on Local agents, at once",
+		notConnected.error && /Local agents/.test(notConnected.raw),
+		notConnected,
+	);
+	late.end();
 
 	check("no page errors in the panel", problems.length === 0, problems);
 } catch (error) {

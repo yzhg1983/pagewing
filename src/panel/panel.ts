@@ -198,6 +198,8 @@ const ui = {
 	sites: element("sites"),
 	allowAllSites: element<HTMLButtonElement>("allow-all-sites"),
 	agentsResult: element("agents-result"),
+	agentsCommand: element("agents-command"),
+	copyAgentsCommand: element<HTMLButtonElement>("copy-agents-command"),
 	agentsStatus: element("agents-status"),
 	sitesResult: element("sites-result"),
 	sitesProviders: element("sites-providers"),
@@ -4106,6 +4108,9 @@ for (const radio of agentRadios) {
 	});
 }
 
+ui.copyAgentsCommand.append(icon("copy"));
+copyButton(ui.copyAgentsCommand, () => ui.agentsCommand.textContent ?? "", t("copyCommand"));
+
 function renderAgents({ state: bridge, error, agents }: AgentsStatus): void {
 	ui.agentsStatus.hidden = bridge === "off";
 	ui.agentsStatus.textContent =
@@ -4118,7 +4123,10 @@ function renderAgents({ state: bridge, error, agents }: AgentsStatus): void {
 				: bridge === "starting"
 					? t("agentsStarting")
 					: bridge === "missing"
-						? t("agentsMissing")
+						? // Chrome's own words when the host was found but stopped at start, as on a broken ~/.pi-aside.
+							error === null || error.includes("not found")
+							? t("agentsMissing")
+							: `${t("agentsMissing")} (${error})`
 						: t("agentsError", [error ?? ""]);
 }
 

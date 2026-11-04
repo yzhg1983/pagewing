@@ -1,14 +1,36 @@
 {
 	"name": "pi-aside-mcp",
 	"version": "0.1.0",
-	"private": true,
+	"description": "MCP server that lets local agents, such as pi, use pi-aside's page tools in Chrome",
 	"license": "MIT",
 	"type": "module",
-	"description": "MCP server that lets local agents, such as pi, use pi-aside's page tools in Chrome",
-	"bin": {
-		"pi-aside-mcp": "src/cli.ts"
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/yzhg1983/pi-aside.git",
+		"directory": "mcp"
 	},
+	"homepage": "https://github.com/yzhg1983/pi-aside/tree/main/mcp#readme",
+	"keywords": [
+		"mcp",
+		"chrome",
+		"browser",
+		"pi",
+		"agent"
+	],
+	"bin": {
+		"pi-aside-mcp": "dist/cli.js"
+	},
+	"files": [
+		"dist",
+		"README.md",
+		"LICENSE"
+	],
 	"engines": {
-		"node": ">=22.18"
-	}
+		"node": ">=20"
+	},
+	"os": [
+		"darwin",
+		"linux"
+	],
+	"private": true
 }

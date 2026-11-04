@@ -12,10 +12,10 @@ import { NOT_CONNECTED, serve } from "../src/server.ts";
 type Response = { id: number; result?: Record<string, unknown>; error?: { code: number; message: string } };
 
 /** An MCP client on a server: `send` writes a request; `response` waits for the answer to an ID. */
-function client(path: string) {
+function client(path: string, retryUntil = 0) {
 	const input = new PassThrough();
 	const output = new PassThrough();
-	serve(input, output, () => connect(path));
+	serve(input, output, { connect: () => connect(path), retryUntil });
 	const responses: Response[] = [];
 	readLines(
 		output,
@@ -35,9 +35,8 @@ function client(path: string) {
 	};
 }
 
-/** A host stand-in on a socket: records what each session sends. */
-function fakeHost() {
-	const path = join(mkdtempSync(join(tmpdir(), "pi-aside-mcp-")), "bridge.sock");
+/** A host stand-in on a socket, at `path` or a new one: records what each session sends. */
+function fakeHost(path = join(mkdtempSync(join(tmpdir(), "pi-aside-mcp-")), "bridge.sock")) {
 	const received: Record<string, unknown>[] = [];
 	const sockets: Socket[] = [];
 	const server: Server = createServer((socket) => {
@@ -101,6 +100,18 @@ describe("tool calls", () => {
 			content: [{ type: "text", text: NOT_CONNECTED }],
 			isError: true,
 		});
+		mcp.end();
+	});
+
+	it("after a new registration, a call waits for pi-aside to start the host", async () => {
+		const path = join(mkdtempSync(join(tmpdir(), "pi-aside-mcp-")), "bridge.sock");
+		const mcp = client(path, Date.now() + 10_000);
+		mcp.send({ id: 1, method: "tools/call", params: { name: "list_tabs", arguments: {} } });
+		await new Promise((resolve) => setTimeout(resolve, 1500));
+		const host = await fakeHost(path);
+		await expect.poll(() => host.received, { timeout: 3000 }).toHaveLength(2);
+		writeLine(host.sockets[0]!, { type: "result", id: 1, result: { content: [] } });
+		expect((await mcp.response(1)).result).toEqual({ content: [] });
 		mcp.end();
 	});
 

@@ -4,7 +4,6 @@
 
 import { connect as connectSocket, type Socket } from "node:net";
 import type { Readable, Writable } from "node:stream";
-import { fileURLToPath } from "node:url";
 import {
 	type AgentReply,
 	type AgentRequest,
@@ -25,10 +24,9 @@ const INSTRUCTIONS = `pi-aside drives the user's Chrome, with their logins, in a
 Start with open_tab; then read_page for text, observe_page and act_on_page to work the page, run_script for data, \
 and screenshot_page for how it looks.`;
 
-/** What a call says when pi-aside cannot be reached, with the setup command for this copy of the CLI. */
-export const NOT_CONNECTED = `pi-aside is not connected. In Chrome, open pi-aside's side panel, then Settings > \
-Advanced > Local agents, and turn it on. Setup, once: node "${fileURLToPath(new URL("cli.ts", import.meta.url))}" \
-install, then restart Chrome.`;
+/** What a call says when pi-aside cannot be reached. */
+export const NOT_CONNECTED = `pi-aside is not connected. Ask the user to install pi-aside in Chrome, open its side \
+panel, and turn on Settings > Advanced > Local agents.`;
 
 const ENDED = `The connection to pi-aside ended during the call: it may or may not have happened. Check before \
 trying again.`;
@@ -38,12 +36,22 @@ type JsonRpc = { jsonrpc: "2.0"; id?: number | string; method?: string; params?:
 /** Opens a socket to the host; replaced in tests. */
 export type Connect = () => Socket;
 
+/**
+ * How the server reaches the host. `retryUntil`: until this time, a call that finds no host tries again each second:
+ * after a new registration, pi-aside starts the host at its next retry, within 30 s.
+ */
+export type ServeOptions = { connect?: Connect; retryUntil?: number };
+
 /** Serves MCP on `input` and `output` until `input` ends. */
-export function serve(input: Readable, output: Writable, connect: Connect = () => connectSocket(socketPath())): void {
+export function serve(
+	input: Readable,
+	output: Writable,
+	{ connect = () => connectSocket(socketPath()), retryUntil = 0 }: ServeOptions = {},
+): void {
 	const reply = (id: JsonRpc["id"], result: unknown) => writeLine(output, { jsonrpc: "2.0", id, result });
 	const fail = (id: JsonRpc["id"], code: number, message: string) =>
 		writeLine(output, { jsonrpc: "2.0", id, error: { code, message } });
-	const bridge = new Bridge(connect);
+	const bridge = new Bridge(connect, retryUntil);
 
 	readLines(
 		input,
@@ -96,12 +104,14 @@ export function serve(input: Readable, output: Writable, connect: Connect = () =
 class Bridge {
 	name = "agent";
 	readonly #connect: Connect;
+	readonly #retryUntil: number;
 	/** The session's socket, or its connect while it runs: calls that arrive together share one session. */
 	#socket: Promise<Session | null> | null = null;
 	#next = 0;
 
-	constructor(connect: Connect) {
+	constructor(connect: Connect, retryUntil: number) {
 		this.#connect = connect;
+		this.#retryUntil = retryUntil;
 	}
 
 	/** Sends the call to pi-aside and gives its result; a result says when pi-aside cannot be reached. */
@@ -128,12 +138,26 @@ class Bridge {
 
 	/** The session, or a new one; null when the host is not there. */
 	#open(): Promise<Session | null> {
-		this.#socket ??= new Promise((resolve) => {
+		this.#socket ??= this.#attempt();
+		return this.#socket;
+	}
+
+	async #attempt(): Promise<Session | null> {
+		for (;;) {
+			const session = await this.#try();
+			if (session !== null || Date.now() >= this.#retryUntil) {
+				if (session === null) this.#socket = null;
+				return session;
+			}
+			await new Promise((resolve) => setTimeout(resolve, 1000));
+		}
+	}
+
+	/** One connect: the new session, or null when the host is not there. */
+	#try(): Promise<Session | null> {
+		return new Promise((resolve) => {
 			const socket = this.#connect();
-			socket.once("error", () => {
-				this.#socket = null;
-				resolve(null);
-			});
+			socket.once("error", () => resolve(null));
 			socket.once("connect", () => {
 				const session: Session = { socket, calls: new Map() };
 				// An error closes the socket too, which ends the waiting calls.
@@ -153,7 +177,6 @@ class Bridge {
 				resolve(session);
 			});
 		});
-		return this.#socket;
 	}
 
 	/** Every waiting call of the session ends; the next call opens a new session. */

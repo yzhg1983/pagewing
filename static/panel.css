@@ -2593,3 +2593,21 @@ footer {
 .md a {
 	color: var(--accent);
 }
+
+/* Settings > Advanced > Local agents: the command that adds pi-aside to an agent, with Copy. */
+.agent-command {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	margin: 4px 0;
+}
+
+#agents-command {
+	flex: 1;
+	min-width: 0;
+	padding: 4px 6px;
+	border: 1px solid var(--border);
+	border-radius: 4px;
+	font-size: 12px;
+	overflow-wrap: anywhere;
+}

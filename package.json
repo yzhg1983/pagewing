@@ -14,6 +14,7 @@
 	"bugs": "https://github.com/yzhg1983/pagewing/issues",
 	"scripts": {
 		"build": "node build.mjs",
+		"build:mcp": "node mcp/build.mjs",
 		"check": "biome check --write . && tsc --noEmit && tsc --noEmit -p mcp",
 		"icons": "node scripts/icons.mjs",
 		"illustrations": "node scripts/illustrations.mjs",

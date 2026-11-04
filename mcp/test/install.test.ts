@@ -1,6 +1,6 @@
 // Setup: the host script and the manifest Chrome reads.
 
-import { existsSync, mkdtempSync, readFileSync, statSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -31,8 +31,30 @@ describe("install", () => {
 			allowed_origins: [`chrome-extension://${STORE_ID}/`, "chrome-extension://abc/"],
 		});
 		const script = readFileSync(manifest.path, "utf8");
-		expect(script).toContain(`'${process.execPath}' '/opt/pi-aside-mcp/cli.ts' host`);
+		expect(script).toMatch(/^exec '[^']*node' '\/opt\/pi-aside-mcp\/cli.ts' host "\$@"$/m);
 		expect(statSync(manifest.path).mode & 0o777).toBe(0o700);
+	});
+
+	it("keeps the IDs an earlier setup allowed, and writes nothing when nothing changed", () => {
+		const profile = join(home, "profile");
+		const [file] = install("/old/cli.ts", ["unpacked"], [profile]);
+		// The manifest stays as it was; the script names the new CLI.
+		expect(install("/new/cli.ts", [], [profile])).toEqual([join(home, ".pi-aside", "host.sh")]);
+		const manifest = JSON.parse(readFileSync(file!, "utf8"));
+		expect(manifest.allowed_origins).toEqual([`chrome-extension://${STORE_ID}/`, "chrome-extension://unpacked/"]);
+		expect(readFileSync(manifest.path, "utf8")).toContain("/new/cli.ts");
+		expect(install("/new/cli.ts", [], [profile])).toEqual([]);
+	});
+
+	it("by default registers in the installed browsers' folders only", () => {
+		const chrome = join(home, "Library", "Application Support", "Google", "Chrome");
+		if (process.platform !== "darwin") return;
+		expect(install("/cli.ts", [])).toEqual([]);
+		mkdirSync(chrome, { recursive: true });
+		expect(install("/cli.ts", [])).toEqual([
+			join(chrome, "NativeMessagingHosts", `${HOST_NAME}.json`),
+			join(home, ".pi-aside", "host.sh"),
+		]);
 	});
 
 	it("quotes paths for the shell", () => {

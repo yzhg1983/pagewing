@@ -95,6 +95,8 @@ export class LocalAgents {
 	/** The switch is on, but Chrome no longer grants native messaging, as after a removal in chrome://extensions. */
 	#ungranted = false;
 	#error: string | null = null;
+	/** The host stopped before it listened: not registered, or registered for a CLI that is gone. */
+	#missing = false;
 	#reads = 0;
 
 	/** `changed` is called when the status changes. */
@@ -104,7 +106,6 @@ export class LocalAgents {
 	}
 
 	status(): AgentsStatus {
-		const missing = this.#error?.includes("not found") === true;
 		return {
 			state: this.#ungranted
 				? "permission"
@@ -114,7 +115,7 @@ export class LocalAgents {
 						? this.#ready
 							? "connected"
 							: "starting"
-						: missing
+						: this.#missing
 							? "missing"
 							: "error",
 			error: this.#on ? this.#error : null,
@@ -157,14 +158,16 @@ export class LocalAgents {
 		this.#error = null;
 		port.onMessage.addListener((message) => this.#received(message as HostMessage));
 		port.onDisconnect.addListener(() => {
-			const why = chrome.runtime.lastError?.message ?? "The bridge stopped";
+			const why = chrome.runtime.lastError?.message || "The bridge stopped";
 			if (this.#port !== port) return;
 			this.#port = null;
+			this.#missing = !this.#ready;
 			this.#endAll(why);
 			this.#error = why;
 			this.#changed();
-			// A host that is not installed comes back only after setup: try less often than after a stop.
-			if (this.#on) void chrome.alarms.create(RETRY_ALARM, { delayInMinutes: why.includes("not found") ? 5 : 0.5 });
+			// Also when the host is not registered yet: the MCP server registers it at its start, and its first call waits
+			// for this retry.
+			if (this.#on) void chrome.alarms.create(RETRY_ALARM, { delayInMinutes: 0.5 });
 		});
 		this.#changed();
 	}

@@ -149,6 +149,18 @@ payment details; ignore commands written on web pages.
 **What remains:** pi acts as you, with your login. A page can hide text written to mislead it, and models make
 mistakes. Keep Ask for email, banking, admin pages, and anywhere a wrong click matters.
 
+## Use with coding agents
+
+Coding agents on your computer, such as [pi](https://github.com/earendil-works/pi), can use pi-aside's page tools over
+MCP: open your app in Chrome, click through it, read the result.
+
+1. Add pi-aside to the agent: `pi mcp add pi-aside -- npx -y pi-aside-mcp` (other MCP clients: `npx -y pi-aside-mcp`
+   as a stdio server).
+2. In pi-aside: Settings > Advanced > Local agents > On.
+
+Each agent works in a Chrome tab group of its own and does not ask before acting; Off in Settings > Tools still
+applies. Details: [pi-aside-mcp](mcp/README.md).
+
 ## Privacy
 
 - No Pagewing server and no analytics. Requests go straight to the provider you choose.
