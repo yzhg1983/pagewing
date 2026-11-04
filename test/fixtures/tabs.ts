@@ -85,6 +85,8 @@ export function panel(chats: Chats, tabs: Tabs, tabId: number) {
 		edit: (entryId: number, text: string, requestId: string, keep: readonly number[] = []) =>
 			chats.edit(tabId, rev(), id() ?? -1, entryId, text, keep, requestId),
 		abort: () => chats.abort(tabId, rev()),
+		withdraw: (inputId: number) => chats.withdraw(tabId, rev(), inputId),
+		sendNow: (inputId: number) => chats.sendNow(tabId, rev(), inputId),
 		newChat: () => chats.newChat(tabId, rev()),
 		openChat: (target: number) => chats.openChat(tabId, rev(), target),
 		setModel: (model: ModelRef) => chats.setModel(tabId, rev(), model),

@@ -1,8 +1,9 @@
 // Copy and Edit of a sent message in the production panel (design 6.34): Copy and Edit under each question, Esc and
 // Cancel, what the model gets after an edit, the note over the new chat and Open original, History, and Edit
-// waiting while an answer runs; Stop giving back the messages it took off the queue as drafts; removing the tab's own
+// waiting while an answer runs; Stop giving back the messages it took off the queue as drafts; Take back, Send now,
+// and Ctrl+Enter on a queued message (design 6.44); removing the tab's own
 // chat from History, which stays open with its Undo. editor.png, edited.png,
-// and stopped.png in the artifacts folder show them. Only a loopback page and
+// stopped.png, and queued.png in the artifacts folder show them. Only a loopback page and
 // an in-process faux provider, in a disposable Chrome profile and temporary bundle. No installed dist/, accounts, or
 // paid requests.
 import assert from "node:assert/strict";
@@ -347,6 +348,62 @@ try {
 	);
 	check("and sends neither", (await requests()).length === 5);
 	await panel.screenshot({ path: join(dir, "stopped.png") });
+
+	// Take back and Send now on a queued message, and Ctrl+Enter (design 6.44).
+	await composer.fill("");
+	await worker.evaluate(() => globalThis.__piEdit.answer("Never shown either.", true));
+	await composer.fill("fifth question");
+	await composer.press("Enter");
+	await poll(async () => (await requests()).length === 6, "held request with a queue");
+	const queuedTurn = panel.locator(".queued-turn");
+	await composer.fill("take me back");
+	await composer.press("Enter");
+	await poll(async () => (await queuedTurn.count()) === 1, "a queued message");
+	await queuedTurn.locator('button[title="Take back to the drafts"]').click();
+	await poll(async () => (await composer.inputValue()) === "take me back", "taken back to the message box");
+	check(
+		"Take back returns the queued message to the message box, and the answer goes on",
+		(await queuedTurn.count()) === 0 && !(await worker.evaluate(() => globalThis.__piEdit.aborted)),
+	);
+	await composer.fill("send me now");
+	await composer.press("Enter");
+	await poll(async () => (await queuedTurn.count()) === 1, "a queued message to send now");
+	await panel.screenshot({ path: join(dir, "queued.png") });
+	await worker.evaluate(() => globalThis.__piEdit.answer("Sent now."));
+	await queuedTurn.locator('button[title="Send now: stops the current answer"]').click();
+	// The held answer ignores the abort until released, as in Stop's case above.
+	await poll(() => worker.evaluate(() => globalThis.__piEdit.aborted), "held request aborted");
+	await worker.evaluate(() => globalThis.__piEdit.release());
+	await poll(
+		async () => (await transcript()).some((line) => line.includes("Sent now.")),
+		"the queued message answered",
+	);
+	await worker.evaluate(() => globalThis.__piEdit.release());
+	check(
+		"Send now stops the answer and sends the queued message at once",
+		(await requests()).length === 7 && (await requests()).at(-1).at(-1) === "user: send me now",
+	);
+	await worker.evaluate(() => globalThis.__piEdit.answer("Never shown again.", true));
+	await composer.fill("sixth question");
+	await composer.press("Enter");
+	await poll(async () => (await requests()).length === 8, "held request for Ctrl+Enter");
+	await worker.evaluate(() => globalThis.__piEdit.answer("Ctrl answered."));
+	await composer.fill("ctrl now");
+	await composer.press("Control+Enter");
+	// The held answer ignores the abort until released, as in Stop's case above.
+	await poll(() => worker.evaluate(() => globalThis.__piEdit.aborted), "held request aborted");
+	await worker.evaluate(() => globalThis.__piEdit.release());
+	await poll(async () => (await transcript()).some((line) => line.includes("Ctrl answered.")), "Ctrl+Enter answered");
+	check(
+		"Ctrl+Enter stops the answer and sends the typed message now",
+		(await requests()).length === 9 && (await requests()).at(-1).at(-1) === "user: ctrl now",
+	);
+	check(
+		"Settings > Sending says what Ctrl+Enter does",
+		(await panel.locator("#busy-note").textContent()).includes(
+			`${process.platform === "darwin" ? "Cmd" : "Ctrl"}+Enter stops the answer and sends it now.`,
+		),
+	);
 
 	// Removing the chat the tab shows: the tab starts fresh, and History stays with its Undo (design 6.30).
 	await panel.locator("#open-history").click();

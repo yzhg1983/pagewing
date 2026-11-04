@@ -45,6 +45,8 @@ export const SELECTION_KIND = "web.selection";
 export const MESSAGE_KIND = "web.message";
 /** Entry kind of a typed input with attachments and neither a page nor a selection; `data` is `InputData` (6.42). */
 export const INPUT_KIND = "web.input";
+/** Entry kind of Send now's write, which starts the queued inputs' run after a stopped one (design 6.44); not shown. */
+export const SEND_NOW_KIND = "web.send-now";
 
 export const EMPTY_CHAT: ChatView = {
 	conversationId: null,

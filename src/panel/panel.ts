@@ -95,6 +95,10 @@ import { renderAnswer, safeHref } from "./markdown.ts";
 import { expandCommand, matchingCommands, type SlashCommand, slashCommands } from "./slash.ts";
 
 localizeDocument(document);
+// Send now's key is Cmd+Enter on a Mac, Ctrl+Enter elsewhere (design 6.44); the composer takes either.
+document
+	.getElementById("busy-note")
+	?.replaceChildren(t("whilePiWorksNote", [/Mac/.test(navigator.platform) ? "Cmd" : "Ctrl"]));
 
 function element<T extends HTMLElement>(id: string): T {
 	const found = document.getElementById(id);
@@ -1283,7 +1287,7 @@ function renderTranscript(next: PanelState): void {
 	for (const item of chat.queued) {
 		let queued = queuedNodes.get(item.id);
 		if (queued === undefined) {
-			queued = inputNode(item, item.mode);
+			queued = queuedNode(item);
 			queuedNodes.set(item.id, queued);
 		}
 		tail.push(queued);
@@ -1633,6 +1637,31 @@ function inputNode(
 	if (input.source !== null) bubble.append(sourceNode(input.source));
 	if (input.moved !== undefined) bubble.append(movedNode(input.moved));
 	return bubble;
+}
+
+/** A queued input: its bubble, and under it Take back and Send now (design 6.44). */
+function queuedNode(input: QueuedInput): HTMLElement {
+	const takeBack = node("button", "icon-button small", icon("take-back"));
+	const now = node("button", "icon-button small", icon("send-now"));
+	takeBack.title = t("takeBack");
+	now.title = t("sendNow");
+	const act = (button: HTMLButtonElement, type: "withdraw" | "send-now") => {
+		if (state === undefined) return;
+		// Once: a second click would find the input gone and say pi read it.
+		button.disabled = true;
+		client.request({ type, rev: state.rev, inputId: input.id }).catch((error: Error) => {
+			button.disabled = false;
+			showComposerError(error.message);
+		});
+	};
+	takeBack.addEventListener("click", () => act(takeBack, "withdraw"));
+	now.addEventListener("click", () => act(now, "send-now"));
+	return node(
+		"div",
+		"turn queued-turn",
+		inputNode(input, input.mode),
+		node("div", "actions turn-actions", takeBack, now),
+	);
 }
 
 /** Where the tab was when the message was sent, as the model was told (design 6.28). */
@@ -2549,8 +2578,11 @@ function showComposerError(text: string): void {
 	renderComposer();
 }
 
-/** `other`: Alt+Enter, which sends a message while pi works the other way than Enter does (design 6.39). */
-function send(other = false): void {
+/**
+ * Sends the composer's message. While pi works, `enter` goes as Settings > Sending says, `other` (Alt+Enter) the other
+ * way (design 6.39), and `now` (Ctrl+Enter) stops the answer and sends it now (design 6.44).
+ */
+function send(how: "enter" | "other" | "now"): void {
 	const draft = composerDraft;
 	const quoted = quote && draft?.selection != null;
 	const page = attachedPage();
@@ -2568,7 +2600,7 @@ function send(other = false): void {
 	}
 	closeSlash();
 	const enter = state?.settings.enterWhileBusy ?? "steer";
-	const whenBusy = other ? (enter === "steer" ? "followUp" : "steer") : enter;
+	const whenBusy = how === "now" ? how : how === "other" ? (enter === "steer" ? "followUp" : "steer") : enter;
 	if (attachments.some((each) => !each.ready)) return;
 	const files = attachments.flatMap((each) => (each.ready ? [each.attachment] : []));
 	sendText(text, { draft, quote: quoted, page, fromComposer: true, whenBusy, attachments: files });
@@ -2642,7 +2674,7 @@ function sendText(
 		quote: boolean;
 		page: AttachedPage | null;
 		fromComposer: boolean;
-		whenBusy: WhenBusy;
+		whenBusy: WhenBusy | "now";
 		/** Taken when Send is: a resend after a lost reply carries the same ones (design 6.42). */
 		attachments: MessageAttachment[];
 	},
@@ -2698,7 +2730,7 @@ function abort(): void {
 	client.request({ type: "abort", rev: state.rev }).catch((error: Error) => showComposerError(error.message));
 }
 
-ui.send.addEventListener("click", (event) => send(event.altKey));
+ui.send.addEventListener("click", (event) => send(event.altKey ? "other" : "enter"));
 ui.stop.addEventListener("click", abort);
 ui.composer.setAttribute("aria-autocomplete", "list");
 ui.composer.setAttribute("aria-controls", "slash-menu");
@@ -2726,7 +2758,7 @@ ui.composer.addEventListener("keydown", (event) => {
 	}
 	if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
 		event.preventDefault();
-		send(event.altKey);
+		send(event.ctrlKey || event.metaKey ? "now" : event.altKey ? "other" : "enter");
 	}
 });
 ui.composer.addEventListener("input", () => {

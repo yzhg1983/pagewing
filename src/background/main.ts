@@ -754,6 +754,14 @@ function log(via: Attachment["via"], line: string): void {
 const drafts = new Drafts(() => schedule());
 
 /**
+ * The draft of an input taken off the queue by Stop or Take back. Drafts keep text only (design 6.42): `note` says
+ * when its attachments were not kept, so an input of attachments alone still shows that it was withdrawn.
+ */
+function withdrawnDraft(tabId: number, text: string, note: string | null): Omit<Draft, "id" | "createdAt"> {
+	return { tabId, text, selection: null, page: null, prompt: null, key: null, note, insert: false };
+}
+
+/**
  * A draft from a gesture, which may end after its tab was replaced or closed. Drafts saves in call order, so a move or
  * drop that runs later takes it too.
  */
@@ -973,9 +981,21 @@ async function run(command: Command, tabId: number | null): Promise<unknown> {
 				input = pageInput(requestId, text, ref, prompt, await pageMove(ref), attachments);
 				key = pageKey;
 			}
-			const id = await chats.send(tab, command.rev, command.conversationId, { ...input, whenBusy }, key);
+			const id = await chats.send(
+				tab,
+				command.rev,
+				command.conversationId,
+				{ ...input, whenBusy: whenBusy === "now" ? "steer" : whenBusy },
+				key,
+			);
 			if (command.draftId !== null) await drafts.remove(command.draftId).catch(() => {});
 			await appendLog(harness, `send panel: tab ${tab}: admitted ${id}`).catch(() => {});
+			// Not awaited: the message is admitted, and the stop can wait up to 30 s for a script. An input that started
+			// its own run, or that the run took meanwhile, is answered now already.
+			if (whenBusy === "now")
+				chats
+					.sendNow(tab, command.rev, Number(id))
+					.catch((error: Error) => appendLog(harness, `send now: tab ${tab}: ${error.message}`).catch(() => {}));
 			return Number(id);
 		}
 		case "retry": {
@@ -996,17 +1016,19 @@ async function run(command: Command, tabId: number | null): Promise<unknown> {
 			const tab = needTab(tabId);
 			// Inputs Stop withdrew from the queue come back as drafts, so what the user wrote is not lost.
 			for (const { text, lost } of await (await session()).chats.abort(tab, command.rev))
-				await addDraft({
-					tabId: tab,
-					text,
-					selection: null,
-					page: null,
-					prompt: null,
-					key: null,
-					// Drafts keep text only (design 6.42): an input of attachments alone still shows that it was withdrawn.
-					note: lost > 0 ? t("attachmentsNotKept") : null,
-					insert: false,
-				});
+				await addDraft(withdrawnDraft(tab, text, lost > 0 ? t("attachmentsNotKept") : null));
+			return;
+		}
+		case "withdraw": {
+			const tab = needTab(tabId);
+			const taken = await (await session()).chats.withdraw(tab, command.rev, command.inputId);
+			if (taken === null) throw new Error(t("alreadyRead"));
+			await addDraft(withdrawnDraft(tab, taken.text, taken.lost > 0 ? t("takenBackNotKept") : null));
+			return;
+		}
+		case "send-now": {
+			if (!(await (await session()).chats.sendNow(needTab(tabId), command.rev, command.inputId)))
+				throw new Error(t("alreadyRead"));
 			return;
 		}
 		case "new-chat": {

@@ -56,6 +56,7 @@ import {
 	projectEarlier,
 	queuedInputs,
 	SELECTION_KIND,
+	SEND_NOW_KIND,
 } from "./projection.ts";
 import { chatImages, imagesIn } from "./screenshot.ts";
 import type { Tabs } from "./tabs.ts";
@@ -150,8 +151,11 @@ export type ChatsOptions = {
 	now?: () => number;
 };
 
-/** The Harness's queue settings: steers typed in a burst reach the model together, at the next tool round (design 6.39). */
-export const QUEUE_SETTINGS = { steeringMode: "all" } as const satisfies HarnessSettings;
+/**
+ * The Harness's queue settings: steers typed in a burst reach the model together, at the next tool round, and waiting
+ * follow-ups together after the answer, so Send now sends the whole queue (design 6.39, 6.44).
+ */
+export const QUEUE_SETTINGS = { steeringMode: "all", followUpMode: "all" } as const satisfies HarnessSettings;
 
 /** `whenBusy`: how the input queues while the chat runs or has queued inputs; default `followUp` (design 6.39). */
 export type Input = { requestId: string; content: UserInput; entry?: InputEntry; whenBusy?: WhenBusy };
@@ -413,6 +417,74 @@ export class Chats {
 			}
 			return withdrawn;
 		});
+	}
+
+	/**
+	 * Takes back queued input `inputId` of the tab's chat, whose run goes on (design 6.44). Returns its text and how many
+	 * attachments it had, which are not kept, as Stop's; null when the chat's run took it first.
+	 */
+	withdraw(tabId: number, rev: number, inputId: number): Promise<{ text: string; lost: number } | null> {
+		return this.#serial(async () => {
+			const chat = await this.#current(tabId, rev, t("nothingWithdrawn"));
+			if (typeof chat !== "number") return null;
+			const conversationId = chat as ConversationId;
+			const input = queuedInputs(await this.#harness.snapshot(InboxDoc, conversationId, context)).find(
+				(queued) => queued.id === inputId,
+			);
+			if (input === undefined) return null;
+			const result = await this.#options.admit(() =>
+				this.#harness.abortSubmission(inputId as SubmissionId, context, conversationId),
+			);
+			return result === "aborted" ? { text: input.sent ?? input.text, lost: input.attachments?.length ?? 0 } : null;
+		});
+	}
+
+	/**
+	 * Send now (design 6.44): stops the run of the tab's chat, and its queued inputs start the next run, in the order
+	 * they were sent. Only while input `inputId` is queued: false when the run took it first, and stopping would stop
+	 * it too.
+	 */
+	async sendNow(tabId: number, rev: number, inputId: number): Promise<boolean> {
+		const stopped = await this.#serial(async () => {
+			const chat = await this.#current(tabId, rev, t("nothingSent"));
+			if (typeof chat !== "number") return undefined;
+			const conversationId = chat as ConversationId;
+			const queued = async () =>
+				queuedInputs(await this.#harness.snapshot(InboxDoc, conversationId, context)).some(
+					(input) => input.id === inputId,
+				);
+			const running = async () => (await this.#harness.snapshot(LiveDoc, conversationId, context))?.run?.taskId;
+			let taskId = await running();
+			for (;;) {
+				// Read after the task: a boundary that places the input ends that task in the same commit, so an input still
+				// queued here is not in it, and stopping it cannot stop the input's own run.
+				if (!(await queued())) return undefined;
+				if (taskId === undefined) return { conversationId, taskId };
+				const id = taskId;
+				// `abortTask()` ends only the run; `Conversation.abort()`, as Stop uses, would withdraw the queue too.
+				if ((await this.#options.admit(() => this.#harness.abortTask(id, context))) === "marked")
+					return { conversationId, taskId };
+				// "terminal": a boundary handed the run to a new task after the read, so this stopped nothing.
+				const next = await running();
+				taskId = next === id ? undefined : next;
+			}
+		});
+		if (stopped === undefined) return false;
+		// Outside the queue of commands: a tool that is slow to stop holds only this chat.
+		if (stopped.taskId !== undefined) await this.#harness.waitForTask(stopped.taskId, context);
+		await this.#serial(async () => {
+			const { conversationId } = stopped;
+			// A stopped run leaves its queue for the next input or write: this write places the queue and starts its run.
+			// Its empty `model` adds nothing the model sees, but makes it wait for that boundary as a context change. A
+			// send meanwhile placed the queue already.
+			if ((await this.#harness.snapshot(LiveDoc, conversationId, context))?.run !== undefined) return;
+			if (queuedInputs(await this.#harness.snapshot(InboxDoc, conversationId, context)).length === 0) return;
+			const conversation = await this.#conversation(conversationId);
+			await this.#options.admit(() =>
+				conversation.submit({ type: "write", entry: { kind: SEND_NOW_KIND, model: [] } }, context),
+			);
+		});
+		return true;
 	}
 
 	/**

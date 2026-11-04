@@ -911,3 +911,50 @@ it("a send's attachments are checked again and go into its entry; Stop's draft o
 	);
 	faux.state.callCount = 0;
 });
+
+it("Take back makes a draft that says its attachments were not kept, then pi already read it; Ctrl+Enter's send stops the answer (design 6.44)", async () => {
+	const tabId = 62;
+	browser.open.add(tabId);
+	faux.state.callCount = 0;
+	const hang = (_: unknown, options?: { signal?: AbortSignal }) =>
+		new Promise<never>((_, reject) =>
+			options?.signal?.addEventListener("abort", () => reject(new Error("interrupted"))),
+		);
+	faux.setResponses([hang, fauxAssistantMessage("now answered")]);
+	const url = "https://a.test/queue";
+	browser.inject = async () => read(url);
+	fire("action.onClicked", { id: tabId, url, title: "Queue" });
+	await vi.waitFor(() => expect(workerSession.tabs.get(tabId)?.page?.url).toBe(url));
+	let shown = await panel(tabId);
+	const send = (requestId: string, text: string, whenBusy: "followUp" | "now", attachments: unknown[] = []) =>
+		shown.run({
+			type: "send",
+			rev: shown.state.rev,
+			conversationId: shown.state.chat.conversationId,
+			requestId,
+			text,
+			draftId: null,
+			quote: false,
+			page: null,
+			whenBusy,
+			attachments: attachments as never[],
+		});
+	expect(await send("first 62", "long task", "followUp")).toMatchObject({ ok: true });
+	await vi.waitFor(() => expect(faux.state.callCount).toBe(1));
+	shown = await panel(tabId);
+	const queued = await send("queued 62", "later", "followUp", [{ kind: "file", name: "notes.txt", text: "hello" }]);
+	const inputId = (queued as { result: number }).result;
+	expect(await shown.run({ type: "withdraw", rev: shown.state.rev, inputId })).toMatchObject({ ok: true });
+	await vi.waitFor(async () =>
+		expect((await drafts()).filter((draft) => draft.tabId === tabId)).toMatchObject([
+			{ text: "later", note: t("takenBackNotKept") },
+		]),
+	);
+	expect(await shown.run({ type: "withdraw", rev: shown.state.rev, inputId })).toMatchObject({
+		ok: false,
+		error: t("alreadyRead"),
+	});
+	expect(await send("now 62", "now", "now")).toMatchObject({ ok: true });
+	await vi.waitFor(() => expect(faux.state.callCount).toBe(2));
+	faux.state.callCount = 0;
+});

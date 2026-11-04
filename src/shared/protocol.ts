@@ -9,7 +9,7 @@
 
 import type { Preset } from "./presets.ts";
 
-export const PROTOCOL_VERSION = 42;
+export const PROTOCOL_VERSION = 43;
 export const PANEL_PORT = "panel";
 export const MAX_UNACKED = 4;
 
@@ -301,8 +301,11 @@ export type Command =
 			quote: boolean;
 			/** Without a quote: the page to attach, as the panel showed it; null attaches none. */
 			page: AttachedPage | null;
-			/** Used only while the chat runs or has queued inputs. */
-			whenBusy: WhenBusy;
+			/**
+			 * Used only while the chat runs or has queued inputs. `now`: queued as a steer, then Send now stops the
+			 * answer (design 6.44).
+			 */
+			whenBusy: WhenBusy | "now";
 			/** Images and text files, in the order added; with one, `text` may be empty (design 6.42). */
 			attachments: MessageAttachment[];
 	  }
@@ -322,6 +325,10 @@ export type Command =
 	  }
 	/** Stop: the tab's chat stops its run and withdraws its queued inputs, whose text becomes the tab's drafts. */
 	| { type: "abort"; rev: number }
+	/** Takes queued input `inputId` back to the tab's drafts; the run goes on (design 6.44). */
+	| { type: "withdraw"; rev: number; inputId: number }
+	/** Send now: stops the run, whose queued inputs, `inputId` among them, start the next one (design 6.44). */
+	| { type: "send-now"; rev: number; inputId: number }
 	/** The tab starts fresh; the chat it leaves keeps working. `attachPage` is false after Don't attach. */
 	| { type: "new-chat"; rev: number; attachPage: boolean }
 	/**

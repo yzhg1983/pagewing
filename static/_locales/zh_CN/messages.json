@@ -216,7 +216,7 @@
 		"message": "按 Enter 后，消息在 pi 回答完成后发送"
 	},
 	"whilePiWorksNote": {
-		"message": "pi 工作时按 Enter 发送消息的方式。按 Alt+Enter 则按另一种方式发送。"
+		"message": "pi 工作时按 Enter 如何发送消息。Alt+Enter 用另一种方式发送；$1+Enter 会停下当前回答，立即发送。"
 	},
 	"sendDefaultPrompt": {
 		"message": "使用默认提示词发送"
@@ -526,6 +526,15 @@
 	},
 	"queuedFollowUp": {
 		"message": "回答后发送"
+	},
+	"takeBack": {
+		"message": "撤回到草稿"
+	},
+	"sendNow": {
+		"message": "立即发送：停下当前回答"
+	},
+	"alreadyRead": {
+		"message": "pi 已经读到这条消息。"
 	},
 	"storageFull": {
 		"message": "Chrome 已没有空间保存 pi-aside 的对话，新的消息和回答不会被保存。请释放磁盘空间，或在“设置 > 高级 > 数据”中删除所有对话。"
@@ -1346,6 +1355,9 @@
 	"nothingStopped": {
 		"message": "未停止任何内容"
 	},
+	"nothingWithdrawn": {
+		"message": "未撤回任何消息"
+	},
 	"tryAgain": {
 		"message": "请重试"
 	},
@@ -1705,6 +1717,9 @@
 	},
 	"attachmentsNotKept": {
 		"message": "已停止，附件未保留"
+	},
+	"takenBackNotKept": {
+		"message": "已撤回，附件未保留"
 	},
 	"modelNoImages": {
 		"message": "这个模型无法读取图片：请换一个模型，或移除图片。"

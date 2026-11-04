@@ -27,7 +27,7 @@ import {
 	TabChanged,
 	typedInput,
 } from "../src/background/chats.ts";
-import { INPUT_KIND, MESSAGE_KIND, SELECTION_KIND } from "../src/background/projection.ts";
+import { contentText, INPUT_KIND, MESSAGE_KIND, SELECTION_KIND } from "../src/background/projection.ts";
 import { attached, fileBlock } from "../src/shared/attachments.ts";
 import type { MessageAttachment, SelectionEntryData, Thinking } from "../src/shared/protocol.ts";
 import { memoryStore, openChats, panel } from "./fixtures/tabs.ts";
@@ -696,6 +696,119 @@ it("Stop returns the text of the inputs it withdrew from the queue, not of the r
 	// Nothing queued, nothing returned; a fresh tab has no chat to stop.
 	expect(await one.abort()).toEqual([]);
 	expect(await tab(2).abort()).toEqual([]);
+});
+
+it("Take back returns one queued input as Stop would, and the run goes on (design 6.44)", async () => {
+	const { faux, start } = setup();
+	const gate = Promise.withResolvers<void>();
+	faux.setResponses([held(gate.promise, "first answered"), fauxAssistantMessage("third answered")]);
+	const { tab } = await start();
+	const one = tab(1);
+	await one.send({ requestId: "r1", content: "first" });
+	await vi.waitFor(() => expect(faux.state.callCount).toBe(1));
+	const second = await one.send(typedInput("r2", "second", attached([IMAGE])));
+	await one.send({ requestId: "r3", content: "third" });
+	await vi.waitFor(() => expect(one.chat.queued).toHaveLength(2));
+
+	expect(await one.withdraw(Number(second))).toEqual({ text: "second", lost: 1 });
+	expect(one.chat.queued.map((input) => input.text)).toEqual(["third"]);
+	expect(one.chat.busy).toBe(true);
+	// Only once: it is no longer queued.
+	expect(await one.withdraw(Number(second))).toBeNull();
+	gate.resolve();
+	await vi.waitFor(() => expect(one.chat.busy).toBe(false));
+	expect(one.chat.entries.filter((entry) => entry.role === "user").map((entry) => entry.text)).toEqual([
+		"first",
+		"third",
+	]);
+});
+
+it("Take back and Send now refuse an input the run took first (design 6.44)", async () => {
+	const { faux, start } = setup();
+	const gate = Promise.withResolvers<void>();
+	faux.setResponses([
+		async () => {
+			await gate.promise;
+			return fauxAssistantMessage([{ type: "toolCall", id: "c", name: "missing_tool", arguments: {} }], {
+				stopReason: "toolUse",
+			});
+		},
+		hang,
+	]);
+	const { tab } = await start();
+	const one = tab(1);
+	await one.send({ requestId: "r1", content: "task" });
+	await vi.waitFor(() => expect(faux.state.callCount).toBe(1));
+	const steer = await one.send({ requestId: "r2", content: "fix", whenBusy: "steer" });
+	gate.resolve();
+	// The steer joined the run at its tool round.
+	await vi.waitFor(() => expect(faux.state.callCount).toBe(2));
+	await vi.waitFor(() => expect(one.chat.queued).toEqual([]));
+	expect(await one.withdraw(Number(steer))).toBeNull();
+	expect(await one.sendNow(Number(steer))).toBe(false);
+	expect(one.chat.busy).toBe(true);
+	await one.abort();
+});
+
+it.each(["followUp", "steer"] as const)(
+	"Send now stops the run, and the queue, a %s among it, runs next with its attachments (design 6.44)",
+	async (whenBusy) => {
+		const { faux, start } = setup();
+		const asked: number[] = [];
+		faux.setResponses([
+			hang,
+			(context) => {
+				const last = context.messages.at(-1);
+				asked.push(Array.isArray(last?.content) ? last.content.length : 0);
+				return fauxAssistantMessage("now answered");
+			},
+		]);
+		const { tab } = await start();
+		const one = tab(1);
+		await one.send({ requestId: "r1", content: "long task" });
+		await vi.waitFor(() => expect(faux.state.callCount).toBe(1));
+		const later = await one.send({ ...typedInput("r2", "now", attached([NOTES])), whenBusy });
+		await vi.waitFor(() => expect(one.chat.queued).toHaveLength(1));
+
+		expect(await one.sendNow(Number(later))).toBe(true);
+		await vi.waitFor(() => expect(faux.state.callCount).toBe(2));
+		await vi.waitFor(() => expect(one.chat.busy || one.chat.queued.length > 0).toBe(false));
+		const users = one.chat.entries.filter((entry) => entry.role === "user");
+		expect(users.map((entry) => [entry.text, entry.attachments?.length ?? 0])).toEqual([
+			["long task", 0],
+			["now", 1],
+		]);
+		// The text and the file, as sent.
+		expect(asked).toEqual([2]);
+	},
+);
+
+it("Send now on the second of two waiting follow-ups sends both, in order, in one run (design 6.44)", async () => {
+	const { faux, start } = setup();
+	const asked: string[][] = [];
+	faux.setResponses([
+		hang,
+		(context) => {
+			asked.push(
+				context.messages
+					.filter((message) => message.role === "user")
+					.map((message) => contentText(message.content)),
+			);
+			return fauxAssistantMessage("both answered");
+		},
+	]);
+	const { tab } = await start();
+	const one = tab(1);
+	await one.send({ requestId: "r1", content: "long task" });
+	await vi.waitFor(() => expect(faux.state.callCount).toBe(1));
+	await one.send({ requestId: "r2", content: "first", whenBusy: "followUp" });
+	const second = await one.send({ requestId: "r3", content: "second", whenBusy: "followUp" });
+	await vi.waitFor(() => expect(one.chat.queued).toHaveLength(2));
+
+	expect(await one.sendNow(Number(second))).toBe(true);
+	await vi.waitFor(() => expect(faux.state.callCount).toBe(2));
+	await vi.waitFor(() => expect(one.chat.busy || one.chat.queued.length > 0).toBe(false));
+	expect(asked).toEqual([["long task", "first", "second"]]);
 });
 
 it("a model choice in a fresh tab is the model of its first send, also while the choice is saved", async () => {

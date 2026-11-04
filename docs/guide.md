@@ -37,7 +37,11 @@ is in [Page tools: what the model sees](page-tools.md).
   sent while pi was busy, and that had not started yet, come back as drafts under the message box.
 - **It keeps working in the background.** Switch tabs or chats and the task goes on; several chats can work at once.
   A message sent while pi is busy joins the task after its current step (Enter), or waits for the answer (Alt+Enter);
-  Settings > Sending swaps the two.
+  Settings > Sending swaps the two. Messages that wait go to pi together, in one turn, when the answer ends. Until pi reads it, a waiting message has two buttons: **Take back** returns its
+  text to the drafts under the message box (not its attachments) while the task goes on, and **Send now** stops the
+  answer, keeping the steps done so far, and sends the waiting messages at once, in the order you sent them.
+  Ctrl+Enter (Cmd+Enter on a Mac) sends a new message the same way. If Chrome stops pi right after Send now, the
+  messages stay waiting: click Send now again, or send any message.
 - **Its reach is the tab group.** pi works on the attached tab and the other tabs in its Chrome group, or the tab alone
   if it is in no group. Tabs it opens join that group. Chats that share a group are not kept apart: one can change a
   page that another just read.
@@ -110,8 +114,8 @@ to 10 of them, and can be only images or files with no text.
   that an image was there: that model cannot see them.
 - Large files fill the model's context fast. If a provider says the request is too long, send fewer or shorter files,
   or choose a model with a larger context.
-- Edit keeps a message's attachments; ✕ leaves one out. Stop does not keep the attachments of a message it takes off
-  the queue, and says so. Export lists their names only.
+- Edit keeps a message's attachments; ✕ leaves one out. Stop and Take back do not keep the attachments of a message
+  they take off the queue, and say so; Send now keeps them. Export lists their names only.
 
 ## Chats and History
 
@@ -182,6 +186,10 @@ does not include them. Turn it Off if OpenAI refuses it for your model or accoun
 Change them at `chrome://extensions/shortcuts`. Chrome leaves a shortcut unset when another extension has it (Settings
 > Advanced > Shortcuts then shows "Not set").
 
+In the message box, Enter sends and Shift+Enter starts a new line. While pi works, Alt+Enter sends the other way than
+Enter (join the task or wait for the answer), and Ctrl+Enter (Cmd+Enter on a Mac) stops the answer and sends the
+message now ([How the agent works](#how-the-agent-works)). These keys are fixed.
+
 ## Languages
 
 The interface follows Chrome's language: English or Simplified Chinese; other languages fall back to English. Restart
@@ -198,7 +206,7 @@ Open Settings with the button at the top of the panel. The defaults below are th
 | Providers | API keys and the ChatGPT sign-in ([Setting up a provider](#setting-up-a-provider)), and OpenAI's [web search](#openai-web-search) | No API key or ChatGPT sign-in; web search On |
 | Models | The model list: Update downloads the current one ([Update the model list](#update-the-model-list)) | The list that came with pi-aside |
 | Answers | Answer language, also the Translate target ([Languages](#languages)) | Auto (Chrome language) |
-| Sending | **Ask pi**: Send at once or Edit first ([Asking about a page](#asking-about-a-page)). **While pi works**: what Enter does with a message, Join the task or Wait; Alt+Enter does the other ([How the agent works](#how-the-agent-works)) | Send at once; Join the task |
+| Sending | **Ask pi**: Send at once or Edit first ([Asking about a page](#asking-about-a-page)). **While pi works**: what Enter does with a message, Join the task or Wait; Alt+Enter does the other, Ctrl+Enter sends now ([How the agent works](#how-the-agent-works)) | Send at once; Join the task |
 | Prompts | The right-click menu and the `/` list: edit, add, delete, reorder, star, switch off, reset ([Prompts](#prompts)) | The 5 built-in prompts, all on, Explain starred |
 | Tools | Read page, Observe page, Screenshot page: Off or On. Act on page, Run script: Off, Ask, or On. Page tool calls per answer, 5 to 200 ([How the agent works](#how-the-agent-works)) | Read page, Observe page, Screenshot page On; Act on page, Run script Ask; 50 calls |
 | Advanced > Sites | The sites pi uses without asking: remove one, or Allow all sites ([Sites](#sites)) | None |

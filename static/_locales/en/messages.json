@@ -216,7 +216,7 @@
 		"message": "Enter sends the message when pi has answered"
 	},
 	"whilePiWorksNote": {
-		"message": "What Enter does with a message while pi works. Alt+Enter sends it the other way."
+		"message": "What Enter does with a message while pi works. Alt+Enter sends it the other way; $1+Enter stops the answer and sends it now."
 	},
 	"sendDefaultPrompt": {
 		"message": "Send it with the default prompt"
@@ -526,6 +526,15 @@
 	},
 	"queuedFollowUp": {
 		"message": "After the answer"
+	},
+	"takeBack": {
+		"message": "Take back to the drafts"
+	},
+	"sendNow": {
+		"message": "Send now: stops the current answer"
+	},
+	"alreadyRead": {
+		"message": "pi already read this message."
 	},
 	"storageFull": {
 		"message": "Chrome has no room left to save pi-aside's chats, so new messages and answers are not saved. Free up disk space, or delete all chats in Settings > Advanced > Data."
@@ -1346,6 +1355,9 @@
 	"nothingStopped": {
 		"message": "nothing was stopped"
 	},
+	"nothingWithdrawn": {
+		"message": "nothing was taken back"
+	},
 	"tryAgain": {
 		"message": "try again"
 	},
@@ -1705,6 +1717,9 @@
 	},
 	"attachmentsNotKept": {
 		"message": "stopped, and its attachments were not kept"
+	},
+	"takenBackNotKept": {
+		"message": "taken back, and its attachments were not kept"
 	},
 	"modelNoImages": {
 		"message": "This model can't read images; choose another model, or remove the images."

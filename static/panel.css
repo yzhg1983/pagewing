@@ -1540,7 +1540,8 @@ body.callback h1 {
 	margin: 2px 0 0;
 }
 
-.turn:not(:hover, :focus-within) > .turn-actions {
+/* A queued input's Take back and Send now stay shown: they are what it is for while it waits (design 6.44). */
+.turn:not(.queued-turn):not(:hover, :focus-within) > .turn-actions {
 	opacity: 0;
 }
 
