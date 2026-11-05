@@ -106,7 +106,7 @@ function use(next: Stored | undefined): void {
 	overlay = {};
 	for (const provider of Object.keys(PROVIDERS) as ProviderId[]) {
 		const entry = next?.providers[provider];
-		// A pi-aside update with a newer bundle drops an older download.
+		// A Pagewing update with a newer bundle drops an older download.
 		if (!isRecord(entry) || !isNumber(entry.lastModified) || entry.lastModified <= BUILTIN_MODELS_DATE) continue;
 		overlay[provider] = catalogModels(provider, entry.models, bundled[provider] ?? []);
 	}
@@ -119,7 +119,7 @@ function readStored(value: unknown): Stored | undefined {
 }
 
 /**
- * The chat models of a pi.dev catalog response that pi-aside can use for `provider`, rebuilt field by field (wire
+ * The chat models of a pi.dev catalog response that Pagewing can use for `provider`, rebuilt field by field (wire
  * input). pi-ai picks the key and the stream by `model.provider`, sends to `model.baseUrl`, and lets `model.headers`
  * override the auth headers: so `provider` is the one asked for, the API and base URL must be a pair one of the
  * bundled models has, and `headers` is dropped.
@@ -178,7 +178,7 @@ function isCost(value: unknown): value is Model<Api>["cost"] {
 	);
 }
 
-// pi-ai and pi-aside size images and requests by these: a zero, a fraction, or text in them breaks attachments.
+// pi-ai and Pagewing size images and requests by these: a zero, a fraction, or text in them breaks attachments.
 function isInputLimits(value: unknown): value is ModelInputLimits {
 	if (!isRecord(value) || !optionalCount(value.maxRequestBytes)) return false;
 	const { images } = value;

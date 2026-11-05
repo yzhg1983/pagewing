@@ -42,7 +42,7 @@ export type ProviderId = keyof typeof PROVIDERS;
 export const RECOMMENDED_MODELS: Record<ProviderId, string> = {
 	openai: "gpt-6-luna",
 	anthropic: "claude-haiku-5-5",
-	// Pinned, not "~anthropic/claude-haiku-latest": the alias moves, and its price with it, without a pi-aside release.
+	// Pinned, not "~anthropic/claude-haiku-latest": the alias moves, and its price with it, without a Pagewing release.
 	// pi-ai sends it through OpenRouter's Anthropic messages endpoint, not chat completions (checked live, 2026-11-02).
 	openrouter: "anthropic/claude-haiku-5.5",
 	deepseek: "deepseek-flash",

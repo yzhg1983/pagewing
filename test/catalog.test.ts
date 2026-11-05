@@ -86,7 +86,7 @@ describe("the stored download", () => {
 		expect(ids(openrouter())).toContain("stored/newer");
 		expect(ids(openrouter())).not.toContain("stored/elsewhere");
 		expect(models.getModels("anthropic").length).toBeGreaterThan(0);
-		// A pi-aside update with a newer bundle drops an older download.
+		// A Pagewing update with a newer bundle drops an older download.
 		expect(ids(models.getModels("deepseek"))).not.toContain("stored-older");
 		expect(catalogUpdatedAt()).toBe(1);
 	});

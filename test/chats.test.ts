@@ -76,7 +76,7 @@ function setup(
 	const model = { provider: faux.getModel().provider, modelId: "one" };
 	let defaultModel: ModelRef = model;
 	const settings = { thinking: "off" as Thinking, thinkingModels: [] as ModelRef[] };
-	const path = join(mkdtempSync(join(tmpdir(), "pi-aside-chats-")), "session.sqlite");
+	const path = join(mkdtempSync(join(tmpdir(), "pagewing-chats-")), "session.sqlite");
 	const changed = vi.fn();
 	const memory = memoryStore();
 	const browser = { store: memory.store, open: new Set([1, 2, 3]) };

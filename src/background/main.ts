@@ -126,7 +126,7 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 	if (alarm.name === RECOVERY_ALARM) {
 		void wake("recovery alarm")
 			.then(({ harness }) => activeWork.admit(async () => harness.resume()))
-			.catch((error: unknown) => console.error("[pi-aside] recovery alarm", error));
+			.catch((error: unknown) => console.error("[pagewing] recovery alarm", error));
 	} else if (alarm.name === EXPIRE_ALARM) void tidySignIn().finally(() => refreshAccess());
 });
 
@@ -1080,7 +1080,7 @@ async function run(command: Command, tabId: number | null): Promise<unknown> {
 			const open = await session().then(
 				() => true,
 				(error: unknown) => {
-					console.error("[pi-aside] page tools wait for the session", error);
+					console.error("[pagewing] page tools wait for the session", error);
 					return false;
 				},
 			);

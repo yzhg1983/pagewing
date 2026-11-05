@@ -185,8 +185,8 @@ try {
 	await panel.click("#open-settings");
 	const updated = () => panel.locator("#models-updated").textContent();
 	check(
-		"before an update, Settings says the list came with pi-aside",
-		(await updated()) === "The list came with pi-aside.",
+		"before an update, Settings says the list came with Pagewing",
+		(await updated()) === "The list came with Pagewing.",
 	);
 	await panel.click("#update-models");
 	const result = await poll(async () => {

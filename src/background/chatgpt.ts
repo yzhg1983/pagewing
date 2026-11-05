@@ -31,7 +31,7 @@ export const EXPIRE_ALARM = "chatgpt-expire";
 export const CALLBACK_PAGE = "chatgpt-callback.html";
 
 /**
- * The account pi-aside signs in to: OpenAI's registration of pi-aside with it. While a sign-in is stored, its fields
+ * The account Pagewing signs in to: OpenAI's registration of Pagewing with it. While a sign-in is stored, its fields
  * are the account; `chatgptAccount` keeps a copy, without tokens, for the sign-in after a sign-out.
  */
 export type Account = { clientId: string; subject: string; email: string | null };
@@ -141,7 +141,7 @@ async function installId(): Promise<string> {
 }
 
 /**
- * A new registration names pi-aside; signing in to the saved account reuses its client ID, with its email as
+ * A new registration names Pagewing; signing in to the saved account reuses its client ID, with its email as
  * `login_hint`, and with `id_token_hint` while its sign-in is still stored.
  */
 export async function authorizeUrl(pending: Pending, hostId: string, idTokenHint: string | null): Promise<string> {
@@ -151,7 +151,7 @@ export async function authorizeUrl(pending: Pending, hostId: string, idTokenHint
 	const { account } = pending;
 	const params = new URLSearchParams({
 		client_id: account?.clientId ?? "dynamic_agent_client",
-		...(account === null ? { agent_name_hint: "pi-aside" } : {}),
+		...(account === null ? { agent_name_hint: "Pagewing" } : {}),
 		ext_agent_host_id: `urn:uuid:${hostId}`,
 		...(account?.email ? { login_hint: account.email } : {}),
 		...(idTokenHint === null ? {} : { id_token_hint: idTokenHint }),

@@ -402,7 +402,7 @@ async function setup(
 	const faux = fauxProvider({ provider: "openrouter", models: [{ ...model, id: "one" }] });
 	const models = createModels();
 	models.setProvider(faux.provider);
-	const path = join(mkdtempSync(join(tmpdir(), "pi-aside-tools-")), "session.sqlite");
+	const path = join(mkdtempSync(join(tmpdir(), "pagewing-tools-")), "session.sqlite");
 	const harness = await Harness.open(await openNodeSqliteStorage(path), { models, registry }, context);
 	open.push(harness);
 	attachHarness(harness);

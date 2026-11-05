@@ -1,17 +1,17 @@
 {
-	"name": "pi-aside",
+	"name": "pagewing",
 	"version": "0.4.1",
 	"private": true,
 	"license": "MIT",
 	"type": "module",
 	"description": "Unofficial Chrome side-panel AI agent, built on pi-durable",
 	"author": "Michael Yu",
-	"homepage": "https://github.com/yzhg1983/pi-aside#readme",
+	"homepage": "https://github.com/yzhg1983/pagewing#readme",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/yzhg1983/pi-aside.git"
+		"url": "git+https://github.com/yzhg1983/pagewing.git"
 	},
-	"bugs": "https://github.com/yzhg1983/pi-aside/issues",
+	"bugs": "https://github.com/yzhg1983/pagewing/issues",
 	"scripts": {
 		"build": "node build.mjs",
 		"check": "biome check --write . && tsc --noEmit",

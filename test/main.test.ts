@@ -798,7 +798,7 @@ it("a mode save succeeds when the session cannot open; the tools follow once it 
 	vi.spyOn(workerSession, "session").mockRejectedValueOnce(new Error("storage failed"));
 	expect(await page.run({ type: "set-settings", settings: { tools: { act: "on" } } })).toMatchObject({ ok: true });
 	expect(installs).toHaveLength(before);
-	expect(error).toHaveBeenCalledWith("[pi-aside] page tools wait for the session", expect.any(Error));
+	expect(error).toHaveBeenCalledWith("[pagewing] page tools wait for the session", expect.any(Error));
 	await page.run({ type: "set-settings", settings: { thinking: "low" } });
 	expect(installs.at(-1)).toMatchObject({ tools: { act: "on" } });
 	await page.run({ type: "set-settings", settings: { tools: { act: "ask" }, thinking: "off" } });

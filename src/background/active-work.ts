@@ -6,7 +6,7 @@ const MAX_TIMEOUT_MS = 2_147_483_647;
 const KEEPALIVE_KEY = "keepaliveEnabled";
 export const RECOVERY_ALARM = "recovery";
 
-const report = (error: unknown) => console.error("[pi-aside] recovery alarm", error);
+const report = (error: unknown) => console.error("[pagewing] recovery alarm", error);
 
 /** Host scheduling for pi-durable's Wake: keep active/near-deadline work alive and recover evicted workers. */
 export class ActiveWork {

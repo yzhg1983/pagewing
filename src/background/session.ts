@@ -20,6 +20,7 @@ import { chromeTabGroups } from "./tab-groups.ts";
 import { Tabs } from "./tabs.ts";
 
 const context = BACKGROUND_CONTEXT;
+// The name from before the rename to Pagewing: a new name would open an empty database and leave every chat behind.
 const DATABASE_NAME = "pi-aside-indexeddb";
 const LOG_LIMIT = 200;
 /** Set in `chrome.storage.session`, which the browser empties on restart and on extension reload or update. */

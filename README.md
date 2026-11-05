@@ -1,22 +1,22 @@
-# pi-aside
+# Pagewing
 
 English | [简体中文](README.zh-CN.md)
 
-![pi-aside: an AI agent beside every page. It reads the page, operates it, writes and runs its own scripts, asks first, and uses your own key. Beside it, an essay whose claims pi marked up in place](docs/images/overview.svg)
+![Pagewing: an AI agent beside every page. It reads the page, operates it, writes and runs its own scripts, asks first, and uses your own key. Beside it, an essay whose claims pi marked up in place, two flagged as having no source.](docs/images/overview.svg)
 
 **An AI agent in Chrome's side panel.** Ask about the page you are on, or hand pi a task: it reads the page, clicks and
 types, moves through a site and its tab group, writes and runs its own scripts when clicking is not enough, and shows
 you every step. It is a general agent: everything it does comes from the same few tools (read the page, observe it, act
 on it, run a script, take a screenshot).
 
-**Use your ChatGPT plan**, or your own OpenAI, Anthropic, OpenRouter, or DeepSeek API key. There is no pi-aside server:
+**Use your ChatGPT plan**, or your own OpenAI, Anthropic, OpenRouter, or DeepSeek API key. There is no Pagewing server:
 requests go straight from your browser to your provider.
 
-pi-aside is an experimental project built on [pi-durable](https://github.com/earendil-works/pi/tree/main/packages/durable).
+Pagewing is an experimental project built on [pi-durable](https://github.com/earendil-works/pi/tree/main/packages/durable).
 
-**[Add to Chrome](https://chromewebstore.google.com/detail/pi-aside/eamkpenaglckggljpkdljhillecgpjlp)**
+**[Add to Chrome](https://chromewebstore.google.com/detail/pagewing/eamkpenaglckggljpkdljhillecgpjlp)**
 
-## Why pi-aside
+## Why Pagewing
 
 - **It reads the page with you.** Summarize, explain, translate, proofread, or draft a reply, from selected text or
   the whole page. pi can also read a chart from a screenshot, or an image or text file you drop in.
@@ -24,49 +24,49 @@ pi-aside is an experimental project built on [pi-durable](https://github.com/ear
   tab group, checking each step until the task is done.
 - **It can program the page.** When clicking is slow or impossible, pi writes a short script: it rewrites the page in
   place, collects every row of a long table, or fetches data with your login. By default, you see the code first.
-- **Tasks keep going.** pi-aside runs on
+- **Tasks keep going.** Pagewing runs on
   [pi-durable](https://github.com/earendil-works/pi/tree/main/packages/durable), the pi project's durable agent
   runtime. Every step is saved as it happens, so a task goes on while you switch tabs or chats, and picks up again if
   Chrome stops pi's background worker.
 - **Your model, no middleman.** Your ChatGPT plan or one of four API providers, a different model per message if you
   like, and each chat's cost shown as it grows. Open source (MIT), no analytics.
 
-![An animation of pi-aside beside Wikipedia's list of highest-grossing films: it reads the table, asks before running a script, marks the 2020s rows on the page, and charts the films by decade](docs/images/agent.svg)
+![An animation of Pagewing beside Wikipedia's list of highest-grossing films: it reads the table, asks before running a script, marks the 2020s rows on the page, and charts the films by decade](docs/images/agent.svg)
 
 ## Install
 
-pi-aside needs Chrome 140 or later.
+Pagewing needs Chrome 140 or later.
 
-**From the Chrome Web Store:** [Add to Chrome](https://chromewebstore.google.com/detail/pi-aside/eamkpenaglckggljpkdljhillecgpjlp).
+**From the Chrome Web Store:** [Add to Chrome](https://chromewebstore.google.com/detail/pagewing/eamkpenaglckggljpkdljhillecgpjlp).
 
-**From a release:** download `pi-aside-<version>.zip` from
-[Releases](https://github.com/yzhg1983/pi-aside/releases) and unzip it into a new folder. Open `chrome://extensions`,
+**From a release:** download `pagewing-<version>.zip` from
+[Releases](https://github.com/yzhg1983/pagewing/releases) and unzip it into a new folder. Open `chrome://extensions`,
 turn on Developer mode, click **Load unpacked**, and choose that folder. To update, unzip the new version into the same
-folder and press the reload icon on pi-aside's card. Keep the folder where it is: Chrome treats a folder in another
+folder and press the reload icon on Pagewing's card. Keep the folder where it is: Chrome treats a folder in another
 place as another extension, without your settings, keys, and chats. The same goes between a store install and an
 unzipped one.
 
 **From source** (Node.js 22.19+):
 
 ```sh
-git clone https://github.com/yzhg1983/pi-aside
-cd pi-aside
+git clone https://github.com/yzhg1983/pagewing
+cd pagewing
 npm ci --ignore-scripts   # dependencies, without install scripts
 npm run build             # writes dist/
 ```
 
-Load the `dist/` folder as above. To update, pull, build again, and press the reload icon on pi-aside's card;
+Load the `dist/` folder as above. To update, pull, build again, and press the reload icon on Pagewing's card;
 settings, keys, and chats are kept.
 
 ## Quick start
 
-1. Click pi-aside's toolbar button, or press `Ctrl+Shift+U` (`Cmd+Shift+U` on a Mac).
+1. Click Pagewing's toolbar button, or press `Ctrl+Shift+U` (`Cmd+Shift+U` on a Mac).
 2. Pick a provider, paste an API key, and Save; allow access when Chrome asks. For a ChatGPT plan, choose OpenAI, then
    **Continue with ChatGPT**.
 3. Optional: Settings > Answers > **Answer language** sets the language pi answers in and translates into. By default,
    it follows Chrome's language.
 4. Type a question or a task in the message box, and send it. For other ways, see [How to start](#how-to-start).
-5. Let pi run scripts: when the card **Allow pi to run scripts (optional)** asks, open pi-aside's Chrome details page, turn on
+5. Let pi run scripts: when the card **Allow pi to run scripts (optional)** asks, open Pagewing's Chrome details page, turn on
    **Allow User Scripts** (scroll down), and come back. Skipped it? Settings > Tools links to the same page.
 
 ### How to start
@@ -76,7 +76,7 @@ Open pi on the page you want help with. On a Mac, use `Cmd` instead of `Ctrl`
 
 | To | Do this |
 | --- | --- |
-| Ask about the page, or give pi a task | Click pi-aside's toolbar button or press `Ctrl+Shift+U`, then type. |
+| Ask about the page, or give pi a task | Click Pagewing's toolbar button or press `Ctrl+Shift+U`, then type. |
 | Ask about selected text | Right-click it and choose **Ask pi**, or press `Ctrl+Shift+Y`. pi answers with your starred prompt: **Explain**, unless you change it. |
 | Ask your own question about selected text | Right-click it and choose **Add to message**, or press `Ctrl+Shift+K`, then type your question. |
 | Use a prompt | Right-click the page or selected text and choose one, such as **Summarize**, or type `/` in the message box. |
@@ -102,7 +102,7 @@ follow-up in the same chat.
 curly tail, and a happy smile. Then add a small sign next to it that says 'Hello from pi'."* On
 [Excalidraw](https://excalidraw.com/), pi draws it with one script, as shapes you can edit, and fits it in view.
 
-![An animation of pi-aside beside Excalidraw: pi draws a cute pink cartoon pig with rosy cheeks and a curly tail, next to a sign that says Hello from pi](docs/images/diagram.webp)
+![An animation of Pagewing beside Excalidraw: pi draws a cute pink cartoon pig with rosy cheeks and a curly tail, next to a sign that says Hello from pi](docs/images/diagram.webp)
 
 <sub>Sped up. [The finished drawing as a still image](docs/images/diagram.png).</sub>
 
@@ -129,7 +129,7 @@ Save repeatable tasks as prompts: [page translation and YouTube summaries](docs/
 Settings > Tools turns each tool (read, observe, act, run script, screenshot) Off or On; acting and running scripts
 can also Ask. Out of the box, acting on a page and running scripts ask first.
 
-**Enforced by pi-aside, whatever the model says:**
+**Enforced by Pagewing, whatever the model says:**
 
 - In Ask, pi needs your OK once per site in each answer before it acts, and shows every script in full before it runs.
 - If Chrome stops pi in the middle of a click or a script, pi does not repeat it: the model is told it may have
@@ -151,7 +151,7 @@ mistakes. Keep Ask for email, banking, admin pages, and anywhere a wrong click m
 
 ## Privacy
 
-- No pi-aside server and no analytics. Requests go straight to the provider you choose.
+- No Pagewing server and no analytics. Requests go straight to the provider you choose.
 - Update in Settings > Models downloads the public model list from pi.dev; it sends no key, chat, or page.
 - Chats, settings, and keys stay in your Chrome profile. Keys are stored unencrypted there.
 - Chats are kept until you delete them all (Settings > Advanced > Data). Details: [PRIVACY.md](PRIVACY.md).
@@ -161,7 +161,7 @@ mistakes. Keep Ask for email, banking, admin pages, and anywhere a wrong click m
 - [User guide](docs/guide.md): settings, images and text files, chats and History, prompts and slash commands, models
   and thinking, editing a question, diagrams, web search, shortcuts, languages, and limits.
 
-pi-aside is unofficial: the pi project, which makes pi-durable, does not make or endorse it.
+Pagewing is unofficial: the pi project, which makes pi-durable, does not make or endorse it.
 
 ## License
 
