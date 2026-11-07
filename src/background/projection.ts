@@ -74,6 +74,18 @@ const COMPLETE = new Set(["stop", "length", "toolUse"]);
 export type Earlier = { entries: ChatEntry[]; cacheHit: number | null | undefined };
 
 /**
+ * A chat's active transcript from all its entries in ID order: the newest head marker (a compaction or a reset), then
+ * the entries without a head from its head on; without a marker, all of them. This is the `entries` of pi-durable 1.4's
+ * view: 1.5's view is a window over the whole history, with markers where they were written.
+ */
+export function activeEntries(records: readonly EntryRecord[]): EntryRecord[] {
+	const marker = records.findLast((record) => record.head !== undefined);
+	if (marker === undefined) return [...records];
+	const from = Number(marker.head);
+	return [marker, ...records.filter((record) => record.head === undefined && Number(record.id) >= from)];
+}
+
+/**
  * What a panel shows of one conversation: its transcript, the answer in progress, and the queue. `runStartedAt`: when
  * the running run started, for its progress.
  */

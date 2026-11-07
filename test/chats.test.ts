@@ -8,6 +8,7 @@ import { fauxAssistantMessage, fauxProvider } from "@earendil-works/pi-ai/provid
 import {
 	type CompactionPolicy,
 	type ConversationId,
+	ConversationTranscript,
 	createRegistry,
 	defineDoc,
 	defineTask,
@@ -1341,6 +1342,106 @@ it("after a compaction the chat still shows what it summarized, also after a res
 			.chat.entries.map((entry) => entry.text)
 			.filter((text) => text !== notice),
 	).toEqual(["q1", "a1", "q2", "a2"]);
+});
+
+it("a chat longer than pi-durable's view window shows and exports all of it, live, after a restart, and compacted", async () => {
+	// 60 turns are 120 entries: more than the window holds (50, up to 100).
+	const turns = 60;
+	const { faux, start } = setup({ compaction: { keepRecentTokens: 1 } });
+	faux.setResponses([
+		...Array.from({ length: turns }, (_, index) => fauxAssistantMessage(`a${index}`)),
+		fauxAssistantMessage("Summary."),
+	]);
+	const { harness, chats, tab } = await start();
+	const one = tab(1);
+	for (let index = 0; index < turns; index++) {
+		await one.send({ requestId: `r${index}`, content: `q${index}` });
+		await vi.waitFor(() => expect(one.chat.entries.at(-1)?.text).toBe(`a${index}`));
+	}
+	const all = Array.from({ length: turns }, (_, index) => [`q${index}`, `a${index}`]).flat();
+	const shown = (chat: { entries: readonly { text: string }[] }) => chat.entries.map((entry) => entry.text);
+	expect(shown(one.chat)).toEqual(all);
+	// Retry and the context meter see the active transcript, as with pi-durable 1.4's view.
+	expect(one.chat.retry).toBeNull();
+	expect(one.chat.context.tokens).toBeGreaterThan(0);
+	const { markdown } = await chats.markdown(one.id!, 0);
+	expect(markdown).toContain("## You\n\nq0\n\n## pi\n\na0\n");
+	expect(markdown).toContain(`## You\n\nq${turns - 1}\n\n## pi\n\na${turns - 1}\n`);
+
+	await harness.close(context);
+	const reopened = await start();
+	await reopened.chats.attach(reopened.tab(1).id!);
+	await vi.waitFor(() => expect(shown(reopened.tab(1).chat)).toEqual(all));
+
+	// After a compaction, what it summarized is still shown, though all of it is before the window.
+	const conversation = await reopened.harness.conversation(one.id as ConversationId, context);
+	await conversation!.compact(undefined, context);
+	const notice = "Earlier messages were summarized.";
+	await vi.waitFor(() => expect(shown(reopened.tab(1).chat)).toContain(notice));
+	expect(shown(reopened.tab(1).chat).filter((text) => text !== notice)).toEqual(all);
+	const compacted = await reopened.chats.markdown(one.id!, 0);
+	expect(compacted.markdown).toContain("## You\n\nq0\n\n## pi\n\na0\n");
+});
+
+it("a burst of entries larger than pi-durable's view window reaches the chat whole", async () => {
+	// One commit of 150 entries: more than the view's window holds, so its next value skips some of them.
+	const burst = 150;
+	const { faux, start } = setup();
+	faux.setResponses([fauxAssistantMessage("a0")]);
+	const { harness, tab } = await start();
+	const one = tab(1);
+	await one.send({ requestId: "r0", content: "q0" });
+	await vi.waitFor(() => expect(one.chat.entries.at(-1)?.text).toBe("a0"));
+	const id = one.id as ConversationId;
+	await harness.commit(async (tx) => {
+		for (let index = 0; index < burst; index++)
+			await tx.appendEntry(id, { kind: "pi.user", model: [{ role: "user", content: `m${index}`, timestamp: 0 }] });
+	}, context);
+	const all = ["q0", "a0", ...Array.from({ length: burst }, (_, index) => `m${index}`)];
+	await vi.waitFor(() => expect(one.chat.entries.map((entry) => entry.text)).toEqual(all));
+});
+
+it("a gap load that ends after a newer entry was shown does not hide that entry", async () => {
+	// The load's result is the transcript as it was when the load ended; a newer entry merged before the chat projects
+	// that result must stay.
+	const { faux, start } = setup();
+	faux.setResponses([fauxAssistantMessage("a0")]);
+	const { harness, tab } = await start();
+	const one = tab(1);
+	await one.send({ requestId: "r0", content: "q0" });
+	await vi.waitFor(() => expect(one.chat.entries.at(-1)?.text).toBe("a0"));
+	const loaded = Promise.withResolvers<void>();
+	const release = Promise.withResolvers<void>();
+	const fillGap = ConversationTranscript.prototype.fillGap;
+	const held = vi.spyOn(ConversationTranscript.prototype, "fillGap").mockImplementation(async function (
+		this: ConversationTranscript,
+		...args
+	) {
+		const result = await fillGap.apply(this, args);
+		loaded.resolve();
+		await release.promise;
+		return result;
+	});
+	try {
+		const id = one.id as ConversationId;
+		const append = (texts: string[]) =>
+			harness.commit(async (tx) => {
+				for (const text of texts)
+					await tx.appendEntry(id, { kind: "pi.user", model: [{ role: "user", content: text, timestamp: 0 }] });
+			}, context);
+		await append(Array.from({ length: 150 }, (_, index) => `m${index}`));
+		await loaded.promise;
+		await append(["late"]);
+		await vi.waitFor(() => expect(one.chat.entries.at(-1)?.text).toBe("late"));
+		release.resolve();
+		await vi.waitFor(() => expect(held).toHaveReturned());
+		await new Promise((resolve) => setTimeout(resolve, 50));
+		expect(one.chat.entries.at(-1)?.text).toBe("late");
+		expect(one.chat.entries).toHaveLength(2 + 150 + 1);
+	} finally {
+		release.resolve();
+		held.mockRestore();
+	}
 });
 
 it("a request over the model's real window is summarized and sent again, not failed (design 6.21)", async () => {

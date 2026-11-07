@@ -4,7 +4,7 @@ import { getModelType } from "@earendil-works/pi-ai/models";
 import { type ModelsUpdated, PROVIDERS, type ProviderId } from "../shared/protocol.ts";
 
 /** The date of pi-ai's bundled catalog; `test/catalog.test.ts` checks it against pi-ai's own. */
-export const BUILTIN_MODELS_DATE = Date.parse("2026-10-21T22:33:24.994Z");
+export const BUILTIN_MODELS_DATE = Date.parse("2026-11-02T10:43:28.346Z");
 
 const STORAGE_KEY = "downloadedModels";
 const CATALOG_URL = "https://pi.dev/api/models/providers/";
