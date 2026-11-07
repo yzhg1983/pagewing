@@ -8,6 +8,7 @@ import { fauxAssistantMessage, fauxProvider } from "@earendil-works/pi-ai/provid
 import {
 	type CompactionPolicy,
 	type ConversationId,
+	ConversationTranscript,
 	createRegistry,
 	defineDoc,
 	defineTask,
@@ -1398,6 +1399,49 @@ it("a burst of entries larger than pi-durable's view window reaches the chat who
 	}, context);
 	const all = ["q0", "a0", ...Array.from({ length: burst }, (_, index) => `m${index}`)];
 	await vi.waitFor(() => expect(one.chat.entries.map((entry) => entry.text)).toEqual(all));
+});
+
+it("a gap load that ends after a newer entry was shown does not hide that entry", async () => {
+	// The load's result is the transcript as it was when the load ended; a newer entry merged before the chat projects
+	// that result must stay.
+	const { faux, start } = setup();
+	faux.setResponses([fauxAssistantMessage("a0")]);
+	const { harness, tab } = await start();
+	const one = tab(1);
+	await one.send({ requestId: "r0", content: "q0" });
+	await vi.waitFor(() => expect(one.chat.entries.at(-1)?.text).toBe("a0"));
+	const loaded = Promise.withResolvers<void>();
+	const release = Promise.withResolvers<void>();
+	const fillGap = ConversationTranscript.prototype.fillGap;
+	const held = vi.spyOn(ConversationTranscript.prototype, "fillGap").mockImplementation(async function (
+		this: ConversationTranscript,
+		...args
+	) {
+		const result = await fillGap.apply(this, args);
+		loaded.resolve();
+		await release.promise;
+		return result;
+	});
+	try {
+		const id = one.id as ConversationId;
+		const append = (texts: string[]) =>
+			harness.commit(async (tx) => {
+				for (const text of texts)
+					await tx.appendEntry(id, { kind: "pi.user", model: [{ role: "user", content: text, timestamp: 0 }] });
+			}, context);
+		await append(Array.from({ length: 150 }, (_, index) => `m${index}`));
+		await loaded.promise;
+		await append(["late"]);
+		await vi.waitFor(() => expect(one.chat.entries.at(-1)?.text).toBe("late"));
+		release.resolve();
+		await vi.waitFor(() => expect(held).toHaveReturned());
+		await new Promise((resolve) => setTimeout(resolve, 50));
+		expect(one.chat.entries.at(-1)?.text).toBe("late");
+		expect(one.chat.entries).toHaveLength(2 + 150 + 1);
+	} finally {
+		release.resolve();
+		held.mockRestore();
+	}
 });
 
 it("a request over the model's real window is summarized and sent again, not failed (design 6.21)", async () => {

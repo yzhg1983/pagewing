@@ -194,6 +194,8 @@ export type Input = { requestId: string; content: UserInput; entry?: InputEntry;
  */
 type Watched = {
 	watch: ConversationWatch;
+	/** The watch's newest value: merged again, it gives the transcript as it is now. */
+	window: ConversationView;
 	transcript: ConversationTranscript;
 	view: ConversationView;
 	earlier: { head: number | undefined; complete: boolean } & Earlier;
@@ -301,6 +303,7 @@ export class Chats {
 				const watched: Watched = {
 					watch,
 					transcript,
+					window: watch.value,
 					view: watch.value,
 					earlier: { head: undefined, complete: false, entries: [], cacheHit: undefined },
 					from: index.some((chat) => chat.id === from && !chat.removed) ? (from ?? null) : null,
@@ -314,6 +317,7 @@ export class Chats {
 				this.#project(watched, loaded);
 				watch.start(async (call) => {
 					if (call.kind !== "value" || this.#views.get(id) !== watched) return;
+					watched.window = call.value;
 					this.#update(watched, transcript.merge(call.value));
 				});
 				this.#views.set(id, watched);
@@ -989,10 +993,11 @@ export class Chats {
 		this.#options.changed();
 		if (isComplete(value)) return;
 		void complete(watched.transcript, value)
-			.then((loaded) => {
-				// A newer value may have come meanwhile: the transcript has it too, and its items are the latest.
+			.then(() => {
 				if (this.#views.get(Number(value.conversation.id)) !== watched) return;
-				this.#project(watched, { ...loaded, docs: watched.view.docs });
+				// Not the load's result: that is the transcript as it was when the load ended, and a newer value may have
+				// been merged and shown since. Merging the newest value again adds nothing and returns the transcript now.
+				this.#project(watched, watched.transcript.merge(watched.window));
 				this.#options.changed();
 			})
 			.catch(() => {});
