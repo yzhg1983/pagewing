@@ -1,4 +1,4 @@
-// Screenshots of pi-aside for the README and the store, 1280 x 800: a headline over the production panel beside a live
+// Screenshots of Pagewing for the README and the store, 1280 x 800: a headline over the production panel beside a live
 // page, in a plain browser window. Six scenes on real sites, in English and, for the store's Chinese listing, in
 // Chinese: one script that counts a Wikipedia table by decade and marks rows on the page, which pi charts; a screenshot of an
 // error, which pi finds among Vite's issues; a selected paragraph of MDN explained with a flowchart; one script that
@@ -52,7 +52,7 @@ mkdirSync(ext);
 mkdirSync(out, { recursive: true });
 cpSync(join(repo, "static"), ext, { recursive: true });
 const manifest = JSON.parse(readFileSync(join(ext, "manifest.json"), "utf8"));
-/** Live: ~/.cache/pi-aside-live keeps the test browser's own ChatGPT session, not the owner's pi-aside's, whose refresh
+/** Live: ~/.cache/pi-aside-live keeps the test browser's own ChatGPT session, not the owner's Pagewing's, whose refresh
  * token it would replace. */
 const LIVE = process.env.LIVE === "1" ? join(homedir(), ".cache/pi-aside-live") : undefined;
 const SESSION = LIVE === undefined ? undefined : join(LIVE, "openai.json");
@@ -663,7 +663,7 @@ async function signIn({ context, worker, id }) {
 		server.listen(1455, "127.0.0.1");
 	});
 	console.log(
-		`Open this link in your own Chrome within 10 minutes, signed in to ChatGPT, and allow pi-aside:\n${link}`,
+		`Open this link in your own Chrome within 10 minutes, signed in to ChatGPT, and allow Pagewing:\n${link}`,
 	);
 	const callback = await context.newPage();
 	// Where the worker's rule sends OpenAI's redirect, query kept; the rule redirects only for OpenAI's page.

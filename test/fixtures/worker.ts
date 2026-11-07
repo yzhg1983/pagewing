@@ -136,7 +136,7 @@ const commands = serial();
 
 async function open(): Promise<Opened> {
 	const harness = await Harness.open(
-		await openNodeSqliteStorage(join(mkdtempSync(join(tmpdir(), "pi-aside-worker-")), "session.sqlite")),
+		await openNodeSqliteStorage(join(mkdtempSync(join(tmpdir(), "pagewing-worker-")), "session.sqlite")),
 		{ models, registry: createRegistry() },
 		context,
 	);

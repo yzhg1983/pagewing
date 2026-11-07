@@ -48,10 +48,10 @@ jobs:
       # Also fails when the manifest's version differs from package.json's.
       - run: npm run build
       - name: Zip the extension
-        run: cd dist && zip -qr "../pi-aside-$VERSION.zip" . -x '*.map'
+        run: cd dist && zip -qr "../pagewing-$VERSION.zip" . -x '*.map'
       - name: Draft the release
         env:
           GH_TOKEN: ${{ github.token }}
         run: >
-          gh release create "$GITHUB_REF_NAME" "pi-aside-$VERSION.zip"
-          --draft --verify-tag --generate-notes --title "pi-aside $VERSION"
+          gh release create "$GITHUB_REF_NAME" "pagewing-$VERSION.zip"
+          --draft --verify-tag --generate-notes --title "Pagewing $VERSION"

@@ -165,7 +165,7 @@
 		"message": "“更新”会从 pi.dev 下载列表。"
 	},
 	"modelsNotUpdated": {
-		"message": "当前列表随 pi-aside 提供。"
+		"message": "当前列表随 Pagewing 提供。"
 	},
 	"modelsUpdatedAt": {
 		"message": "更新于 $1。"
@@ -360,7 +360,7 @@
 		"message": "侧边栏里的通用 AI 智能体：看网页时随时提问，有事直接交给它：它会点按钮、填表单，必要时还会自己写脚本并运行。基于 pi-durable 构建。"
 	},
 	"actionTitle": {
-		"message": "pi-aside：侧边栏里的 AI 智能体"
+		"message": "Pagewing：由 pi 驱动的网页智能体"
 	},
 	"commandAsk": {
 		"message": "向 pi 询问选中文本（默认提示词）"
@@ -537,7 +537,7 @@
 		"message": "pi 已经读到这条消息。"
 	},
 	"storageFull": {
-		"message": "Chrome 已没有空间保存 pi-aside 的对话，新的消息和回答不会被保存。请释放磁盘空间，或在“设置 > 高级 > 数据”中删除所有对话。"
+		"message": "Chrome 已没有空间保存 Pagewing 的对话，新的消息和回答不会被保存。请释放磁盘空间，或在“设置 > 高级 > 数据”中删除所有对话。"
 	},
 	"storageOpenFailed": {
 		"message": "无法打开对话存储：$1"

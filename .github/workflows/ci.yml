@@ -47,12 +47,12 @@ jobs:
       - run: npm run build
       - name: Zip the extension
         if: github.event_name == 'push'
-        run: cd dist && zip -qr "../pi-aside-${GITHUB_SHA::7}.zip" . -x '*.map'
+        run: cd dist && zip -qr "../pagewing-${GITHUB_SHA::7}.zip" . -x '*.map'
       - uses: actions/upload-artifact@v7
         if: github.event_name == 'push'
         with:
-          name: pi-aside-${{ github.sha }}
-          path: pi-aside-*.zip
+          name: pagewing-${{ github.sha }}
+          path: pagewing-*.zip
           retention-days: 30
 
       # The suites run on the weekly and manual runs, and on a push or pull request that changes what they build or run.

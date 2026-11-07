@@ -9,8 +9,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
+import { getBuiltinModelDataGeneratedAt } from "@earendil-works/pi-ai/providers/all";
 import { build } from "esbuild";
 import { chromium } from "playwright-core";
+
+// A download newer than pi-ai's bundled catalog, which each pi-ai release moves; only a newer one counts.
+const NEWER = new Date(getBuiltinModelDataGeneratedAt() + 8 * 86_400_000).toUTCString();
 
 if (!process.env.CHROME) throw new Error("Set CHROME to a Chrome for Testing 140+ executable.");
 const repo = fileURLToPath(new URL("../../", import.meta.url));
@@ -110,7 +114,7 @@ const server = createServer(
 				return res.end();
 			}
 			res.setHeader("access-control-expose-headers", "etag,last-modified");
-			res.writeHead(200, { "content-type": "application/json", "last-modified": "Fri, 30 Oct 2026 13:37:39 GMT" });
+			res.writeHead(200, { "content-type": "application/json", "last-modified": NEWER });
 			return res.end(JSON.stringify(answer ?? {}));
 		}
 		if (!(host.startsWith("openrouter.ai") && req.method === "POST" && req.url.endsWith("/chat/completions"))) {
@@ -185,8 +189,8 @@ try {
 	await panel.click("#open-settings");
 	const updated = () => panel.locator("#models-updated").textContent();
 	check(
-		"before an update, Settings says the list came with pi-aside",
-		(await updated()) === "The list came with pi-aside.",
+		"before an update, Settings says the list came with Pagewing",
+		(await updated()) === "The list came with Pagewing.",
 	);
 	await panel.click("#update-models");
 	const result = await poll(async () => {

@@ -22,8 +22,10 @@ let sets = 0;
 	permissions: { contains: async () => true },
 };
 
-const NEWER = "Fri, 30 Oct 2026 13:37:39 GMT";
-const OLDER = "Tue, 20 Oct 2026 00:00:00 GMT";
+// HTTP dates around pi-ai's bundled catalog, which each pi-ai release moves.
+const DAY = 86_400_000;
+const NEWER = new Date(BUILTIN_MODELS_DATE + 8 * DAY).toUTCString();
+const OLDER = new Date(BUILTIN_MODELS_DATE - 2 * DAY).toUTCString();
 const openrouter = () => models.getModels("openrouter");
 const ids = (list: readonly { id: string }[]) => list.map((model) => model.id);
 
@@ -86,7 +88,7 @@ describe("the stored download", () => {
 		expect(ids(openrouter())).toContain("stored/newer");
 		expect(ids(openrouter())).not.toContain("stored/elsewhere");
 		expect(models.getModels("anthropic").length).toBeGreaterThan(0);
-		// A pi-aside update with a newer bundle drops an older download.
+		// A Pagewing update with a newer bundle drops an older download.
 		expect(ids(models.getModels("deepseek"))).not.toContain("stored-older");
 		expect(catalogUpdatedAt()).toBe(1);
 	});
@@ -174,15 +176,15 @@ describe("catalogModels", () => {
 describe("Update model list", () => {
 	it("lays the download over the bundled models and counts the new ones for providers with a key", async () => {
 		const haiku = openrouter().find((model) => model.id === "~anthropic/claude-haiku-latest");
-		expect(haiku?.api).toBe("openai-completions");
+		// The download moves it to another route of the bundled models, whichever pi-ai's catalog has now.
+		const other = openrouter().find((model) => model.api !== haiku?.api);
+		expect(haiku).toBeDefined();
+		expect(other).toBeDefined();
 		const fetch = serve({
 			openrouter: {
 				modified: NEWER,
 				body: [
-					entry("~anthropic/claude-haiku-latest", {
-						api: "anthropic-messages",
-						baseUrl: "https://openrouter.ai/api",
-					}),
+					entry("~anthropic/claude-haiku-latest", { api: other?.api, baseUrl: other?.baseUrl }),
 					entry("vendor/new-1"),
 					entry("vendor/new-2"),
 				],
@@ -203,7 +205,7 @@ describe("Update model list", () => {
 		}
 		// The changed entry replaces the bundled one in place; new ones follow; bundled ones stay.
 		const after = openrouter();
-		expect(after.find((model) => model.id === "~anthropic/claude-haiku-latest")?.api).toBe("anthropic-messages");
+		expect(after.find((model) => model.id === "~anthropic/claude-haiku-latest")?.api).toBe(other?.api);
 		expect(ids(after).slice(-2)).toEqual(["vendor/new-1", "vendor/new-2"]);
 		// The earlier download's "stored/newer" is gone: this one replaces it.
 		expect(after.length).toBe(before.length - 1 + 2);

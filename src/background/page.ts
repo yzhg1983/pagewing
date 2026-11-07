@@ -2,7 +2,7 @@
 // snapshot (design 6.9, 6.22); and what all page tools share (6.23): Chrome access, the run's state, and the checks.
 
 import { awaitWithContext, BACKGROUND_CONTEXT, type Context, withAbortSignal } from "@earendil-works/chord/context";
-import { type Message, Type } from "@earendil-works/pi-ai";
+import type { Message } from "@earendil-works/pi-ai";
 import {
 	type ConversationId,
 	type Cursor,
@@ -16,6 +16,7 @@ import {
 	type ToolExecutionResult,
 	type ToolRegistration,
 } from "@earendil-works/pi-durable";
+import { int, obj, opt, type Properties, type Schema, union } from "@earendil-works/pi-schema";
 import { base64 } from "../shared/images.ts";
 import {
 	cut,
@@ -320,10 +321,19 @@ export function workTab(state: PageReads | undefined, run: number, attached: num
 export const limitText = (limit: number) => `The page tools were used ${limit} times in this answer; answer now.`;
 
 export class PageRefused extends Error {}
+
+/**
+ * Tool parameters as an object that allows other properties, as the TypeBox objects of pi-durable 1.4 did: pi-schema's
+ * `obj()` is closed by default, which would refuse a call with an extra property and change the schema the models get.
+ */
+export const open = <const P extends Properties>(properties: P) => obj(properties, { open: true });
+
+/** A string literal with its `type`, as TypeBox wrote one; pi-schema's `lit()` leaves `type` out. */
+export const strLit = <const V extends string>(value: V): Schema<V> => ({ type: "string", const: value }) as Schema<V>;
 /** Optional stable Chrome ID; an explicit target does not change the answer's selection. */
 export const tabParameter = () =>
-	Type.Optional(
-		Type.Integer({
+	opt(
+		int({
 			minimum: 1,
 			description: "Stable Chrome tab ID from list_tabs; default the answer-selected or attached tab.",
 		}),
@@ -729,16 +739,16 @@ export function readPageTool(deps: PageDeps, config: PageToolSettings): ToolRegi
 	return defineTool({
 		name: READ_PAGE,
 		description: readPageDescription(config),
-		parameters: Type.Object({
+		parameters: open({
 			tab: tabParameter(),
-			scope: Type.Optional(
-				Type.Union([Type.Literal("page"), Type.Literal("selection")], {
+			scope: opt(
+				union([strLit("page"), strLit("selection")], {
 					description: "Read the whole page or selected text; default page.",
 				}),
 			),
-			offset: Type.Optional(Type.Integer({ minimum: 0, description: "Character offset; default 0." })),
-			limit: Type.Optional(
-				Type.Integer({
+			offset: opt(int({ minimum: 0, description: "Character offset; default 0." })),
+			limit: opt(
+				int({
 					minimum: 1000,
 					maximum: MAX_LIMIT,
 					description: `Characters to return; default ${DEFAULT_LIMIT}.`,

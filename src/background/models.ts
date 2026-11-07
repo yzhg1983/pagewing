@@ -117,10 +117,10 @@ export const models: MutableModels = createModels({
 const openai = withDownloads(openaiProvider());
 
 /**
- * A ChatGPT plan's context windows, by model ID, from pi-ai's Codex catalog. pi-aside's sign-in reaches the plan
+ * A ChatGPT plan's context windows, by model ID, from pi-ai's Codex catalog. Pagewing's sign-in reaches the plan
  * through api.openai.com (Sign in with ChatGPT), so pi-ai gives it the API's windows; pi's TUI reaches it through the
  * Codex backend, whose windows are the plan's defaults: GPT-6.1 Sol 272k against 500k. Each catalog is right for its
- * route; pi-aside applies the plan's default to its route. The window decides the context line and when pi-durable
+ * route; Pagewing applies the plan's default to its route. The window decides the context line and when pi-durable
  * compacts (design 6.21). Should the API route allow less, pi-durable's overflow recovery compacts and sends again.
  * Remove once pi-ai's OpenAI provider gives a sign-in the plan's windows.
  */

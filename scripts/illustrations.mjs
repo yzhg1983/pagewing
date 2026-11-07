@@ -16,7 +16,7 @@ const FONT =
 const MONO = "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
 const SERIF = "Georgia, 'Times New Roman', serif";
 // Paper and highlighter: ink on warm paper, the highlighter yellow pi marks pages with as the one accent, and the
-// icon's blue only where pi-aside itself shows it (the icon, the user's message).
+// icon's blue only where Pagewing itself shows it (the icon, the user's message).
 const BLUE = "#3157d5";
 const LIGHT_BLUE = "#6f8ff0";
 const PAPER = "#f7f4ee";
@@ -31,12 +31,12 @@ const TEXT = {
 	en: {
 		file: "",
 		overview: {
-			label: "pi-aside: an AI agent beside every page. It reads the page, operates it, writes and runs its own scripts, asks first, and uses your own key. Beside it, an essay whose claims pi marked up in place, two flagged as having no source.",
+			label: "Pagewing: an AI agent beside every page. It reads the page, operates it, writes and runs its own scripts, asks first, and uses your own key. Beside it, an essay whose claims pi marked up in place, two flagged as having no source.",
 			tagline: "An AI agent beside every page.",
 			chips: ["Reads the page", "Operates the page", "Writes and runs scripts", "Asks first", "Your own key"],
 			providers: [
 				"Your ChatGPT plan, or an OpenAI, Anthropic, OpenRouter, or DeepSeek key.",
-				"No pi-aside server: requests go straight to your provider.",
+				"No Pagewing server: requests go straight to your provider.",
 			],
 			title: "The four-day week works",
 			ask: ["Mark the claims, and flag", "any without a source."],
@@ -45,7 +45,7 @@ const TEXT = {
 			note: "No source",
 		},
 		agent: {
-			label: "pi-aside beside Wikipedia's list of highest-grossing films: it reads the table, asks before running a script, marks the 2020s rows on the page, and charts the films by decade",
+			label: "Pagewing beside Wikipedia's list of highest-grossing films: it reads the table, asks before running a script, marks the 2020s rows on the page, and charts the films by decade",
 			head: "Ask once.",
 			headRest: " See every step.",
 			ask: ["When did these come out? Chart them", "by decade, and mark the 2020s."],
@@ -72,12 +72,12 @@ const TEXT = {
 	zh_CN: {
 		file: "zh-CN-",
 		overview: {
-			label: "pi-aside：每个网页旁的 AI 智能体。读懂网页、操作网页、编写并运行脚本、先问再做，用你自己的密钥。旁边是一篇文章，pi 直接在页面上标出了其中的论断，并注明两处没有出处。",
+			label: "Pagewing：每个网页旁的 AI 智能体。读懂网页、操作网页、编写并运行脚本、先问再做，用你自己的密钥。旁边是一篇文章，pi 直接在页面上标出了其中的论断，并注明两处没有出处。",
 			tagline: "每个网页旁的 AI 智能体。",
 			chips: ["读懂网页", "操作网页", "编写并运行脚本", "先问再做", "用你自己的密钥"],
 			providers: [
 				"ChatGPT 订阅，或 OpenAI、Anthropic、OpenRouter、DeepSeek 的 API 密钥。",
-				"没有 pi-aside 服务器：请求直接发往模型服务商。",
+				"没有 Pagewing 服务器：请求直接发往模型服务商。",
 			],
 			title: "The four-day week works",
 			ask: ["标出文中的论断，", "没有出处的单独注明。"],
@@ -86,7 +86,7 @@ const TEXT = {
 			note: "无出处",
 		},
 		agent: {
-			label: "pi-aside 在维基百科的全球最高票房电影列表旁：读表格，运行脚本前先询问，在页面上标出 2020 年代的行，再按年代画出图表",
+			label: "Pagewing 在维基百科的全球最高票房电影列表旁：读表格，运行脚本前先询问，在页面上标出 2020 年代的行，再按年代画出图表",
 			head: "问一次，",
 			headRest: "每一步都看得见。",
 			ask: ["这些电影是哪年上映的？按年代", "画张图，并把 2020 年代的标出来。"],
@@ -272,7 +272,7 @@ function overview(locale) {
 	const W = 1200;
 	const H = 440;
 	body.push(...logo(64, 64, 58));
-	o(`<text x="152" y="111" font-size="50" font-weight="700" fill="${INK}" letter-spacing="-1">pi-aside</text>`);
+	o(`<text x="152" y="111" font-size="50" font-weight="700" fill="${INK}" letter-spacing="-1">Pagewing</text>`);
 	body.push(...highlight('x="64" y="182" font-size="30" font-weight="600" letter-spacing="-0.4"', esc(text.tagline)));
 	// The chips, wrapped to the left column.
 	let x = 64;

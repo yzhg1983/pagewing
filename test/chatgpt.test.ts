@@ -214,7 +214,7 @@ it("starts a first sign-in as a new registration, with a rule for this state onl
 	expect(url.origin + url.pathname).toBe(`${AUTH}/api/accounts/authorize`);
 	expect(Object.fromEntries(url.searchParams)).toEqual({
 		client_id: "dynamic_agent_client",
-		agent_name_hint: "pi-aside",
+		agent_name_hint: "Pagewing",
 		ext_agent_host_id: `urn:uuid:${local.get("installId")}`,
 		response_type: "code",
 		redirect_uri: REDIRECT_URI,
@@ -279,7 +279,7 @@ it("signs in to the saved account with its client ID and email, and its ID token
 	// Another account: a new registration, with nothing of the saved one.
 	await credentials.delete("openai");
 	await startSignIn(undefined, credentials, true);
-	expect(params()).toMatchObject({ client_id: "dynamic_agent_client", agent_name_hint: "pi-aside" });
+	expect(params()).toMatchObject({ client_id: "dynamic_agent_client", agent_name_hint: "Pagewing" });
 	expect(params()).not.toHaveProperty("login_hint");
 });
 

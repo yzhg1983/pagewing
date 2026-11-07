@@ -44,7 +44,7 @@ function setup() {
 		});
 	};
 	faux.setResponses(Array.from({ length: 10 }, () => hang));
-	const path = join(mkdtempSync(join(tmpdir(), "pi-aside-")), "session.sqlite");
+	const path = join(mkdtempSync(join(tmpdir(), "pagewing-")), "session.sqlite");
 	const registry = createRegistry();
 	registry.install({ name: "test", tasks: [Hang] });
 	return {

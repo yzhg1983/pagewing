@@ -174,7 +174,7 @@ async function setup(texts: Record<string, string>, options: Options = {}) {
 	const faux = fauxProvider({ provider: "openrouter", models: [{ id: "one" }] });
 	const models = createModels();
 	models.setProvider(faux.provider);
-	const path = options.path ?? join(mkdtempSync(join(tmpdir(), "pi-aside-page-")), "session.sqlite");
+	const path = options.path ?? join(mkdtempSync(join(tmpdir(), "pagewing-page-")), "session.sqlite");
 	const settings = options.compaction === undefined ? {} : { settings: { compaction: options.compaction } };
 	const harness = await Harness.open(await openNodeSqliteStorage(path), { models, registry, ...settings }, context);
 	open.push(harness);
@@ -572,7 +572,7 @@ it("a chunk stays within the size limit and never splits a character", () => {
 });
 
 it("a read that a restart cut off runs again once, and is counted once", async () => {
-	const path = join(mkdtempSync(join(tmpdir(), "pi-aside-page-")), "session.sqlite");
+	const path = join(mkdtempSync(join(tmpdir(), "pagewing-page-")), "session.sqlite");
 	const input = withPage("r1", "Read it", page("doc1"));
 	const fixture = fileURLToPath(new URL("fixtures/interrupted-read.ts", import.meta.url));
 	const child = spawnSync(process.execPath, [fixture, path, JSON.stringify(input)], { encoding: "utf8" });

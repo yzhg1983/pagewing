@@ -1,10 +1,11 @@
-import type { AttachedReplicatedState } from "@earendil-works/chord";
 import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
 import type { Message, ModelThinkingLevel, UserMessage } from "@earendil-works/pi-ai";
 import {
 	type Conversation,
 	type ConversationId,
+	ConversationTranscript,
 	type ConversationView,
+	type ConversationWatch,
 	type Cursor,
 	defineDoc,
 	type EntryId,
@@ -19,6 +20,8 @@ import {
 	type ModelRef,
 	type SubmissionId,
 	type TaskGraph,
+	type TaskGraphWatch,
+	type TranscriptView,
 	type Tx,
 	type UserInput,
 } from "@earendil-works/pi-durable";
@@ -43,6 +46,7 @@ import {
 import { draftEdited } from "./drafts.ts";
 import { PageReadsDoc } from "./page.ts";
 import {
+	activeEntries,
 	contentText,
 	type Earlier,
 	EMPTY_CHAT,
@@ -64,6 +68,28 @@ import type { Tabs } from "./tabs.ts";
 const context = BACKGROUND_CONTEXT;
 /** Chats the history lists besides the running ones, newest first. */
 const MAX_LISTED = 50;
+/** Entries a chat's transcript loads per call, as `#records` scans them. */
+const ENTRY_PAGE = 200;
+
+/** Whether a transcript holds all of its conversation: nothing earlier to load, and no gap. */
+const isComplete = (view: TranscriptView) => view.items.every((item) => item.kind === "entry");
+
+/**
+ * Loads what transcript `view` misses: the entries before its oldest, then each gap, until it has them all, or a load
+ * adds nothing (the transcript then returns the same `items`).
+ */
+async function complete(transcript: ConversationTranscript, view: TranscriptView): Promise<TranscriptView> {
+	for (;;) {
+		const gap = view.items.find((item) => item.kind === "gap");
+		if (view.items[0]?.kind !== "earlier" && gap === undefined) return view;
+		const next =
+			view.items[0]?.kind === "earlier"
+				? await transcript.loadEarlier(context)
+				: await transcript.fillGap(gap!, context);
+		if (next.items === view.items) return next;
+		view = next;
+	}
+}
 
 type IndexedChat = {
 	id: number;
@@ -161,12 +187,18 @@ export const QUEUE_SETTINGS = { steeringMode: "all", followUpMode: "all" } as co
 export type Input = { requestId: string; content: UserInput; entry?: InputEntry; whenBusy?: WhenBusy };
 
 /**
- * A chat that a connected page shows. `earlier`: the projected entries before its active context, and where it starts.
+ * A chat that a connected page shows. pi-durable's view is a window over the chat's history; `transcript` keeps all of
+ * it, loaded when the view attaches, and `view` is the active transcript (`activeEntries`) with the chat's documents.
+ * `earlier`: the projected entries before its active context, where it starts, and whether all of them were loaded.
  * `from`: the listed chat it was edited from, as it was when the view attached.
  */
 type Watched = {
-	view: AttachedReplicatedState<ConversationView>;
-	earlier: { head: number | undefined } & Earlier;
+	watch: ConversationWatch;
+	/** The watch's newest value: merged again, it gives the transcript as it is now. */
+	window: ConversationView;
+	transcript: ConversationTranscript;
+	view: ConversationView;
+	earlier: { head: number | undefined; complete: boolean } & Earlier;
 	from: number | null;
 	chat: ChatView;
 	/**
@@ -196,7 +228,7 @@ export class Chats {
 	readonly #attaching = new Map<number, Promise<Watched>>();
 	/** Chats whose view is attaching though no page shows them any more: disposed when it is ready. */
 	readonly #unwanted = new Set<number>();
-	#graph: AttachedReplicatedState<TaskGraph> | undefined;
+	#graph: TaskGraphWatch | undefined;
 	/** The chats with a live task that can run: an answer, a tool, or a summary. */
 	#running: ReadonlySet<number> = new Set();
 
@@ -210,11 +242,12 @@ export class Chats {
 	/** Follows the task graph for the running chats; the first send of a tab creates its chat. */
 	static async open(harness: Harness, options: ChatsOptions): Promise<Chats> {
 		const chats = new Chats(harness, options);
-		const graph = await harness.taskGraph(context);
+		const graph = await harness.watchTaskGraph(context);
 		chats.#graph = graph;
 		chats.#running = chats.#runningIn(graph.value);
-		graph.subscribe((value) => {
-			const running = chats.#runningIn(value);
+		graph.start(async (call) => {
+			if (call.kind !== "value") return;
+			const running = chats.#runningIn(call.value);
 			// A chat whose work ended may no longer need its page snapshots.
 			for (const id of chats.#running) if (!running.has(id)) void chats.release(id).catch(() => {});
 			chats.#running = running;
@@ -231,7 +264,7 @@ export class Chats {
 	retain(ids: ReadonlySet<number>): void {
 		for (const [id, watched] of this.#views) {
 			if (ids.has(id)) continue;
-			watched.view.dispose();
+			void watched.watch.stop();
 			this.#views.delete(id);
 		}
 		for (const id of this.#attaching.keys()) if (!ids.has(id)) this.#unwanted.add(id);
@@ -251,25 +284,41 @@ export class Chats {
 		let attaching = this.#attaching.get(id);
 		if (attaching === undefined) {
 			attaching = (async () => {
-				const view = await (await this.#conversation(id)).viewState(context);
+				const conversation = await this.#conversation(id);
+				const transcript = new ConversationTranscript(
+					(query, limit, loading) => conversation.entries(query, limit, undefined, loading),
+					{ pageSize: ENTRY_PAGE },
+				);
+				const watch = await conversation.watch(context);
+				let loaded: TranscriptView;
+				try {
+					// The panel shows the whole chat: what the window does not hold is loaded before the view attaches.
+					loaded = await complete(transcript, transcript.merge(watch.value));
+				} catch (error) {
+					void watch.stop();
+					throw error;
+				}
 				const index = (await this.#harness.snapshot(ChatsDoc, context))?.chats ?? [];
 				const from = index.find((chat) => chat.id === id)?.from;
 				const watched: Watched = {
-					view,
-					earlier: { head: undefined, entries: [], cacheHit: undefined },
+					watch,
+					transcript,
+					window: watch.value,
+					view: watch.value,
+					earlier: { head: undefined, complete: false, entries: [], cacheHit: undefined },
 					from: index.some((chat) => chat.id === from && !chat.removed) ? (from ?? null) : null,
 					chat: EMPTY_CHAT,
 				};
 				if (this.#unwanted.delete(id)) {
 					// Its last page left meanwhile, and nothing would drop it later.
-					view.dispose();
+					void watch.stop();
 					return watched;
 				}
-				this.#project(watched, view.value);
-				view.subscribe((value) => {
-					if (this.#views.get(id) !== watched) return;
-					this.#project(watched, value);
-					this.#options.changed();
+				this.#project(watched, loaded);
+				watch.start(async (call) => {
+					if (call.kind !== "value" || this.#views.get(id) !== watched) return;
+					watched.window = call.value;
+					this.#update(watched, transcript.merge(call.value));
 				});
 				this.#views.set(id, watched);
 				this.#options.changed();
@@ -311,7 +360,7 @@ export class Chats {
 			if (chat === null) throw new Error(t("chatMessageGone"));
 			// Another panel's Retry may have run since this page showed the button.
 			if (await this.#busy(chat)) throw new Error(t("chatBusy"));
-			const view = (await this.#attach(chat)).view.value;
+			const { view } = await this.#attach(chat);
 			if (projectChat(view).retry !== entryId) throw new Error(t("chatMessageAnswered"));
 			const entry = view.entries.find((candidate) => Number(candidate.id) === entryId);
 			const message = entry?.model?.[0];
@@ -618,15 +667,17 @@ export class Chats {
 		const chat = index?.chats.find((candidate) => isChat(candidate, target, createdAt) && !candidate.removed);
 		if (chat === undefined) throw new Error(t("chatGone"));
 		const records = await this.#records(target as ConversationId);
-		const view = await (await this.#conversation(target)).viewState(context);
+		// Only for its documents: the view's window holds the newest entries, and the records are all of them.
+		const watch = await (await this.#conversation(target)).watch(context, { min: 1 });
 		try {
-			const head = view.value.entries[0]?.head;
+			const view = { ...watch.value, entries: activeEntries(records) };
+			const head = view.entries[0]?.head;
 			const earlier = head === undefined ? undefined : projectEarlier(records, Number(head));
-			const entries = projectChat(view.value, earlier).entries;
+			const entries = projectChat(view, earlier).entries;
 			const title = chat.title ?? records.map(inputTitle).find((found) => found !== undefined) ?? t("newChat");
 			return { title, markdown: chatMarkdown(title, chat.createdAt, now, entries) };
 		} finally {
-			view.dispose();
+			void watch.stop();
 		}
 	}
 
@@ -750,9 +801,9 @@ export class Chats {
 	}
 
 	dispose(): void {
-		for (const watched of this.#views.values()) watched.view.dispose();
+		for (const watched of this.#views.values()) void watched.watch.stop();
 		this.#views.clear();
-		this.#graph?.dispose();
+		void this.#graph?.stop();
 		this.#graph = undefined;
 	}
 
@@ -936,30 +987,47 @@ export class Chats {
 		return running;
 	}
 
-	/** Projects a watched chat; loads the entries before its active context when that context starts elsewhere. */
-	#project(watched: Watched, value: ConversationView): void {
-		const head = value.entries[0]?.head;
-		if ((head === undefined ? undefined : Number(head)) !== watched.earlier.head) {
-			watched.earlier = { head: head === undefined ? undefined : Number(head), entries: [], cacheHit: undefined };
-			if (head !== undefined) void this.#loadEarlier(watched, value.conversation.id, head).catch(() => {});
+	/** Projects a new value of a watched chat; loads what its transcript misses, after a burst the window skipped. */
+	#update(watched: Watched, value: TranscriptView): void {
+		this.#project(watched, value);
+		this.#options.changed();
+		if (isComplete(value)) return;
+		void complete(watched.transcript, value)
+			.then(() => {
+				if (this.#views.get(Number(value.conversation.id)) !== watched) return;
+				// Not the load's result: that is the transcript as it was when the load ended, and a newer value may have
+				// been merged and shown since. Merging the newest value again adds nothing and returns the transcript now.
+				this.#project(watched, watched.transcript.merge(watched.window));
+				this.#options.changed();
+			})
+			.catch(() => {});
+	}
+
+	/**
+	 * Projects a watched chat from its whole transcript, as `value` has it. The entries before its active context, when
+	 * that context starts at a compaction or a reset, are projected again only when the head moves or they were missing.
+	 */
+	#project(watched: Watched, value: TranscriptView): void {
+		const records = value.items.flatMap((item) => (item.kind === "entry" ? [item.entry] : []));
+		const { items: _, ...rest } = value;
+		watched.view = { ...rest, entries: activeEntries(records) };
+		const marker = watched.view.entries[0]?.head;
+		const head = marker === undefined ? undefined : Number(marker);
+		const loaded = isComplete(value);
+		if (head !== watched.earlier.head || (loaded && !watched.earlier.complete)) {
+			watched.earlier =
+				head === undefined
+					? { head, complete: loaded, entries: [], cacheHit: undefined }
+					: { head, complete: loaded, ...projectEarlier(records, head) };
 		}
 		const first = (value.docs["pi.live"] as LiveState | undefined)?.run?.inputs[0];
 		if (first === undefined) watched.run = undefined;
 		else if (watched.run?.first !== String(first))
 			watched.run = { first: String(first), startedAt: (this.#options.now ?? Date.now)() };
-		watched.chat = { ...projectChat(value, watched.earlier, watched.run?.startedAt), editedFrom: watched.from };
-	}
-
-	async #loadEarlier(watched: Watched, id: ConversationId, head: EntryId): Promise<void> {
-		// All of them: an older compaction's marker can follow the head and still start a group before it.
-		const records = await this.#records(id);
-		if (watched.earlier.head !== Number(head)) return;
-		watched.earlier = { head: Number(head), ...projectEarlier(records, Number(head)) };
 		watched.chat = {
-			...projectChat(watched.view.value, watched.earlier, watched.run?.startedAt),
+			...projectChat(watched.view, watched.earlier, watched.run?.startedAt),
 			editedFrom: watched.from,
 		};
-		this.#options.changed();
 	}
 
 	/**

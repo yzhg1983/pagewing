@@ -3,6 +3,7 @@ import type { ConversationView } from "@earendil-works/pi-durable";
 import { expect, it, vi } from "vitest";
 import { type Step, stepText } from "../src/background/page-agent.ts";
 import {
+	activeEntries,
 	inputTitle,
 	MESSAGE_KIND,
 	pageOf,
@@ -933,4 +934,25 @@ it("a message sent after the tab left its page shows where the tab was; a malfor
 	expect(sent({ site: null })).toMatchObject({ moved: { site: null } });
 	for (const malformed of [undefined, null, "https://y/", {}, { url: "https://y/" }, { site: 3 }])
 		expect(sent(malformed)).not.toHaveProperty("moved");
+});
+
+it("the active transcript is the newest head marker and the entries from its head, as pi-durable 1.4's view had it", () => {
+	const ids = (entries: Entry[]) => activeEntries(records(entries)).map((entry) => Number(entry.id));
+	expect(ids([])).toEqual([]);
+	expect(ids([user(1, "q"), assistant(2, "stop")])).toEqual([1, 2]);
+	// A compaction keeps the entries from its head, which it follows; an older marker is not active.
+	const history = [
+		user(1, "q1"),
+		assistant(2, "stop"),
+		user(3, "q2"),
+		assistant(4, "stop"),
+		{ id: 5, kind: "pi.compaction", head: 3 },
+		user(6, "q3"),
+		{ id: 7, kind: "pi.compaction", head: 4 },
+		user(8, "q4"),
+	];
+	expect(ids(history.slice(0, 6))).toEqual([5, 3, 4, 6]);
+	expect(ids(history)).toEqual([7, 4, 6, 8]);
+	// A reset's head is itself: nothing before it is active.
+	expect(ids([user(1, "q"), { id: 2, kind: "pi.reset", head: 2 }, user(3, "q2")])).toEqual([2, 3]);
 });

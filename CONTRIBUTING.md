@@ -1,6 +1,6 @@
-# Contributing to pi-aside
+# Contributing to Pagewing
 
-How to set up, check, and test pi-aside.
+How to set up, check, and test Pagewing.
 
 ## Setup
 
@@ -12,7 +12,7 @@ npm run build             # writes dist/
 ```
 
 Open `chrome://extensions`, turn on Developer mode, click **Load unpacked**, and choose `dist/`. After a change, run
-`npm run build` again and press the reload icon on pi-aside's card.
+`npm run build` again and press the reload icon on Pagewing's card.
 
 ## Before you push
 
@@ -78,6 +78,6 @@ request or run CI from the Actions tab.
 
 To release: set the same, higher version in `package.json` and `static/manifest.json` and commit it to `main`, then
 push a tag for it (`git tag v0.1.0 && git push origin v0.1.0`). The release workflow checks and builds it and drafts a
-GitHub Release with `pi-aside-<version>.zip`; check and publish the draft, then upload the zip to the Chrome Web Store.
-A change to the manifest's permissions or to the data pi-aside handles also changes the store's Privacy practices tab,
+GitHub Release with `pagewing-<version>.zip`; check and publish the draft, then upload the zip to the Chrome Web Store.
+A change to the manifest's permissions or to the data Pagewing handles also changes the store's Privacy practices tab,
 which the maintainer updates.

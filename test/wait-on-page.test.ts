@@ -56,7 +56,7 @@ async function setup(options: { path?: string; resume?: false; start?: number } 
 	const faux = fauxProvider({ provider: "openrouter", models: [{ id: "one" }] });
 	const models = createModels();
 	models.setProvider(faux.provider);
-	const path = options.path ?? join(mkdtempSync(join(tmpdir(), "pi-aside-wait-")), "session.sqlite");
+	const path = options.path ?? join(mkdtempSync(join(tmpdir(), "pagewing-wait-")), "session.sqlite");
 	const harness = await Harness.open(await openNodeSqliteStorage(path), { models, registry }, context);
 	open.push(harness);
 	attach(harness);
@@ -245,7 +245,7 @@ it("Stop ends a wait at once", async () => {
 it("a wait that a restart cut off waits again for the same medium and page, until the first run's deadline", async () => {
 	const fixture = fileURLToPath(new URL("fixtures/interrupted-wait.ts", import.meta.url));
 	const restarted = async (change: (fake: Awaited<ReturnType<typeof setup>>) => void) => {
-		const path = join(mkdtempSync(join(tmpdir(), "pi-aside-wait-")), "session.sqlite");
+		const path = join(mkdtempSync(join(tmpdir(), "pagewing-wait-")), "session.sqlite");
 		const child = spawnSync(process.execPath, [fixture, path, JSON.stringify(input("r1"))], { encoding: "utf8" });
 		expect(child.status, child.stderr).toBe(0);
 		// 400 s later: past the first run's 300 s deadline, which a fresh start would have set again.

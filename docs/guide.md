@@ -1,6 +1,6 @@
-# pi-aside user guide
+# Pagewing user guide
 
-The [README](../README.md) covers what pi-aside is, how to install it, and how you stay in control. This guide covers
+The [README](../README.md) covers what Pagewing is, how to install it, and how you stay in control. This guide covers
 the rest.
 
 ## How the agent works
@@ -59,7 +59,7 @@ is in [Page tools: what the model sees](page-tools.md).
 ## When Chrome stops pi
 
 A Chrome extension's background code runs in a worker that Chrome may stop at any time: after about 30 seconds with
-nothing happening, on a crash, or during an update, and everything in its memory goes with it. pi-aside is built on
+nothing happening, on a crash, or during an update, and everything in its memory goes with it. Pagewing is built on
 [pi-durable](https://github.com/earendil-works/pi/tree/main/packages/durable) so that a task survives this:
 
 1. **Every step is saved as it happens.** pi-durable writes your message, the running task, each tool call before it
@@ -81,16 +81,16 @@ nothing happening, on a crash, or during an update, and everything in its memory
 ## Setting up a provider
 
 The setup card, or Settings > Providers, takes an API key for OpenAI, Anthropic, OpenRouter, or DeepSeek ("Get a key"
-opens the provider's key page). After Save, Chrome asks you to let pi-aside reach that provider: allow it. Anthropic
+opens the provider's key page). After Save, Chrome asks you to let Pagewing reach that provider: allow it. Anthropic
 takes API keys only, not a Claude subscription.
 
 To use a ChatGPT plan instead of an OpenAI key, choose OpenAI, then "Continue with ChatGPT". Chrome asks for access to
-OpenAI and to `127.0.0.1:1455`, the address OpenAI sends the sign-in back to; pi-aside catches it inside Chrome, and
+OpenAI and to `127.0.0.1:1455`, the address OpenAI sends the sign-in back to; Pagewing catches it inside Chrome, and
 removes that access when the sign-in ends. Sign in at OpenAI and click Continue.
 
 ### Update the model list
 
-pi-aside comes with a list of each provider's models. When a provider adds a model after that, Settings > Models >
+Pagewing comes with a list of each provider's models. When a provider adds a model after that, Settings > Models >
 Update downloads the current list from pi.dev, the pi project's catalog, and the model picker lists the new models.
 Nothing of yours is sent; the line below says when the list was last updated and how many models are new. In the
 picker, a search that finds nothing links to the button.
@@ -127,7 +127,7 @@ to 10 of them, and can be only images or files with no text.
 Each tab has its own chat, and keeps it while you follow links or reload. When pi first opens in a tab, it continues
 the newest chat that started on the same page, if there is one. New chat starts over in the same tab. History lists
 earlier chats; a chat's ⋯ menu renames it, exports it as Markdown, or removes it from History. Removing hides the chat;
-its data stays stored, since pi-aside cannot delete a single chat. Settings > Advanced > Data > Delete all chats erases
+its data stays stored, since Pagewing cannot delete a single chat. Settings > Advanced > Data > Delete all chats erases
 them all, and keeps your settings, keys, and sign-in.
 
 ## Prompts
@@ -209,7 +209,7 @@ Open Settings with the button at the top of the panel. The defaults below are th
 | Part | What it sets | Default |
 | --- | --- | --- |
 | Providers | API keys and the ChatGPT sign-in ([Setting up a provider](#setting-up-a-provider)), and OpenAI's [web search](#openai-web-search) | No API key or ChatGPT sign-in; web search On |
-| Models | The model list: Update downloads the current one ([Update the model list](#update-the-model-list)) | The list that came with pi-aside |
+| Models | The model list: Update downloads the current one ([Update the model list](#update-the-model-list)) | The list that came with Pagewing |
 | Answers | Answer language, also the Translate target ([Languages](#languages)) | Auto (Chrome language) |
 | Sending | **Ask pi**: Send at once or Edit first ([Asking about a page](#asking-about-a-page)). **While pi works**: what Enter does with a message, Join the task or Wait; Alt+Enter does the other, Ctrl+Enter sends now ([How the agent works](#how-the-agent-works)) | Send at once; Join the task |
 | Prompts | The right-click menu and the `/` list: edit, add, delete, reorder, star, switch off, reset ([Prompts](#prompts)) | The 5 built-in prompts, all on, Explain starred |
@@ -251,11 +251,11 @@ report a problem.
   cannot read them; programs running as you, or anyone with your profile's files, can.
 - Messages you have not sent yet are kept only until the browser closes or the extension reloads.
 - If Chrome has no room left to save chats, a banner in the panel says so: free up disk space, or delete all chats.
-  pi-aside does not delete old chats by itself.
+  Pagewing does not delete old chats by itself.
 - The full policy is in [PRIVACY.md](../PRIVACY.md).
 
 ## Limits
 
-- pi-aside does not run in incognito windows.
+- Pagewing does not run in incognito windows.
 - pi cannot read Chrome's own pages, the Chrome Web Store, or the PDF viewer.
 - A task interrupted by Chrome is resumed once at most ([When Chrome stops pi](#when-chrome-stops-pi)).

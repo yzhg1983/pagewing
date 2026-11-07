@@ -1,6 +1,6 @@
 # Page tools: what the model sees
 
-pi-aside gives the model seven page tools. This page has, word for word, what the model is told about them at the
+Pagewing gives the model seven page tools. This page has, word for word, what the model is told about them at the
 default tool modes with Chrome's Allow User Scripts on for pi, and how that changes when a tool is Off in Settings >
 Tools. Each signature lists every parameter with its limits; the comments are short forms of the parameters' own
 descriptions. `N` is "Page tool calls per answer" (5 to

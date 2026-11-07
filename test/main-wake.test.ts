@@ -39,7 +39,7 @@ it("a failed recovery pre-arm does not resume and is reported without an unhandl
 	fire("alarms.onAlarm", { name: "recovery" });
 	await vi.waitFor(() =>
 		expect(report).toHaveBeenCalledWith(
-			"[pi-aside] recovery alarm",
+			"[pagewing] recovery alarm",
 			expect.objectContaining({ message: "cannot arm recovery" }),
 		),
 	);
