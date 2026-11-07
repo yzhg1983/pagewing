@@ -3,7 +3,15 @@ import { IndexedDbStorage } from "@earendil-works/pi-durable/storage/indexeddb";
 import { expect, it, type Mock, vi } from "vitest";
 import { ActiveWork } from "../src/background/active-work.ts";
 import { Chats } from "../src/background/chats.ts";
-import { currentSession, deleteAllChats, installPageTools, session, tabs } from "../src/background/session.ts";
+import {
+	currentSession,
+	deleteAllChats,
+	installPageTools,
+	onReport,
+	session,
+	storageFull,
+	tabs,
+} from "../src/background/session.ts";
 import { loadSettings } from "../src/background/settings.ts";
 
 const fixture = vi.hoisted(() => {
@@ -69,7 +77,7 @@ it("holds the storage lock through Harness closure, releases failed opens, and h
 			commit: vi.fn(async () => 1),
 			snapshot: vi.fn(async () => ({ log: [] })),
 			inspect: vi.fn(async () => ({ tasks: [] })),
-			taskGraph: vi.fn(async () => ({})),
+			watchTaskGraph: vi.fn(async () => ({})),
 			wake: vi.fn(() => ({ active: false })),
 			close: vi.fn(async () => {
 				await fixture.storage.close();
@@ -133,10 +141,10 @@ it("holds the storage lock through Harness closure, releases failed opens, and h
 		fixture.state.hydration.resolve({ tabs: { 10: bound, 11: fresh, 12: unresolved } });
 		await retry;
 		expect(start).toHaveBeenCalledTimes(1);
-		expect(harness.taskGraph).not.toHaveBeenCalled();
+		expect(harness.watchTaskGraph).not.toHaveBeenCalled();
 		expect(openHarness).toHaveBeenLastCalledWith(
 			fixture.storage,
-			expect.objectContaining({ onWake: expect.any(Function) }),
+			expect.objectContaining({ onWake: expect.any(Function), onReport }),
 			expect.anything(),
 		);
 		expect(harness.resume).toHaveBeenCalledTimes(1);
@@ -230,5 +238,21 @@ it("holds the storage lock through Harness closure, releases failed opens, and h
 		await fixture.state.lockLine;
 		vi.restoreAllMocks();
 		vi.unstubAllGlobals();
+	}
+});
+
+it("pi-durable's report of a full disk shows the storage banner; another report does not (design 8)", async () => {
+	const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+	try {
+		onReport({ kind: "host_error", callback: "telemetry", error: new Error("adapter threw") });
+		await new Promise((resolve) => setTimeout(resolve, 20));
+		expect(storageFull.full).toBe(false);
+		// The error is the report's field: pi-durable 1.4 passed it as the argument.
+		const quota = new DOMException("The quota has been exceeded.", "QuotaExceededError");
+		onReport({ kind: "storage_failed", error: quota });
+		await vi.waitFor(() => expect(storageFull.full).toBe(true));
+		expect(logged).toHaveBeenCalledWith("[pi-durable]", "storage_failed", quota);
+	} finally {
+		logged.mockRestore();
 	}
 });

@@ -1,5 +1,5 @@
 import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
-import { createRegistry, defineDoc, defineExtension, Harness, section } from "@earendil-works/pi-durable";
+import { createRegistry, defineDoc, defineExtension, Harness, type Report, section } from "@earendil-works/pi-durable";
 import { IndexedDbStorage } from "@earendil-works/pi-durable/storage/indexeddb";
 import { effectiveAnswerLanguage } from "../shared/language.ts";
 import { isProvider, type Settings } from "../shared/protocol.ts";
@@ -139,6 +139,12 @@ export function installPageTools(settings: Settings): Promise<boolean> {
 }
 /** The tabs' chats and newest gestures, kept in `storage.session`. */
 export const tabs = new Tabs(chrome.storage.session, changed);
+
+/** pi-durable's reports of errors it handled: logged, and a full disk shows the storage banner (design 8). */
+export function onReport(report: Report): void {
+	console.error("[pi-durable]", report.kind, report.error);
+	void storageFull.note(report.error);
+}
 /**
  * The one command queue (design 6.17): chat commands, and the moves and drops of tabs. It does not need the Harness, so
  * closing a tab pi never opened in only reads `storage.session`.
@@ -193,10 +199,7 @@ async function open(current: number): Promise<Opened> {
 				registry,
 				settings: QUEUE_SETTINGS,
 				onWake: (wake) => activeWork.wake(wake),
-				onReport: (error) => {
-					console.error("[pi-durable]", error);
-					void storageFull.note(error);
-				},
+				onReport,
 			},
 			context,
 		);

@@ -3,7 +3,7 @@
 // page extension, which offers the page tools whose mode is not Off and checks each call at dispatch.
 
 import type { Context } from "@earendil-works/chord/context";
-import { type AssistantMessage, type Message, Type } from "@earendil-works/pi-ai";
+import type { AssistantMessage, Message } from "@earendil-works/pi-ai";
 import {
 	type ConversationId,
 	defineDoc,
@@ -16,6 +16,7 @@ import {
 	type ToolExecutionApi,
 	ToolTask,
 } from "@earendil-works/pi-durable";
+import { bool, int, num, opt, str, union } from "@earendil-works/pi-schema";
 import { ENCODINGS, MAX_IMAGE_BYTES, MAX_IMAGE_CHARS, MAX_IMAGES } from "../shared/images.ts";
 import { cut, MAX_URL_CHARS, type PageRef, pageTitle, type ToolMode, type ToolModes } from "../shared/protocol.ts";
 import {
@@ -34,6 +35,7 @@ import {
 	notSiteText,
 	OBSERVE_PAGE,
 	offText,
+	open,
 	originOf,
 	PAGE_TIMEOUT_MS,
 	type PageDeps,
@@ -51,6 +53,7 @@ import {
 	samePage,
 	scopedPageAccess,
 	spent,
+	strLit,
 	type TopDocument,
 	tabParameter,
 	WAIT_ON_PAGE,
@@ -611,17 +614,15 @@ export function pageExtension(deps: PageDeps, config: PageToolOffer): Extension 
 	const observePage = defineTool({
 		name: OBSERVE_PAGE,
 		description: observeDescription(config),
-		parameters: Type.Object({
+		parameters: open({
 			tab: tabParameter(),
-			find: Type.Optional(
-				Type.String({
+			find: opt(
+				str({
 					maxLength: 200,
 					description: "Keep elements whose role and name contain every word, in any order or case.",
 				}),
 			),
-			within: Type.Optional(
-				Type.String({ maxLength: 20, description: "A ref: list only that element's contents." }),
-			),
+			within: opt(str({ maxLength: 20, description: "A ref: list only that element's contents." })),
 		}),
 		// Observing has no effect on the page beyond numbering its elements, so a call a restart interrupted runs again.
 		replay: "safe",
@@ -711,15 +712,15 @@ export function pageExtension(deps: PageDeps, config: PageToolOffer): Extension 
 	const waitOnPage = defineTool({
 		name: WAIT_ON_PAGE,
 		description: waitDescription(config),
-		parameters: Type.Object({
+		parameters: open({
 			tab: tabParameter(),
-			until: Type.Object({
-				media: Type.Optional(
-					Type.Object({
-						from: Type.Number({ minimum: 0, description: "Seconds: return when the position is before this." }),
-						to: Type.Number({ minimum: 0, description: "Seconds: return when the position reaches this." }),
-						pausedSec: Type.Optional(
-							Type.Integer({
+			until: open({
+				media: opt(
+					open({
+						from: num({ minimum: 0, description: "Seconds: return when the position is before this." }),
+						to: num({ minimum: 0, description: "Seconds: return when the position reaches this." }),
+						pausedSec: opt(
+							int({
 								minimum: 60,
 								maximum: 86_400,
 								description: "Also return once the medium has been paused this long.",
@@ -727,12 +728,12 @@ export function pageExtension(deps: PageDeps, config: PageToolOffer): Extension 
 						),
 					}),
 				),
-				text: Type.Optional(Type.String({ minLength: 1, maxLength: 200 })),
-				present: Type.Optional(
-					Type.Boolean({ description: "With text: true (default) waits until it shows, false until it is gone." }),
+				text: opt(str({ minLength: 1, maxLength: 200 })),
+				present: opt(
+					bool({ description: "With text: true (default) waits until it shows, false until it is gone." }),
 				),
 			}),
-			timeoutSec: Type.Optional(Type.Integer({ minimum: 5, maximum: MAX_WAIT_SEC })),
+			timeoutSec: opt(int({ minimum: 5, maximum: MAX_WAIT_SEC })),
 		}),
 		// A wait only reads the page, so a call a restart interrupted waits again: for the same page, until the same time.
 		replay: "safe",
@@ -876,40 +877,34 @@ export function pageExtension(deps: PageDeps, config: PageToolOffer): Extension 
 	const actOnPage = defineTool({
 		name: ACT_ON_PAGE,
 		description: actDescription(config),
-		parameters: Type.Object({
-			action: Type.Union(ACTIONS.map((action) => Type.Literal(action))),
-			ref: Type.Optional(
-				Type.String({
+		parameters: open({
+			action: union(ACTIONS.map((action) => strLit(action))),
+			ref: opt(
+				str({
 					maxLength: 20,
 					description: "Required for click, type, select_option; optional for press and scroll.",
 				}),
 			),
-			text: Type.Optional(Type.String({ maxLength: 10_000, description: "type: replaces the field's content." })),
-			submit: Type.Optional(Type.Boolean({ description: "type: submit the field's form afterwards." })),
-			key: Type.Optional(
-				Type.String({
+			text: opt(str({ maxLength: 10_000, description: "type: replaces the field's content." })),
+			submit: opt(bool({ description: "type: submit the field's form afterwards." })),
+			key: opt(
+				str({
 					maxLength: 40,
 					description: 'press: "Enter", "Escape", "ArrowDown", "Shift+I", "Control+Enter".',
 				}),
 			),
-			option: Type.Optional(
-				Type.String({ maxLength: 1_000, description: "select_option: the option's label or value." }),
-			),
-			direction: Type.Optional(
-				Type.Union(
-					["up", "down", "top", "bottom"].map((direction) => Type.Literal(direction)),
+			option: opt(str({ maxLength: 1_000, description: "select_option: the option's label or value." })),
+			direction: opt(
+				union(
+					["up", "down", "top", "bottom"].map((direction) => strLit(direction)),
 					{
 						description: "scroll: the page, or with ref as a mouse wheel over it.",
 					},
 				),
 			),
-			url: Type.Optional(
-				Type.String({ maxLength: 2048, description: 'navigate: a URL on the tab\'s current origin, or "reload".' }),
-			),
+			url: opt(str({ maxLength: 2048, description: 'navigate: a URL on the tab\'s current origin, or "reload".' })),
 			tab: tabParameter(),
-			summary: Type.Optional(
-				Type.String({ maxLength: 100, description: "What this step is for, shown to the user." }),
-			),
+			summary: opt(str({ maxLength: 100, description: "What this step is for, shown to the user." })),
 		}),
 		// An action may have happened before a restart: it is not run again, and the model is told to check.
 		replay: "unsafe",
@@ -1384,16 +1379,14 @@ export function pageExtension(deps: PageDeps, config: PageToolOffer): Extension 
 	const runScript = defineTool({
 		name: RUN_SCRIPT,
 		description: scriptDescription(config),
-		parameters: Type.Object({
+		parameters: open({
 			tab: tabParameter(),
-			code: Type.String({
+			code: str({
 				maxLength: 20_000,
 				description:
 					"One expression, or the body of an async function. The user reads it, and may approve it before it runs: write one statement per line, indented, with short lines, never minified.",
 			}),
-			summary: Type.Optional(
-				Type.String({ maxLength: 100, description: "What the script is for, shown to the user." }),
-			),
+			summary: opt(str({ maxLength: 100, description: "What the script is for, shown to the user." })),
 		}),
 		// A script may have run before a restart: it is not run again, and the model is told to check.
 		replay: "unsafe",
@@ -1558,21 +1551,21 @@ export function pageExtension(deps: PageDeps, config: PageToolOffer): Extension 
 	const screenshotPage = defineTool({
 		name: SCREENSHOT_PAGE,
 		description: screenshotDescription(config),
-		parameters: Type.Object({
+		parameters: open({
 			tab: tabParameter(),
 			...(config.tools.observe !== "off"
 				? {
-						ref: Type.Optional(
-							Type.String({
+						ref: opt(
+							str({
 								maxLength: 20,
 								description: "A ref from observe_page: only the part of that element that is in view.",
 							}),
 						),
 					}
 				: {}),
-			scroll: Type.Optional(
-				Type.Union(
-					["up", "down", "top", "bottom"].map((direction) => Type.Literal(direction)),
+			scroll: opt(
+				union(
+					["up", "down", "top", "bottom"].map((direction) => strLit(direction)),
 					{
 						description: `Scroll first: the page${config.tools.observe !== "off" ? ", or with ref as a mouse wheel over it" : ""}; top and bottom are the ends of what moves.`,
 					},
@@ -1832,9 +1825,9 @@ to start a new chat.`;
 		name: LIST_TABS,
 		description:
 			"Lists native permitted metadata for the attached tab's current Chrome group, or the ungrouped attached tab alone. No host grant, scripting, or activation. IDs are stable Chrome tab IDs. Missing title/URL is unknown. Re-resolves scope for each page; offset grants no access. Shares the page call budget.",
-		parameters: Type.Object({
-			offset: Type.Optional(Type.Integer({ minimum: 0 })),
-			limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 50, description: "Rows to return; default 20." })),
+		parameters: open({
+			offset: opt(int({ minimum: 0 })),
+			limit: opt(int({ minimum: 1, maximum: 50, description: "Rows to return; default 20." })),
 		}),
 		replay: "safe",
 		executionMode: "sequential",
