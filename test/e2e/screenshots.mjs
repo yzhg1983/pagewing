@@ -464,11 +464,11 @@ try {
 		await panel.fill("#setup-key .key-field input", "sk-or-e2e-fake");
 		await panel.click("#setup-key button.primary");
 		await panel.waitForSelector("#setup", { state: "hidden" });
-		// The fake provider serves chat completions only; the recommended pinned Haiku goes through Anthropic's messages
+		// The fake provider serves chat completions only; OpenRouter's Anthropic models go through Anthropic's messages
 		// API.
 		await panel.click("#model");
-		await panel.fill("#model-filter", "haiku latest");
-		await panel.click('#model-list [title="openrouter/~anthropic/claude-haiku-latest"]');
+		await panel.fill("#model-filter", "gpt mini latest");
+		await panel.click('#model-list [title="openrouter/~openai/gpt-mini-latest"]');
 		await panel.waitForSelector("#model-popup", { state: "hidden" });
 	}
 	let turns = 0;
