@@ -71,8 +71,20 @@ const FORM_PAGE = `<!doctype html><title>Form page</title>
 <button id="add">Add item</button>
 <ul id="items"></ul>
 <label>Name <input id="name"></label>
+<button onclick="window.open('/popped', '_blank')">Open a tab</button>
+<button id="late">Open a tab later</button>
+<p id="ticks"></p>
 <script>
 window.seen = [];
+// Busy for 1 s, so the click is still settling when the user clicks too, and opens a tab while it is.
+document.getElementById("late").addEventListener("click", () => {
+	let ticks = 0;
+	const busy = setInterval(() => {
+		document.getElementById("ticks").textContent = ++ticks;
+		if (ticks === 20) clearInterval(busy);
+	}, 50);
+	setTimeout(() => window.open("/late", "_blank"), 600);
+});
 document.getElementById("add").addEventListener("click", () => {
 	document.getElementById("items").append(Object.assign(document.createElement("li"), { textContent: "item" }));
 	seen.push("add");
@@ -282,6 +294,52 @@ try {
 		!shot.error && shot.image?.mimeType === "image/jpeg" && shot.image.data.length > 1000,
 		{ ...shot, image: shot.image?.data.length },
 	);
+
+	// A tab the agent's click opens joins its group; one that opens while the user also clicks may be theirs: Pagewing
+	// does not report it as the agent's (Chrome may still group it, as it groups any tab opened from a grouped tab).
+	const refIn = (outline, label) => {
+		const line = outline?.split("\n").find((each) => each.includes(`"${label}"`)) ?? "";
+		return [...line.matchAll(/\b([a-z]+\d+)\b/g)].at(-1)?.[1];
+	};
+	const groupOf = (url) =>
+		poll(() => worker.evaluate(async (url) => (await chrome.tabs.query({ url }))[0] ?? null, url), url).then(
+			(each) => ({
+				id: each.id,
+				groupId: each.groupId,
+			}),
+		);
+	const ownGroup = await worker.evaluate(async (tab) => (await chrome.tabs.get(tab)).groupId, tab);
+	const popped = await agent.call("act_on_page", {
+		tab,
+		action: "click",
+		ref: refIn(fullObserve.text.outline, "Open a tab"),
+	});
+	const poppedTab = await groupOf(`${A}/popped`);
+	check(
+		"a tab the agent's click opens joins its group",
+		!popped.error && poppedTab.groupId === ownGroup && popped.text.opened?.includes(poppedTab.id),
+		{
+			popped,
+			poppedTab,
+		},
+	);
+	// In front again: Chrome slows the timers of a background tab, and the page would go quiet before it opens its tab.
+	await worker.evaluate((tab) => chrome.tabs.remove(tab), poppedTab.id);
+	await formPage.bringToFront();
+	const [both] = await Promise.all([
+		agent.call("act_on_page", { tab, action: "click", ref: refIn(fullObserve.text.outline, "Open a tab later") }),
+		sleep(250).then(() => formPage.mouse.click(5, 5)),
+	]);
+	const lateTab = await groupOf(`${A}/late`);
+	check(
+		"a tab that opens while the user also clicks is not reported as the agent's",
+		!both.error && both.text.opened === undefined,
+		{
+			both,
+			lateTab,
+		},
+	);
+	await worker.evaluate((tab) => chrome.tabs.remove(tab), lateTab.id);
 
 	const went = await agent.call("act_on_page", { tab, action: "navigate", url: `${B}/next` });
 	check(

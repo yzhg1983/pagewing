@@ -35,8 +35,8 @@ agent ──MCP──▶ pagewing-mcp ──socket──▶ helper ──native 
 
 Tools: `open_tab`, `list_tabs`, `read_page`, `observe_page`, `act_on_page`, `run_script`, `screenshot_page`,
 `close_tab`. Each agent session works in a Chrome tab group of its own, named after the agent, and reaches only the
-tabs in it. The tools do not ask you before acting; Off in Settings > Tools still applies, and turning the switch off
-ends every session.
+tabs in it. Tabs you open from an agent's tab, or drag into its group, join it, and the agent can use them. The tools
+do not ask you before acting; Off in Settings > Tools still applies, and turning the switch off ends every session.
 
 ## Commands
 

@@ -533,7 +533,11 @@ export class LocalAgents {
 				true,
 			);
 		}
-		const opened = stopNoting();
+		const noted = stopNoting();
+		// A tab that opened while the user also clicked or typed in the page may be theirs: as with the page tools
+		// (6.23), Pagewing groups and reports only tabs the action alone opened. Chrome may still put the user's tab in
+		// the group, as it does with any tab opened from a grouped tab; the group is the session's boundary (6.45).
+		const opened = result !== null && result.userInput === false ? noted : [];
 		if (opened.length > 0 && session.groupId !== null)
 			// Chrome's type wants a non-empty list: the length check above guarantees it.
 			await chrome.tabs.group({ tabIds: opened as [number, ...number[]], groupId: session.groupId }).catch(() => {});
