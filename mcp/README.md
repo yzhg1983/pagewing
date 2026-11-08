@@ -2,11 +2,11 @@
 
 Lets a coding agent on your computer, such as [pi](https://github.com/earendil-works/pi), use
 [Pagewing](https://github.com/yzhg1983/pagewing)'s page tools in your Chrome over MCP: open a page, read it, click and
-type, run a script, take a screenshot. macOS and Linux.
+type, run a script, take a screenshot. macOS and Linux. Needs the Pagewing Chrome extension, 0.4.3 or later.
 
 ## Set up
 
-1. Install Pagewing in Chrome.
+1. Install Pagewing from the [Chrome Web Store](https://chromewebstore.google.com/detail/pagewing/eamkpenaglckggljpkdljhillecgpjlp).
 2. Add the server to your agent:
 
    ```sh

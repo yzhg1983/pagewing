@@ -9,6 +9,7 @@ import {
 	type AgentRequest,
 	MAX_MESSAGE_BYTES,
 	readLines,
+	STORE_ID,
 	socketPath,
 	type ToolResult,
 	textResult,
@@ -25,8 +26,9 @@ Start with open_tab; then read_page for text, observe_page and act_on_page to wo
 and screenshot_page for how it looks.`;
 
 /** What a call says when Pagewing cannot be reached. */
-export const NOT_CONNECTED = `Pagewing is not connected. Ask the user to install Pagewing in Chrome, open its side \
-panel, and turn on Settings > Advanced > Local agents.`;
+export const NOT_CONNECTED = `Pagewing is not connected. Ask the user to install Pagewing in Chrome \
+(https://chromewebstore.google.com/detail/pagewing/${STORE_ID}), version 0.4.3 or later, open its side panel, and turn \
+on Settings > Advanced > Local agents.`;
 
 const ENDED = `The connection to Pagewing ended during the call: it may or may not have happened. Check before \
 trying again.`;

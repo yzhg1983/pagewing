@@ -12,7 +12,9 @@
 	"homepage": "https://github.com/yzhg1983/pagewing/tree/main/mcp#readme",
 	"keywords": [
 		"mcp",
+		"pagewing",
 		"chrome",
+		"chrome-extension",
 		"browser",
 		"pi",
 		"agent"
