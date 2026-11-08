@@ -9,7 +9,7 @@
 
 import type { Preset } from "./presets.ts";
 
-export const PROTOCOL_VERSION = 43;
+export const PROTOCOL_VERSION = 44;
 export const PANEL_PORT = "panel";
 export const MAX_UNACKED = 4;
 
@@ -174,6 +174,11 @@ export type Settings = {
 	 * 6.23). Only the step is stored, never the switch, which pi reads from Chrome each time.
 	 */
 	scriptsOnboarded: boolean;
+	/**
+	 * Local agents (design 6.45): programs on this computer, such as a pi coding-agent session, use the page tools
+	 * through the pagewing-mcp bridge, each in a tab group of its own, without asking. Off by default.
+	 */
+	localAgents: boolean;
 };
 
 /** A change from Settings: the modes it names replace those saved, the others stay. */
@@ -437,6 +442,17 @@ export type Status = {
 	keepaliveEnabled: boolean;
 	keepalive: boolean;
 	attachment: Attachment | null;
+	agents: AgentsStatus;
+};
+
+/**
+ * Local agents (design 6.45): the bridge's state (off, on without Chrome's native messaging, starting, listening for
+ * agents, its host not installed, or stopped with an error), Chrome's error, and the names of the connected agents.
+ */
+export type AgentsStatus = {
+	state: "off" | "permission" | "starting" | "connected" | "missing" | "error";
+	error: string | null;
+	agents: string[];
 };
 
 /**

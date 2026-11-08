@@ -1144,8 +1144,10 @@ body.callback h1 {
 	max-width: 60%;
 }
 
+/* A switch keeps its width, since its choices do not wrap: its last choice stays in the row, and the setting's name
+   wraps instead. */
 .setting > .segmented {
-	flex: 0 1 auto;
+	flex: none;
 }
 
 .setting > .segmented label {
@@ -2592,4 +2594,22 @@ footer {
 /* biome-ignore lint/style/noDescendingSpecificity: Answer links use the same accent as earlier note links. */
 .md a {
 	color: var(--accent);
+}
+
+/* Settings > Advanced > Local agents: the command that adds Pagewing to an agent, with Copy. */
+.agent-command {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	margin: 4px 0;
+}
+
+#agents-command {
+	flex: 1;
+	min-width: 0;
+	padding: 4px 6px;
+	border: 1px solid var(--border);
+	border-radius: 4px;
+	font-size: 12px;
+	overflow-wrap: anywhere;
 }

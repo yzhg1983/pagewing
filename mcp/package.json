@@ -1,0 +1,37 @@
+{
+	"name": "pagewing-mcp",
+	"version": "0.1.1",
+	"description": "MCP server that lets local agents, such as pi, use Pagewing's page tools in Chrome",
+	"license": "MIT",
+	"type": "module",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/yzhg1983/pagewing.git",
+		"directory": "mcp"
+	},
+	"homepage": "https://github.com/yzhg1983/pagewing/tree/main/mcp#readme",
+	"keywords": [
+		"mcp",
+		"pagewing",
+		"chrome",
+		"chrome-extension",
+		"browser",
+		"pi",
+		"agent"
+	],
+	"bin": {
+		"pagewing-mcp": "dist/cli.js"
+	},
+	"files": [
+		"dist",
+		"README.md",
+		"LICENSE"
+	],
+	"engines": {
+		"node": ">=20"
+	},
+	"os": [
+		"darwin",
+		"linux"
+	]
+}

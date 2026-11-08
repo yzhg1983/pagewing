@@ -3,7 +3,7 @@
 Pagewing is a Chrome extension that sends your questions, and the parts of web pages you choose, to an AI provider
 that you set up. This policy says what it handles, where that goes, and how to delete it.
 
-Last updated: 2026-11-02.
+Last updated: 2026-11-08.
 
 ## In short
 
@@ -11,6 +11,8 @@ Last updated: 2026-11-02.
 - What you ask goes from your browser straight to the AI provider you chose, with your own key or sign-in.
 - Everything Pagewing keeps stays in your Chrome profile, until you delete it or remove the extension.
 - Update model list (Settings) downloads the public list of models from pi.dev, and sends nothing of yours.
+- Local agents (Settings > Advanced, off by default) lets programs on your computer, such as a coding agent, use the
+  page tools in their own tab groups.
 
 ## What goes to your AI provider
 
@@ -69,6 +71,19 @@ script and asks before running it, unless you choose to let the next ones run fo
 set Run script to On. Run script also needs Chrome's "Allow User Scripts" switch for Pagewing, which is off by default:
 setup asks you to turn it on, and you can skip it.
 
+## Local agents
+
+With Settings > Advanced > Local agents turned on, programs on your computer that connect through `pagewing-mcp`, such
+as a pi coding-agent session, can use Pagewing's page tools. Each one works in a Chrome tab group of its own, on any
+site, and Pagewing does not ask you before it acts; Off in Settings > Tools still applies. Tabs you open from an
+agent's tab, or drag into its group, join it.
+
+What the tools return goes to that program: the text and outline of the pages in its group, screenshots of them,
+the results of scripts it runs, and the titles and addresses of its tabs. Pagewing sends this only over a connection
+on your computer that your user account alone can open, and to no one else. The program may send it on, for example
+to its own AI provider, under its own policy. Turning on Local agents asks Chrome for native messaging and for access
+to all sites; turning it off ends every agent's session.
+
 ## Access to pages
 
 Pagewing reads a tab only after you click its toolbar button, use its right-click menu, or press one of its shortcuts
@@ -84,6 +99,8 @@ provider that site, as above.
 - **One chat:** Pagewing cannot yet delete a single chat. Remove from History (History, then the chat's ⋯ menu)
   hides it, but its data stays stored until you delete all chats.
 - **A key or the ChatGPT sign-in:** Settings > Providers.
+- **Local agents:** turn the switch off in Settings > Advanced. What an agent received is kept under that program's
+  own terms.
 - **Everything:** remove the extension at `chrome://extensions`. Chrome deletes all of its stored data.
 
 What a provider received is kept under that provider's policy; deleting it in Pagewing does not delete it there.

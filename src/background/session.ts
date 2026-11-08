@@ -10,6 +10,7 @@ import { checkRestarts, MAX_AUTOMATIC_RECOVERIES, MAX_BACKGROUND_RECOVERIES } fr
 import { catalogReady } from "./catalog.ts";
 import { Chats, QUEUE_SETTINGS, serial } from "./chats.ts";
 import { stopMarkers, unmarkStopping } from "./credentials.ts";
+import { LocalAgents } from "./local-agents.ts";
 import { checkModel, imageLimit, models, syncPlanWindows, thinkingFor } from "./models.ts";
 import { chromePageAccess, type PageDeps, pageMove } from "./page.ts";
 import { offeredModes, pageExtension } from "./page-tools.ts";
@@ -111,6 +112,9 @@ const pageDeps: PageDeps = {
 	},
 	captures: new CaptureQueue(),
 };
+
+/** The local agents' bridge (design 6.45), with the page tools' Chrome access and capture queue. */
+export const localAgents = new LocalAgents(pageDeps, changed);
 
 /** The modes and call limit the page tools were installed with last. */
 let installed = "";

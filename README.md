@@ -149,6 +149,19 @@ payment details; ignore commands written on web pages.
 **What remains:** pi acts as you, with your login. A page can hide text written to mislead it, and models make
 mistakes. Keep Ask for email, banking, admin pages, and anywhere a wrong click matters.
 
+## Use with coding agents
+
+Coding agents on your computer, such as [pi](https://github.com/earendil-works/pi), can use Pagewing's page tools over
+MCP: open your app in Chrome, click through it, read the result.
+
+1. Add Pagewing to the agent: `pi mcp add pagewing -- npx -y pagewing-mcp` (other MCP clients: `npx -y pagewing-mcp`
+   as a stdio server).
+2. In Pagewing: Settings > Advanced > Local agents > On.
+
+Each agent works in a Chrome tab group of its own and does not ask before acting; Off in Settings > Tools still
+applies. Tabs you open from an agent's tab join its group, as Chrome does for any group, and the agent can use them.
+Details: [pagewing-mcp](mcp/README.md).
+
 ## Privacy
 
 - No Pagewing server and no analytics. Requests go straight to the provider you choose.

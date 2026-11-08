@@ -58,6 +58,7 @@ import {
 	unmarkStopping,
 } from "./credentials.ts";
 import { Drafts, draftEdited } from "./drafts.ts";
+import { RETRY_ALARM } from "./local-agents.ts";
 import { playAt } from "./media.ts";
 import { buildMenus, MENU_ADD, MENU_PAGE_ASK, MENU_PAGE_PRESET, MENU_PRESET } from "./menus.ts";
 import {
@@ -85,6 +86,7 @@ import {
 	currentSession,
 	deleteAllChats,
 	installPageTools,
+	localAgents,
 	onChange,
 	session,
 	storageFull,
@@ -128,6 +130,7 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 			.then(({ harness }) => activeWork.admit(async () => harness.resume()))
 			.catch((error: unknown) => console.error("[pagewing] recovery alarm", error));
 	} else if (alarm.name === EXPIRE_ALARM) void tidySignIn().finally(() => refreshAccess());
+	else if (alarm.name === RETRY_ALARM) void syncAgents();
 });
 
 // The ChatGPT callback page hands over OpenAI's redirect (design 6.20): only that page of this extension, in a tab.
@@ -162,6 +165,23 @@ chrome.runtime.onMessage.addListener((message: unknown, sender, reply) => {
 void buildMenus(false).catch(() => {});
 // One stopped during a sign-in, or before its expiry alarm, may have left its rule or permission behind.
 void tidySignIn().catch(() => {});
+let agentsSynced = Promise.resolve();
+// The local agents' bridge runs whenever the worker does while the switch is on; its open port keeps the worker running.
+void syncAgents();
+
+/**
+ * Starts or ends the local agents' bridge (design 6.45): on while the switch is on and Chrome grants native messaging.
+ * One at a time, so an older read of the settings never lands last.
+ */
+function syncAgents(): Promise<void> {
+	agentsSynced = agentsSynced
+		.then(async () => {
+			const { localAgents: on } = await loadSettings();
+			localAgents.sync(on, await chrome.permissions.contains({ permissions: ["nativeMessaging"] }));
+		})
+		.catch((error: unknown) => console.error("[pagewing] local agents", error));
+	return agentsSynced;
+}
 
 /** Settings are saved even when the menu fails to update: the reply says why, and the next worker tries again. */
 async function menusAfterSave(): Promise<SettingsSaved> {
@@ -296,12 +316,18 @@ async function settleAll(what: string, steps: Promise<void>[]): Promise<void> {
 	}
 }
 
-chrome.permissions.onAdded.addListener(() => void refreshAccess());
+chrome.permissions.onAdded.addListener(() => {
+	void refreshAccess();
+	void syncAgents();
+});
 // Also a change no command made: a refresh, or a ChatGPT sign-in that OpenAI ended (design 6.20).
 chrome.storage.local.onChanged.addListener((changes) => {
 	if (CREDENTIALS_KEY in changes) void refreshAccess();
 });
-chrome.permissions.onRemoved.addListener(() => void refreshAccess());
+chrome.permissions.onRemoved.addListener(() => {
+	void refreshAccess();
+	void syncAgents();
+});
 
 /** What the gesture saw: the frame and its URL, the tab's top-level URL, and for the context menu Chrome's copy of the selection. */
 type Gesture = { frameId: number; url?: string; top?: string; selectionText?: string; editable?: boolean };
@@ -1088,6 +1114,7 @@ async function run(command: Command, tabId: number | null): Promise<unknown> {
 			// Also when the tools offered stay the same, as while Chrome blocks scripts: a change of the modes the user
 			// chose takes back what was allowed under the modes that were.
 			if (installed || JSON.stringify(chosen) !== JSON.stringify(settings.tools)) asks.recheck();
+			await syncAgents();
 			return menusAfterSave();
 		}
 		case "save-prompt":
@@ -1389,6 +1416,7 @@ function status(): Status {
 		keepaliveEnabled: activeWork.enabled,
 		keepalive: activeWork.keepalive,
 		attachment: lastAttachment ?? null,
+		agents: localAgents.status(),
 	};
 }
 

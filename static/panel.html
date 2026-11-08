@@ -429,7 +429,7 @@
 				</section>
 
 				<details class="group advanced">
-					<summary><span data-i18n="advanced">Advanced</span> <span class="muted" data-i18n="advancedSections">Sites · Shortcuts · Diagnostics</span></summary>
+					<summary><span data-i18n="advanced">Advanced</span> <span class="muted" data-i18n="advancedSections">Sites · Local agents · Shortcuts · Diagnostics</span></summary>
 					<section aria-labelledby="sites-title">
 						<div class="section-head">
 							<h4 id="sites-title" data-i18n="sites">Sites</h4>
@@ -448,6 +448,33 @@
 							</p>
 							<ul id="sites-held" class="sites held"></ul>
 						</div>
+					</section>
+
+					<section aria-labelledby="agents-title">
+						<div class="section-head">
+							<h4 id="agents-title" data-i18n="localAgents">Local agents</h4>
+							<span id="agents-result" class="result" role="status"></span>
+						</div>
+						<div class="setting">
+							<span id="agents-label" data-i18n="localAgentsLabel">Let programs on this computer use the page tools</span>
+							<fieldset class="segmented" aria-labelledby="agents-label" aria-describedby="agents-note">
+								<label><input type="radio" name="local-agents" value="off" /><span data-i18n="off">Off</span></label>
+								<label><input type="radio" name="local-agents" value="on" /><span data-i18n="on">On</span></label>
+							</fieldset>
+						</div>
+						<p id="agents-note" class="note" data-i18n="localAgentsNote">
+							For coding agents such as pi, through pagewing-mcp. They work in a tab group of their own, on any site,
+							without asking you; Off in Tools still applies.
+						</p>
+						<p class="note" data-i18n="localAgentsSetup">To add Pagewing to pi, run in a terminal:</p>
+						<div class="agent-command">
+							<code id="agents-command">pi mcp add pagewing -- npx -y pagewing-mcp</code>
+							<button type="button" id="copy-agents-command" class="icon-button small"></button>
+						</div>
+						<p class="note" data-i18n="localAgentsOther">
+							Other MCP clients: add npx -y pagewing-mcp as a stdio server.
+						</p>
+						<p id="agents-status" class="note"></p>
 					</section>
 
 					<section aria-labelledby="shortcuts-title">

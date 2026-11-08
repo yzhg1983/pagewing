@@ -23,6 +23,7 @@
 			"test/**",
 			"static/**",
 			"scripts/**",
+			"mcp/**",
 			"build.mjs",
 			"*.json",
 			"!**/node_modules",

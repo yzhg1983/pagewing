@@ -113,6 +113,18 @@ let browser, context, worker, panel, page, tabId, code, originals;
 let checks = 0;
 const menuErrors = []; // Keep a menu comparison failure visible while checking the remaining native locales.
 const rawError = "RAW provider error / 原始错误";
+// The elements that stick out past the window or `selector`'s box, by tag, ID, class, and text, so a failure names them.
+const overflowing = (selector) => {
+	const root = document.querySelector(selector);
+	const roots = [document.documentElement, root];
+	if (roots.every((el) => el.scrollWidth <= el.clientWidth + 1)) return [];
+	// The content box's right edge: a classic scrollbar, as on Linux, takes its width from the box.
+	const right = Math.min(window.innerWidth, root.getBoundingClientRect().left + root.clientWidth) + 1;
+	const wide = [...root.querySelectorAll("*")]
+		.filter((el) => el.getBoundingClientRect().right > right)
+		.map((el) => `${el.tagName.toLowerCase()}#${el.id}.${el.className} ${el.textContent.trim().slice(0, 50)}`);
+	return wide.length > 0 ? wide.slice(0, 10) : [`${selector}: scrollWidth ${root.scrollWidth} > ${root.clientWidth}`];
+};
 const check = (name, ok = true) => {
 	assert(ok, name);
 	console.log(`PASS ${name}`);
@@ -513,13 +525,10 @@ async function ui() {
 		el.open = true;
 	});
 	await sweep("Settings, with two providers and Advanced open");
-	check(
+	equal(
 		`${code}: 320px settings have no horizontal overflow`,
-		await panel.evaluate(() =>
-			[document.documentElement, document.querySelector("#settings .view-body")].every(
-				(el) => el.scrollWidth <= el.clientWidth + 1,
-			),
-		),
+		await panel.evaluate(overflowing, "#settings .view-body"),
+		[],
 	);
 	await keyBody.getByRole("button", { name: message("cancel"), exact: true }).click();
 	await deleteConfirmation();
@@ -542,14 +551,7 @@ async function ui() {
 	await callback.close();
 	await panel.bringToFront();
 	await settingsView(false);
-	check(
-		`${code}: 320px chat has no horizontal overflow`,
-		await panel.evaluate(() =>
-			[document.documentElement, document.querySelector("#transcript")].every(
-				(el) => el.scrollWidth <= el.clientWidth + 1,
-			),
-		),
-	);
+	equal(`${code}: 320px chat has no horizontal overflow`, await panel.evaluate(overflowing, "#transcript"), []);
 }
 async function language(choice) {
 	await settingsView(true);
