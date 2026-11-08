@@ -1509,13 +1509,10 @@
 		"message": "The view is too detailed to send as an image."
 	},
 	"reasonNoAccess": {
-		"message": "The tab may have closed, or Chrome's access ended when the tab went to another site: allow pi on all sites in Settings > Advanced > Sites, or click pi's toolbar button on the page."
+		"message": "$1 The tab may have closed, or Chrome's access ended when the tab went to another site: allow pi on all sites in Settings > Advanced > Sites, or click pi's toolbar button on the page."
 	},
 	"reasonPartlySent": {
-		"message": "The action was partly sent: check the page before trying again."
-	},
-	"reasonAnd": {
-		"message": "$1 $2"
+		"message": "$1 The action was partly sent: check the page before trying again."
 	},
 	"actedOnPage": {
 		"message": "Acted on the page"

@@ -28,6 +28,8 @@ it("has exactly two complete catalogs with matching numeric placeholders", () =>
 		expect(english[key].message.trim(), key).not.toBe("");
 		expect(chinese[key].message.trim(), key).not.toBe("");
 		expect(placeholders(chinese[key].message), key).toEqual(placeholders(english[key].message));
+		// Chrome reads "$1$" as a named placeholder and refuses to load the extension.
+		for (const message of [english[key].message, chinese[key].message]) expect(message, key).not.toMatch(/\$[1-9]\$/);
 	}
 });
 

@@ -168,11 +168,9 @@ describe("localReason", () => {
 
 	it("says a reason and the sentence pi adds after it, each in the interface language", () => {
 		nativeChinese();
-		expect(localReason(`Cannot reach the page. ${NO_ACCESS}`)).toBe(
-			t("reasonAnd", [t("reasonCannotReach"), t("reasonNoAccess")]),
-		);
+		expect(localReason(`Cannot reach the page. ${NO_ACCESS}`)).toBe(t("reasonNoAccess", [t("reasonCannotReach")]));
 		expect(localReason(`Cannot observe the page: Frame was removed. ${NO_ACCESS}`)).toBe(
-			`无法观察网页：Frame was removed。${t("reasonNoAccess")}`,
+			t("reasonNoAccess", ["无法观察网页：Frame was removed。"]),
 		);
 		for (const [text, key, values] of [
 			[`Cannot read the page: pi may not read the tab's page now. ${NO_ACCESS}`, "reasonCannotReadNow", []],
@@ -183,7 +181,7 @@ describe("localReason", () => {
 				["Frame was removed"],
 			],
 		] as const)
-			expect(localReason(text)).toBe(t("reasonAnd", [t(key, [...values]), t("reasonNoAccess")]));
+			expect(localReason(text)).toBe(t("reasonNoAccess", [t(key, [...values])]));
 		expect(localReason(`a12 is disabled. The action was partly sent: observe and check before trying again.`)).toBe(
 			"a12 已被禁用。这个操作已部分发送：再试之前请先检查网页。",
 		);

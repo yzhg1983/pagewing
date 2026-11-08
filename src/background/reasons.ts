@@ -37,13 +37,14 @@ export function localReason(reason: string): string {
 	for (const [ending, key] of ENDINGS) {
 		if (!reason.endsWith(` ${ending}`)) continue;
 		const head = localSentence(reason.slice(0, -ending.length - 1));
-		return head === null ? reason : t("reasonAnd", [head, t(key)]);
+		return head === null ? reason : t(key, [head]);
 	}
 	return localSentence(reason) ?? reason;
 }
 
 // Sentences pi adds after a reason: page.ts's NO_ACCESS (not imported: page.ts imports this module through
-// projection.ts), and page-tools.ts's partly sent action.
+// projection.ts), and page-tools.ts's partly sent action. Each message takes the reason as $1, since Chrome reads
+// "$1$2" as a named placeholder and refuses to load the extension.
 const ENDINGS: readonly (readonly [string, MessageKey])[] = [
 	[
 		"The tab may have closed, or Chrome's access from the click ended when the tab went to another site; ask the user to allow pi on all sites in Settings > Advanced > Sites, or to click the pi toolbar button on the page.",
