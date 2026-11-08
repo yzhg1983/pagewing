@@ -1295,6 +1295,228 @@
 	"reasonRefused": {
 		"message": "pi 没有放行这一步，所以没有执行。"
 	},
+	"reasonOff": {
+		"message": "“$1”已在“设置 > 工具”中关闭。"
+	},
+	"reasonAllOff": {
+		"message": "所有页面工具都已在“设置 > 工具”中关闭。"
+	},
+	"reasonNoUserScripts": {
+		"message": "Chrome 不允许 pi 运行脚本：请在 pi 的扩展详情页开启“允许用户脚本”。"
+	},
+	"reasonSkipped": {
+		"message": "已跳过：这次回复中前面的一步失败了。"
+	},
+	"reasonSkippedUnknown": {
+		"message": "已跳过：pi 在对话中找不到这一步所属的回复。"
+	},
+	"reasonLimit": {
+		"message": "本次回答已使用页面工具 $1 次，达到上限。"
+	},
+	"reasonScope": {
+		"message": "无法使用这个标签页：它不在本对话的标签页组里，或者所附的标签页已不在。"
+	},
+	"reasonSiteCancelled": {
+		"message": "你取消了：Chrome 不允许 pi 访问这个标签页。"
+	},
+	"reasonScriptDenied": {
+		"message": "你拒绝了这个脚本，所以什么都没有运行。"
+	},
+	"reasonActDenied": {
+		"message": "你拒绝了本次回答在 $1 上的操作。"
+	},
+	"reasonScriptNotApproved": {
+		"message": "这个脚本没有获得批准，所以什么都没有运行。"
+	},
+	"reasonScriptPageChanged": {
+		"message": "你查看脚本时网页变了，所以什么都没有运行。"
+	},
+	"reasonNoPage": {
+		"message": "你最新的消息没有附带网页：请打开网页并点击 pi 的工具栏按钮，或选中文字后选择“询问 pi”。"
+	},
+	"reasonNotTop": {
+		"message": "pi 只能操作整个网页：请在该网页上点击 pi 的工具栏按钮。"
+	},
+	"reasonBusy": {
+		"message": "另一个对话正在操作这个标签页。"
+	},
+	"reasonUnusableTab": {
+		"message": "标签页显示的是 $1，页面工具无法使用。"
+	},
+	"reasonCannotReach": {
+		"message": "无法访问这个网页。"
+	},
+	"reasonPageSlow": {
+		"message": "网页在 $1 秒内没有响应"
+	},
+	"reasonCannotReadNow": {
+		"message": "无法读取网页：pi 现在不能读取这个标签页的网页。"
+	},
+	"reasonReadSlow": {
+		"message": "标签页在 $1 秒内没有响应：请在网页加载完成后再问一次。"
+	},
+	"reasonNoText": {
+		"message": "无法读取网页：页面上没有可读的文字。"
+	},
+	"reasonCannotRead": {
+		"message": "无法读取网页：$1。"
+	},
+	"reasonNoSelection": {
+		"message": "没有选中可读的文字。"
+	},
+	"reasonCannotObserve": {
+		"message": "无法观察网页：$1。"
+	},
+	"reasonGoneObserving": {
+		"message": "pi 观察网页时，网页已关闭或跳转。"
+	},
+	"reasonRefsChanged": {
+		"message": "pi 观察网页时，网页发生了变化。"
+	},
+	"reasonWaitChanged": {
+		"message": "等待期间网页变了：标签页现在显示 $1。"
+	},
+	"reasonNoTextToWait": {
+		"message": "网页上没有可以等待的文字。"
+	},
+	"reasonWaitUnchecked": {
+		"message": "等待已结束：pi 无法检查网页（$1）。"
+	},
+	"reasonGone": {
+		"message": "$1 已不存在：网页变了。"
+	},
+	"reasonNotDrawn": {
+		"message": "$1 没有显示（被隐藏、折叠或为空）。"
+	},
+	"reasonDisabled": {
+		"message": "$1 已被禁用。"
+	},
+	"reasonOutside": {
+		"message": "$1 的中心在窗口之外。"
+	},
+	"reasonCenterOther": {
+		"message": "$1 的中心处是 $2。"
+	},
+	"reasonCovered": {
+		"message": "$1 被 $2 挡住了。"
+	},
+	"reasonNotTextField": {
+		"message": "$1 不是文本框。"
+	},
+	"reasonChangedOnFocus": {
+		"message": "$1 获得焦点时发生了变化。"
+	},
+	"reasonMovedForm": {
+		"message": "$1 获得焦点时移到了另一个表单。"
+	},
+	"reasonReadOnly": {
+		"message": "$1 是只读的。"
+	},
+	"reasonInert": {
+		"message": "$1 现在无法使用。"
+	},
+	"reasonNoForm": {
+		"message": "$1 不在表单中，无法提交。"
+	},
+	"reasonTypingFailed": {
+		"message": "向 $1 输入失败。"
+	},
+	"reasonNoFocus": {
+		"message": "焦点没有移到 $1。"
+	},
+	"reasonFocusElsewhere": {
+		"message": "焦点移到了 $1，而不是 $2。"
+	},
+	"reasonNoKeyTarget": {
+		"message": "网页上没有可以按键的元素。"
+	},
+	"reasonNotSelect": {
+		"message": "$1 不是下拉列表。"
+	},
+	"reasonNoChoose": {
+		"message": "pi 不会在 $1（$2）中做选择。"
+	},
+	"reasonNoType": {
+		"message": "pi 不会在 $1（$2）中输入。"
+	},
+	"reasonNoOption": {
+		"message": "$1 没有选项“$2”；它的选项有：$3。"
+	},
+	"reasonOptionDisabled": {
+		"message": "$2 的选项“$1”已被禁用。"
+	},
+	"reasonCannotFind": {
+		"message": "找不到这个元素：$1。"
+	},
+	"reasonCannotScroll": {
+		"message": "无法滚动网页：$1。页面可能已经滚动。"
+	},
+	"reasonGoneScrolling": {
+		"message": "pi 滚动网页时，网页已关闭或跳转。"
+	},
+	"reasonNavigateOrigin": {
+		"message": "pi 只前往 $1 上的地址，不前往 $2。"
+	},
+	"reasonAttachedTab": {
+		"message": "pi 不会关闭所附网页的标签页。"
+	},
+	"reasonNotOpened": {
+		"message": "标签页 $1 不是 pi 在本对话中打开的。"
+	},
+	"reasonCannotClose": {
+		"message": "无法关闭标签页 $1：$2。"
+	},
+	"reasonNoVision": {
+		"message": "当前模型无法查看图片。"
+	},
+	"reasonPinch": {
+		"message": "网页被双指缩放了，pi 只能截取整个可见区域。"
+	},
+	"reasonTransformed": {
+		"message": "这个元素位于网页中被旋转、倾斜或镜像的部分，pi 只能截取整个可见区域。"
+	},
+	"reasonClipped": {
+		"message": "pi 无法判断网页从哪里裁掉了这个元素，只能截取整个可见区域。"
+	},
+	"reasonMovedOut": {
+		"message": "这个元素移出了可见区域。"
+	},
+	"reasonMovedDuring": {
+		"message": "截图时这个元素移动了。"
+	},
+	"reasonCaptureAccess": {
+		"message": "只有当 pi 可以访问所有网站，或你在这个标签页显示此网站时打开过 pi，Chrome 才允许截取这个标签页：请在“设置 > 高级 > 网站”中允许 pi 访问所有网站，或在这个标签页上点击 pi 的工具栏按钮。"
+	},
+	"reasonCannotCapture": {
+		"message": "无法截取标签页：$1。"
+	},
+	"reasonNotInFront": {
+		"message": "这个标签页不在前台，pi 无法截取：Chrome 只能截取窗口中正在显示的标签页。"
+	},
+	"reasonTabChangedCapture": {
+		"message": "截图时标签页发生了变化。"
+	},
+	"reasonCaptureQuota": {
+		"message": "Chrome 每秒只允许截图 2 次，拒绝了这一次。"
+	},
+	"reasonEncodeTimeout": {
+		"message": "无法在 $1 秒内完成图片编码。"
+	},
+	"reasonCannotEncode": {
+		"message": "无法编码图片：$1。"
+	},
+	"reasonTooDetailed": {
+		"message": "画面细节太多，无法作为图片发送。"
+	},
+	"reasonNoAccess": {
+		"message": "标签页可能已关闭，或者标签页跳转到别的网站后 Chrome 的访问权限已结束：请在“设置 > 高级 > 网站”中允许 pi 访问所有网站，或在网页上点击 pi 的工具栏按钮。"
+	},
+	"reasonPartlySent": {
+		"message": "这个操作已部分发送：再试之前请先检查网页。"
+	},
+	"reasonAnd": {
+		"message": "$1$2"
+	},
 	"actedOnPage": {
 		"message": "已操作页面"
 	},

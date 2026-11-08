@@ -1295,6 +1295,228 @@
 	"reasonRefused": {
 		"message": "pi did not allow this step, so it did not run."
 	},
+	"reasonOff": {
+		"message": "$1 is off in Settings > Tools."
+	},
+	"reasonAllOff": {
+		"message": "Every page tool is off in Settings > Tools."
+	},
+	"reasonNoUserScripts": {
+		"message": "Chrome does not let pi run scripts: turn on Allow User Scripts on pi's Chrome details page."
+	},
+	"reasonSkipped": {
+		"message": "Skipped: an earlier step of this reply failed."
+	},
+	"reasonSkippedUnknown": {
+		"message": "Skipped: pi could not find this step's reply in the chat."
+	},
+	"reasonLimit": {
+		"message": "The page tools were used $1 times in this answer, the most allowed."
+	},
+	"reasonScope": {
+		"message": "Cannot use this tab: it is outside this chat's tab group, or the attached tab is gone."
+	},
+	"reasonSiteCancelled": {
+		"message": "You cancelled: Chrome does not let pi reach this tab."
+	},
+	"reasonScriptDenied": {
+		"message": "You declined this script, so nothing ran."
+	},
+	"reasonActDenied": {
+		"message": "You declined acting on $1 in this answer."
+	},
+	"reasonScriptNotApproved": {
+		"message": "The script was not approved, so nothing ran."
+	},
+	"reasonScriptPageChanged": {
+		"message": "The page changed while you looked at the script, so nothing ran."
+	},
+	"reasonNoPage": {
+		"message": "No page is attached to your latest message: open the page and click pi's toolbar button, or select text and choose Ask pi."
+	},
+	"reasonNotTop": {
+		"message": "pi can act only on a whole page: click pi's toolbar button on the page."
+	},
+	"reasonBusy": {
+		"message": "Another chat is acting on this tab."
+	},
+	"reasonUnusableTab": {
+		"message": "The tab shows $1, which the page tools cannot use."
+	},
+	"reasonCannotReach": {
+		"message": "Cannot reach the page."
+	},
+	"reasonPageSlow": {
+		"message": "the page did not answer within $1 s"
+	},
+	"reasonCannotReadNow": {
+		"message": "Cannot read the page: pi may not read this tab's page now."
+	},
+	"reasonReadSlow": {
+		"message": "The tab did not answer within $1 s: ask again when the page has loaded."
+	},
+	"reasonNoText": {
+		"message": "Cannot read the page: it has no readable text."
+	},
+	"reasonCannotRead": {
+		"message": "Cannot read the page: $1."
+	},
+	"reasonNoSelection": {
+		"message": "No readable text is selected."
+	},
+	"reasonCannotObserve": {
+		"message": "Cannot observe the page: $1."
+	},
+	"reasonGoneObserving": {
+		"message": "The page went away while pi observed it."
+	},
+	"reasonRefsChanged": {
+		"message": "The page changed while pi observed it."
+	},
+	"reasonWaitChanged": {
+		"message": "The page changed during the wait: the tab now shows $1."
+	},
+	"reasonNoTextToWait": {
+		"message": "The page has no readable text to wait for."
+	},
+	"reasonWaitUnchecked": {
+		"message": "The wait ended: pi could not check the page ($1)."
+	},
+	"reasonGone": {
+		"message": "$1 is gone: the page changed."
+	},
+	"reasonNotDrawn": {
+		"message": "$1 is not shown (hidden, collapsed, or empty)."
+	},
+	"reasonDisabled": {
+		"message": "$1 is disabled."
+	},
+	"reasonOutside": {
+		"message": "The center of $1 is outside the window."
+	},
+	"reasonCenterOther": {
+		"message": "The center of $1 is on $2."
+	},
+	"reasonCovered": {
+		"message": "$1 is covered by $2."
+	},
+	"reasonNotTextField": {
+		"message": "$1 is not a text field."
+	},
+	"reasonChangedOnFocus": {
+		"message": "$1 changed when it got the focus."
+	},
+	"reasonMovedForm": {
+		"message": "$1 moved to another form when it got the focus."
+	},
+	"reasonReadOnly": {
+		"message": "$1 is read-only."
+	},
+	"reasonInert": {
+		"message": "$1 cannot be used now."
+	},
+	"reasonNoForm": {
+		"message": "$1 is not in a form, so it cannot be submitted."
+	},
+	"reasonTypingFailed": {
+		"message": "Typing into $1 failed."
+	},
+	"reasonNoFocus": {
+		"message": "The focus did not go to $1."
+	},
+	"reasonFocusElsewhere": {
+		"message": "The focus went to $1, not $2."
+	},
+	"reasonNoKeyTarget": {
+		"message": "The page has no element to press the key in."
+	},
+	"reasonNotSelect": {
+		"message": "$1 is not a drop-down list."
+	},
+	"reasonNoChoose": {
+		"message": "pi does not choose in $1 ($2)."
+	},
+	"reasonNoType": {
+		"message": "pi does not type into $1 ($2)."
+	},
+	"reasonNoOption": {
+		"message": "$1 has no option \"$2\"; its options: $3."
+	},
+	"reasonOptionDisabled": {
+		"message": "The option \"$1\" of $2 is disabled."
+	},
+	"reasonCannotFind": {
+		"message": "Cannot find the element: $1."
+	},
+	"reasonCannotScroll": {
+		"message": "Cannot scroll the page: $1. It may have scrolled."
+	},
+	"reasonGoneScrolling": {
+		"message": "The page went away while pi scrolled it."
+	},
+	"reasonNavigateOrigin": {
+		"message": "pi goes only to addresses on $1, not to $2."
+	},
+	"reasonAttachedTab": {
+		"message": "pi never closes the attached page's tab."
+	},
+	"reasonNotOpened": {
+		"message": "Tab $1 was not opened by pi in this chat."
+	},
+	"reasonCannotClose": {
+		"message": "Cannot close tab $1: $2."
+	},
+	"reasonNoVision": {
+		"message": "The current model cannot see images."
+	},
+	"reasonPinch": {
+		"message": "The page is zoomed with a pinch; pi can capture only the whole view."
+	},
+	"reasonTransformed": {
+		"message": "The element is in a rotated, skewed, or mirrored part of the page; pi can capture only the whole view."
+	},
+	"reasonClipped": {
+		"message": "pi cannot tell where the page cuts this element off; pi can capture only the whole view."
+	},
+	"reasonMovedOut": {
+		"message": "The element moved out of view."
+	},
+	"reasonMovedDuring": {
+		"message": "The element moved during the capture."
+	},
+	"reasonCaptureAccess": {
+		"message": "Chrome lets pi capture this tab only with access to all sites, or after you open pi on it while it shows this site: allow pi on all sites in Settings > Advanced > Sites, or click pi's toolbar button on this tab."
+	},
+	"reasonCannotCapture": {
+		"message": "Cannot capture the tab: $1."
+	},
+	"reasonNotInFront": {
+		"message": "The tab is not in front, so pi cannot capture it: Chrome captures only the tab shown in its window."
+	},
+	"reasonTabChangedCapture": {
+		"message": "The tab changed during the capture."
+	},
+	"reasonCaptureQuota": {
+		"message": "Chrome allows only 2 captures a second, and refused this one."
+	},
+	"reasonEncodeTimeout": {
+		"message": "Cannot encode the image within $1 s."
+	},
+	"reasonCannotEncode": {
+		"message": "Cannot encode the image: $1."
+	},
+	"reasonTooDetailed": {
+		"message": "The view is too detailed to send as an image."
+	},
+	"reasonNoAccess": {
+		"message": "The tab may have closed, or Chrome's access ended when the tab went to another site: allow pi on all sites in Settings > Advanced > Sites, or click pi's toolbar button on the page."
+	},
+	"reasonPartlySent": {
+		"message": "The action was partly sent: check the page before trying again."
+	},
+	"reasonAnd": {
+		"message": "$1 $2"
+	},
 	"actedOnPage": {
 		"message": "Acted on the page"
 	},

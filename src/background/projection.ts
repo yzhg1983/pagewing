@@ -29,6 +29,7 @@ import {
 	type Usage,
 } from "../shared/protocol.ts";
 import { type Step, stepText } from "./page-agent.ts";
+import { localReason, toolLabel } from "./reasons.ts";
 
 /** A page tool's summary from the model, on one line; null when empty. */
 export const summaryOf = (summary: string | undefined): string | null => {
@@ -512,33 +513,8 @@ function endOf(data: JsonValue | undefined): Ended | null {
 }
 
 /**
- * A tool by its name in Settings, for a step without the model's summary; another name, which the model may have made
- * up for a call pi-durable ended before it found the tool, shows as it is.
- */
-function toolLabel(name: string): string {
-	switch (name) {
-		case "read_page":
-			return t("readPage");
-		case "observe_page":
-			return t("observePage");
-		case "act_on_page":
-			return t("actPage");
-		case "run_script":
-			return t("runScript");
-		case "screenshot_page":
-			return t("screenshotPage");
-		case "wait_on_page":
-			return t("waitOnPage");
-		case "list_tabs":
-			return t("listTabs");
-		default:
-			return name;
-	}
-}
-
-/**
- * A tool call pi-durable answered itself: its line, and why, in the interface language but for pi's own checks; the
- * model got pi-durable's own text. A stopped or interrupted action or script may have changed the page already: Stop
+ * A tool call pi-durable answered itself: its line, and why, in the interface language; the model got pi-durable's own
+ * text. A stopped or interrupted action or script may have changed the page already: Stop
  * does not undo it. The other calls did not run.
  */
 function endedNotice(
@@ -577,7 +553,7 @@ function endedText(label: string, acts: boolean, ended: Ended): [string, string]
 		case "refused":
 			return [t("stepNotRun", [label]), t("reasonRefused")];
 		case "blocked":
-			return [t("stepNotRun", [label]), ended.reason];
+			return [t("stepNotRun", [label]), localReason(ended.reason)];
 	}
 }
 
@@ -631,11 +607,11 @@ function toolNotice(
 				: null;
 	if (result.isError && ended !== null) return endedNotice(base, result, summary, code, ended);
 	if (result.isError) {
-		// A script that threw: its error rather than the whole result.
+		// A script that threw: its own error, as it is, rather than the whole result.
 		const text =
 			typeof details?.error === "string"
 				? details.error
-				: result.content.flatMap((block) => (block.type === "text" ? [block.text] : [])).join(" ");
+				: localReason(result.content.flatMap((block) => (block.type === "text" ? [block.text] : [])).join(" "));
 		return {
 			...base,
 			role: "notice",

@@ -322,7 +322,7 @@ it("puts a script's code and what an action did in detail (design 6.23)", () => 
 	expect(chat.entries.slice(2).map((entry) => "code" in entry)).toEqual([false, false]);
 });
 
-it("says in plain words why pi-durable answered a step itself; the model's text and the tools' own failures stay as they are", () => {
+it("says in plain words why pi-durable answered a step itself; the model keeps its text", () => {
 	// As pi-durable writes them: no output, its text for the model, and the code in the entry's data.
 	const ended = (id: number, toolName: string, code: string, message: string, details?: unknown): Entry => ({
 		...toolResult(id, true, `<harness>\n[error] ${message}\n</harness>`, details, toolName),
@@ -353,7 +353,7 @@ it("says in plain words why pi-durable answered a step itself; the model's text 
 			ended(10, "close_tab", "tool_unavailable", "Tool close_tab is not available"),
 			// A block without a reason still says the step did not run.
 			ended(12, "act_on_page", "blocked", "Tool call blocked: "),
-			// The tool's own failure, with no diagnostic, keeps its text.
+			// The tool's own failure, with no diagnostic: its reason as the chat says it (reasons.test.ts).
 			toolResult(11, true, "a16 is not a text field", { summary: "Type the code" }, "act_on_page"),
 		]),
 	);
@@ -419,7 +419,7 @@ it("says in plain words why pi-durable answered a step itself; the model's text 
 			id: 11,
 			role: "notice",
 			text: "Type the code",
-			error: "a16 is not a text field",
+			error: "a16 is not a text field.",
 		},
 	]);
 });
@@ -447,6 +447,47 @@ it("says a navigation in the interface language, and keeps what the model read a
 			"已前往 https://x/2",
 			"已重新加载页面; tab 4 stays in the background",
 			"Went to https://x/3",
+		]);
+	} finally {
+		vi.unstubAllGlobals();
+	}
+});
+
+it("says pi's reasons for a step that did not run or failed in the interface language", () => {
+	vi.stubGlobal("chrome", {
+		i18n: {
+			getMessage: (key: string, values: string[] = []) =>
+				((chinese as Record<string, { message: string }>)[key]?.message ?? "").replace(
+					/\$(\d)/g,
+					(_, n: string) => values[Number(n) - 1] ?? "",
+				),
+		},
+	});
+	try {
+		const blocked = "The user denied this script, so nothing ran; do not try again in this answer.";
+		const chat = projectChat(
+			view([
+				{
+					...toolResult(
+						1,
+						true,
+						`<harness>\n[error] Tool call blocked: ${blocked}\n</harness>`,
+						undefined,
+						"run_script",
+					),
+					data: {
+						diagnostics: [{ severity: "error", code: "blocked", message: `Tool call blocked: ${blocked}` }],
+					},
+				},
+				toolResult(2, true, "a16 is not a text field", { summary: "Type the code" }, "act_on_page"),
+				toolResult(3, true, "rows is not defined", { summary: "Count rows", code: "rows.length" }, "run_script"),
+			]),
+		);
+		expect(chat.entries.map((entry) => [entry.text, entry.error])).toEqual([
+			["运行脚本：未执行", "你拒绝了这个脚本，所以什么都没有运行。"],
+			["Type the code", "a16 不是文本框。"],
+			// A script's own error stays as the page said it.
+			["Count rows", "rows is not defined"],
 		]);
 	} finally {
 		vi.unstubAllGlobals();
