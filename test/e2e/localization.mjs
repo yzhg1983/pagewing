@@ -118,7 +118,8 @@ const overflowing = (selector) => {
 	const root = document.querySelector(selector);
 	const roots = [document.documentElement, root];
 	if (roots.every((el) => el.scrollWidth <= el.clientWidth + 1)) return [];
-	const right = Math.min(window.innerWidth, root.getBoundingClientRect().right) + 1;
+	// The content box's right edge: a classic scrollbar, as on Linux, takes its width from the box.
+	const right = Math.min(window.innerWidth, root.getBoundingClientRect().left + root.clientWidth) + 1;
 	const wide = [...root.querySelectorAll("*")]
 		.filter((el) => el.getBoundingClientRect().right > right)
 		.map((el) => `${el.tagName.toLowerCase()}#${el.id}.${el.className} ${el.textContent.trim().slice(0, 50)}`);

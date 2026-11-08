@@ -1144,8 +1144,10 @@ body.callback h1 {
 	max-width: 60%;
 }
 
+/* A switch keeps its width, since its choices do not wrap: its last choice stays in the row, and the setting's name
+   wraps instead. */
 .setting > .segmented {
-	flex: 0 1 auto;
+	flex: none;
 }
 
 .setting > .segmented label {
