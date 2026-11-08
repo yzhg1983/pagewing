@@ -33,6 +33,5 @@
 	"os": [
 		"darwin",
 		"linux"
-	],
-	"private": true
+	]
 }
