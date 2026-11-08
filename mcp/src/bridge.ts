@@ -60,6 +60,9 @@ export function readLines(stream: Readable, each: (value: unknown) => void, maxB
 			} catch {
 				// Not JSON: the peer is not one of ours; its line is dropped.
 			}
+			// `each` may have ended the stream, as the host does on a message too large for Chrome; lines that came in
+			// the same chunk must not follow it.
+			if (stream.destroyed) return;
 		}
 		if (Buffer.byteLength(pending) > maxBytes) {
 			stream.removeAllListeners("data");

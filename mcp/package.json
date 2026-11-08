@@ -1,6 +1,6 @@
 {
 	"name": "pagewing-mcp",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "MCP server that lets local agents, such as pi, use Pagewing's page tools in Chrome",
 	"license": "MIT",
 	"type": "module",

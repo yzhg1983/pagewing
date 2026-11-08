@@ -4,6 +4,7 @@
 
 import { connect as connectSocket, type Socket } from "node:net";
 import type { Readable, Writable } from "node:stream";
+import manifest from "../package.json" with { type: "json" };
 import {
 	type AgentReply,
 	type AgentRequest,
@@ -17,7 +18,6 @@ import {
 } from "./bridge.ts";
 import { TOOLS } from "./tools.ts";
 
-const VERSION = "0.1.0";
 /** The newest MCP version first; a client asking for another gets the newest. */
 const PROTOCOLS = ["2025-06-18", "2025-03-26", "2024-11-05"];
 
@@ -70,7 +70,7 @@ export function serve(
 					reply(id, {
 						protocolVersion: asked !== undefined && PROTOCOLS.includes(asked) ? asked : PROTOCOLS[0],
 						capabilities: { tools: {} },
-						serverInfo: { name: "pagewing", version: VERSION },
+						serverInfo: { name: "pagewing", version: manifest.version },
 						instructions: INSTRUCTIONS,
 					});
 					return;

@@ -83,11 +83,14 @@ describe("routing", () => {
 		const host = startHost();
 		const a = await agent(host);
 		const closed = new Promise((resolve) => a.socket.once("close", resolve));
-		// 400,000 three-byte characters: under 1 MB as a string length, 1.2 MB in UTF-8.
-		writeLine(a.socket, { type: "open", name: "中".repeat(400_000) });
-		writeLine(a.socket, { type: "open", name: "after" });
+		// 400,000 three-byte characters: under 1 MB as a string length, 1.2 MB in UTF-8. One write, so the next line
+		// arrives with it and the host must not pass it on.
+		const big = JSON.stringify({ type: "open", name: "中".repeat(400_000) });
+		a.socket.write(`${big}\n${JSON.stringify({ type: "open", name: "after" })}\n`);
 		await closed;
-		expect(host.fromHost).toEqual([]);
+		// The session's close comes after anything the host passed on before it.
+		await vi.waitFor(() => expect(host.fromHost.at(-1)).toEqual({ type: "close", session: "s1" }));
+		expect(host.fromHost).toEqual([{ type: "close", session: "s1" }]);
 	});
 });
 
