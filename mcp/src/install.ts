@@ -1,13 +1,13 @@
 // Setup (design 6.45): registers the native host with Chrome, as a manifest in each browser's NativeMessagingHosts
-// folder, allowed for pi-aside's store ID and any extension IDs given, such as an unpacked install's. The MCP server
-// does this at each start, so a user never runs it; `install --extension-id` adds an unpacked pi-aside.
+// folder, allowed for Pagewing's store ID and any extension IDs given, such as an unpacked install's. The MCP server
+// does this at each start, so a user never runs it; `install --extension-id` adds an unpacked Pagewing.
 
 import { chmodSync, existsSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { HOST_NAME, homeDir, STORE_ID } from "./bridge.ts";
 
-/** The user data folders of the Chromium browsers pi-aside may run in, per platform. */
+/** The user data folders of the Chromium browsers Pagewing may run in, per platform. */
 function browserFolders(): string[] {
 	const home = homedir();
 	if (process.platform === "darwin") {
@@ -47,14 +47,14 @@ export function install(cli: string, extensionIds: string[], dataDirs: string[] 
 	if (scriptChanged) writeFileSync(script, body, { mode: 0o700 });
 	// Two copies of the CLI, such as a source checkout and npx's, take the helper from each other at each start.
 	if (scriptChanged && before !== null)
-		console.error(`pi-aside-mcp: Chrome's helper now runs ${cli}; it ran another copy before.`);
+		console.error(`pagewing-mcp: Chrome's helper now runs ${cli}; it ran another copy before.`);
 	const manifests = folders.flatMap((folder) => {
 		const hosts = join(folder, "NativeMessagingHosts");
 		const file = join(hosts, `${HOST_NAME}.json`);
 		const before = readText(file);
 		const manifest = {
 			name: HOST_NAME,
-			description: "pi-aside local agents bridge",
+			description: "Pagewing local agents bridge",
 			path: script,
 			type: "stdio",
 			allowed_origins: [
@@ -95,7 +95,7 @@ function readText(file: string): string | null {
 	}
 }
 
-/** The extensions an earlier manifest allowed, such as an unpacked pi-aside's; none when it is missing or not ours. */
+/** The extensions an earlier manifest allowed, such as an unpacked Pagewing's; none when it is missing or not ours. */
 function allowedBefore(text: string | null): string[] {
 	try {
 		const { allowed_origins } = JSON.parse(text ?? "{}") as { allowed_origins?: unknown };

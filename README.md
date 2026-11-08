@@ -151,15 +151,15 @@ mistakes. Keep Ask for email, banking, admin pages, and anywhere a wrong click m
 
 ## Use with coding agents
 
-Coding agents on your computer, such as [pi](https://github.com/earendil-works/pi), can use pi-aside's page tools over
+Coding agents on your computer, such as [pi](https://github.com/earendil-works/pi), can use Pagewing's page tools over
 MCP: open your app in Chrome, click through it, read the result.
 
-1. Add pi-aside to the agent: `pi mcp add pi-aside -- npx -y pi-aside-mcp` (other MCP clients: `npx -y pi-aside-mcp`
+1. Add Pagewing to the agent: `pi mcp add pagewing -- npx -y pagewing-mcp` (other MCP clients: `npx -y pagewing-mcp`
    as a stdio server).
-2. In pi-aside: Settings > Advanced > Local agents > On.
+2. In Pagewing: Settings > Advanced > Local agents > On.
 
 Each agent works in a Chrome tab group of its own and does not ask before acting; Off in Settings > Tools still
-applies. Details: [pi-aside-mcp](mcp/README.md).
+applies. Details: [pagewing-mcp](mcp/README.md).
 
 ## Privacy
 

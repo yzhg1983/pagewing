@@ -1,5 +1,5 @@
 // The MCP server (design 6.45): an MCP client, such as pi, starts it over stdio, and it passes each tool call to
-// pi-aside through the native host's socket. It connects at the first call, so an agent that never uses the browser
+// Pagewing through the native host's socket. It connects at the first call, so an agent that never uses the browser
 // opens no session, and again after the connection ended: a new session, with a new tab group.
 
 import { connect as connectSocket, type Socket } from "node:net";
@@ -20,15 +20,15 @@ const VERSION = "0.1.0";
 /** The newest MCP version first; a client asking for another gets the newest. */
 const PROTOCOLS = ["2025-06-18", "2025-03-26", "2024-11-05"];
 
-const INSTRUCTIONS = `pi-aside drives the user's Chrome, with their logins, in a Chrome tab group of this session. \
+const INSTRUCTIONS = `Pagewing drives the user's Chrome, with their logins, in a Chrome tab group of this session. \
 Start with open_tab; then read_page for text, observe_page and act_on_page to work the page, run_script for data, \
 and screenshot_page for how it looks.`;
 
-/** What a call says when pi-aside cannot be reached. */
-export const NOT_CONNECTED = `pi-aside is not connected. Ask the user to install pi-aside in Chrome, open its side \
+/** What a call says when Pagewing cannot be reached. */
+export const NOT_CONNECTED = `Pagewing is not connected. Ask the user to install Pagewing in Chrome, open its side \
 panel, and turn on Settings > Advanced > Local agents.`;
 
-const ENDED = `The connection to pi-aside ended during the call: it may or may not have happened. Check before \
+const ENDED = `The connection to Pagewing ended during the call: it may or may not have happened. Check before \
 trying again.`;
 
 type JsonRpc = { jsonrpc: "2.0"; id?: number | string; method?: string; params?: Record<string, unknown> };
@@ -38,7 +38,7 @@ export type Connect = () => Socket;
 
 /**
  * How the server reaches the host. `retryUntil`: until this time, a call that finds no host tries again each second:
- * after a new registration, pi-aside starts the host at its next retry, within 30 s.
+ * after a new registration, Pagewing starts the host at its next retry, within 30 s.
  */
 export type ServeOptions = { connect?: Connect; retryUntil?: number };
 
@@ -68,7 +68,7 @@ export function serve(
 					reply(id, {
 						protocolVersion: asked !== undefined && PROTOCOLS.includes(asked) ? asked : PROTOCOLS[0],
 						capabilities: { tools: {} },
-						serverInfo: { name: "pi-aside", version: VERSION },
+						serverInfo: { name: "pagewing", version: VERSION },
 						instructions: INSTRUCTIONS,
 					});
 					return;
@@ -100,7 +100,7 @@ export function serve(
 	input.on("end", () => bridge.close());
 }
 
-/** One session with pi-aside: the socket, and the calls waiting for their results. */
+/** One session with Pagewing: the socket, and the calls waiting for their results. */
 class Bridge {
 	name = "agent";
 	readonly #connect: Connect;
@@ -114,7 +114,7 @@ class Bridge {
 		this.#retryUntil = retryUntil;
 	}
 
-	/** Sends the call to pi-aside and gives its result; a result says when pi-aside cannot be reached. */
+	/** Sends the call to Pagewing and gives its result; a result says when Pagewing cannot be reached. */
 	async call(request: number | string, tool: string, args: Record<string, unknown>): Promise<ToolResult> {
 		const session = await this.#open();
 		if (session === null) return textResult(NOT_CONNECTED, true);
@@ -125,7 +125,7 @@ class Bridge {
 		});
 	}
 
-	/** Asks pi-aside to stop the call the MCP request `request` made. */
+	/** Asks Pagewing to stop the call the MCP request `request` made. */
 	async cancel(request: number | string): Promise<void> {
 		const session = await this.#socket;
 		for (const [id, call] of session?.calls ?? [])

@@ -1,6 +1,6 @@
-// The native host (design 6.45): Chrome starts it when pi-aside's Local agents switch is on, and it lives as long as
-// pi-aside keeps the port open. It listens on a socket in ~/.pi-aside, readable by the user alone, and passes messages
-// between each MCP server that connects, one session each, and pi-aside.
+// The native host (design 6.45): Chrome starts it when Pagewing's Local agents switch is on, and it lives as long as
+// Pagewing keeps the port open. It listens on a socket in ~/.pagewing, readable by the user alone, and passes messages
+// between each MCP server that connects, one session each, and Pagewing.
 
 import { chmodSync, mkdirSync, rmSync, statSync } from "node:fs";
 import { createServer, type Socket } from "node:net";
@@ -17,7 +17,7 @@ import {
 	writeNative,
 } from "./bridge.ts";
 
-/** A message between the host and pi-aside: a socket's message with the session it came from or goes to. */
+/** A message between the host and Pagewing: a socket's message with the session it came from or goes to. */
 type Routed<T> = T & { session: string };
 
 /** Serves sessions until Chrome closes the port, which ends stdin; then removes the socket and exits. */
@@ -66,7 +66,7 @@ export function runHost(): void {
 	server.listen(socketPath(), () => {
 		chmodSync(socketPath(), 0o600);
 		own = statSync(socketPath()).ino;
-		// pi-aside's Settings says the bridge runs only from here: before, an agent finds no socket.
+		// Pagewing's Settings says the bridge runs only from here: before, an agent finds no socket.
 		writeNative(process.stdout, { type: "ready" });
 	});
 

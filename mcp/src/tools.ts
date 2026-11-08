@@ -1,4 +1,4 @@
-// The tools the MCP server offers (design 6.45): pi-aside's page tools, for an agent that works in a Chrome tab group of
+// The tools the MCP server offers (design 6.45): Pagewing's page tools, for an agent that works in a Chrome tab group of
 // its own, plus open_tab, since such an agent starts without a page.
 
 const TAB = {
@@ -95,7 +95,7 @@ ${CONFIRM} ${PAGE_TEXT}`,
 		description: `Runs JavaScript in the page and returns its result as JSON: ok, value, logs, error, truncated. code \
 is one expression, or the body of an async function that returns a JSON value. The script sees the page's DOM, not the \
 page's own objects, and its requests to the page's site carry the user's login. Keep it read-only unless the user asked \
-for a change. Needs Chrome's "Allow User Scripts" switch on pi-aside's details page. It returns after 30 s at most. \
+for a change. Needs Chrome's "Allow User Scripts" switch on Pagewing's details page. It returns after 30 s at most. \
 ${CONFIRM} ${PAGE_TEXT}`,
 		inputSchema: {
 			type: "object",

@@ -1,15 +1,15 @@
 {
-	"name": "pi-aside-mcp",
+	"name": "pagewing-mcp",
 	"version": "0.1.0",
-	"description": "MCP server that lets local agents, such as pi, use pi-aside's page tools in Chrome",
+	"description": "MCP server that lets local agents, such as pi, use Pagewing's page tools in Chrome",
 	"license": "MIT",
 	"type": "module",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/yzhg1983/pi-aside.git",
+		"url": "git+https://github.com/yzhg1983/pagewing.git",
 		"directory": "mcp"
 	},
-	"homepage": "https://github.com/yzhg1983/pi-aside/tree/main/mcp#readme",
+	"homepage": "https://github.com/yzhg1983/pagewing/tree/main/mcp#readme",
 	"keywords": [
 		"mcp",
 		"chrome",
@@ -18,7 +18,7 @@
 		"agent"
 	],
 	"bin": {
-		"pi-aside-mcp": "dist/cli.js"
+		"pagewing-mcp": "dist/cli.js"
 	},
 	"files": [
 		"dist",

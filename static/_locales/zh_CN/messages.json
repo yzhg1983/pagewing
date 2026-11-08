@@ -1962,7 +1962,7 @@
 		"message": "允许本机程序使用网页工具"
 	},
 	"localAgentsNote": {
-		"message": "供 pi 等编程智能体通过 pi-aside-mcp 使用。它们在自己的标签页组中工作，可访问任何网站，不会询问你；工具中设为关闭的仍然关闭。"
+		"message": "供 pi 等编程智能体通过 pagewing-mcp 使用。它们在自己的标签页组中工作，可访问任何网站，不会询问你；工具中设为关闭的仍然关闭。"
 	},
 	"agentsConnected": {
 		"message": "桥接正在运行。已连接：$NAMES$",
@@ -1976,10 +1976,10 @@
 		"message": "桥接正在运行。没有智能体连接。"
 	},
 	"agentsMissing": {
-		"message": "尚未设置：用上面的命令把 pi-aside 添加到你的智能体，然后启动它。pi-aside 会在 30 秒内连接。"
+		"message": "尚未设置：用上面的命令把 Pagewing 添加到你的智能体，然后启动它。Pagewing 会在 30 秒内连接。"
 	},
 	"agentsError": {
-		"message": "桥接已停止：$ERROR$。pi-aside 将在 30 秒内重试。",
+		"message": "桥接已停止：$ERROR$。Pagewing 将在 30 秒内重试。",
 		"placeholders": {
 			"error": {
 				"content": "$1"
@@ -1990,13 +1990,13 @@
 		"message": "正在启动桥接…"
 	},
 	"agentsPermission": {
-		"message": "Chrome 不再允许 pi-aside 使用本地消息：请关闭开关再重新打开。"
+		"message": "Chrome 不再允许 Pagewing 使用本地消息：请关闭开关再重新打开。"
 	},
 	"localAgentsSetup": {
-		"message": "在终端中运行以下命令，把 pi-aside 添加到 pi："
+		"message": "在终端中运行以下命令，把 Pagewing 添加到 pi："
 	},
 	"localAgentsOther": {
-		"message": "其他 MCP 客户端：将 npx -y pi-aside-mcp 添加为 stdio 服务器。"
+		"message": "其他 MCP 客户端：将 npx -y pagewing-mcp 添加为 stdio 服务器。"
 	},
 	"copyCommand": {
 		"message": "复制命令"

@@ -1,34 +1,34 @@
-# pi-aside-mcp
+# pagewing-mcp
 
 Lets a coding agent on your computer, such as [pi](https://github.com/earendil-works/pi), use
-[pi-aside](https://github.com/yzhg1983/pi-aside)'s page tools in your Chrome over MCP: open a page, read it, click and
+[Pagewing](https://github.com/yzhg1983/pagewing)'s page tools in your Chrome over MCP: open a page, read it, click and
 type, run a script, take a screenshot. macOS and Linux.
 
 ## Set up
 
-1. Install pi-aside in Chrome.
+1. Install Pagewing in Chrome.
 2. Add the server to your agent:
 
    ```sh
-   pi mcp add pi-aside -- npx -y pi-aside-mcp
+   pi mcp add pagewing -- npx -y pagewing-mcp
    ```
 
-   Other MCP clients: add `npx -y pi-aside-mcp` as a stdio server.
+   Other MCP clients: add `npx -y pagewing-mcp` as a stdio server.
 
-3. In pi-aside's side panel: Settings > Advanced > Local agents > On. Chrome asks for native messaging and access to
+3. In Pagewing's side panel: Settings > Advanced > Local agents > On. Chrome asks for native messaging and access to
    all sites.
 
-The first call after setup may take up to 30 s while pi-aside connects.
+The first call after setup may take up to 30 s while Pagewing connects.
 
 ## How it works
 
-Chrome lets an extension talk only to programs registered with it (native messaging). At each start, `pi-aside-mcp`
-registers a small helper in each installed Chromium browser: `~/.pi-aside/host.sh`, and a file in the browser's
-`NativeMessagingHosts` folder that lets only pi-aside start it. While the switch is on, pi-aside starts the helper; the
-helper relays your agent's calls to pi-aside over a socket only you can open (`~/.pi-aside/bridge.sock`).
+Chrome lets an extension talk only to programs registered with it (native messaging). At each start, `pagewing-mcp`
+registers a small helper in each installed Chromium browser: `~/.pagewing/host.sh`, and a file in the browser's
+`NativeMessagingHosts` folder that lets only Pagewing start it. While the switch is on, Pagewing starts the helper; the
+helper relays your agent's calls to Pagewing over a socket only you can open (`~/.pagewing/bridge.sock`).
 
 ```
-agent ──MCP──▶ pi-aside-mcp ──socket──▶ helper ──native messaging──▶ pi-aside in Chrome
+agent ──MCP──▶ pagewing-mcp ──socket──▶ helper ──native messaging──▶ Pagewing in Chrome
 ```
 
 ## What the agent can do
@@ -40,9 +40,9 @@ ends every session.
 
 ## Commands
 
-- `pi-aside-mcp`: the MCP server (stdio).
-- `pi-aside-mcp install --extension-id <id>`: also allow an unpacked pi-aside, by its ID from `chrome://extensions`.
-- `pi-aside-mcp uninstall`: remove the registration.
+- `pagewing-mcp`: the MCP server (stdio).
+- `pagewing-mcp install --extension-id <id>`: also allow an unpacked Pagewing, by its ID from `chrome://extensions`.
+- `pagewing-mcp uninstall`: remove the registration.
 
 ## Develop
 

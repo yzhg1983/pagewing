@@ -1962,7 +1962,7 @@
 		"message": "Let programs on this computer use the page tools"
 	},
 	"localAgentsNote": {
-		"message": "For coding agents such as pi, through pi-aside-mcp. They work in a tab group of their own, on any site, without asking you; Off in Tools still applies."
+		"message": "For coding agents such as pi, through pagewing-mcp. They work in a tab group of their own, on any site, without asking you; Off in Tools still applies."
 	},
 	"agentsConnected": {
 		"message": "Bridge running. Connected: $NAMES$",
@@ -1976,10 +1976,10 @@
 		"message": "Bridge running. No agent connected."
 	},
 	"agentsMissing": {
-		"message": "Not set up yet: add pi-aside to your agent with the command above, then start the agent. pi-aside connects within 30 s."
+		"message": "Not set up yet: add Pagewing to your agent with the command above, then start the agent. Pagewing connects within 30 s."
 	},
 	"agentsError": {
-		"message": "The bridge stopped: $ERROR$. pi-aside tries again within 30 s.",
+		"message": "The bridge stopped: $ERROR$. Pagewing tries again within 30 s.",
 		"placeholders": {
 			"error": {
 				"content": "$1"
@@ -1990,13 +1990,13 @@
 		"message": "Starting the bridge…"
 	},
 	"agentsPermission": {
-		"message": "Chrome no longer lets pi-aside use native messaging: turn the switch off and on again."
+		"message": "Chrome no longer lets Pagewing use native messaging: turn the switch off and on again."
 	},
 	"localAgentsSetup": {
-		"message": "To add pi-aside to pi, run in a terminal:"
+		"message": "To add Pagewing to pi, run in a terminal:"
 	},
 	"localAgentsOther": {
-		"message": "Other MCP clients: add npx -y pi-aside-mcp as a stdio server."
+		"message": "Other MCP clients: add npx -y pagewing-mcp as a stdio server."
 	},
 	"copyCommand": {
 		"message": "Copy command"

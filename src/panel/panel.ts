@@ -4123,7 +4123,7 @@ function renderAgents({ state: bridge, error, agents }: AgentsStatus): void {
 				: bridge === "starting"
 					? t("agentsStarting")
 					: bridge === "missing"
-						? // Chrome's own words when the host was found but stopped at start, as on a broken ~/.pi-aside.
+						? // Chrome's own words when the host was found but stopped at start, as on a broken ~/.pagewing.
 							error === null || error.includes("not found")
 							? t("agentsMissing")
 							: `${t("agentsMissing")} (${error})`

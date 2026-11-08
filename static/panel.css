@@ -2594,7 +2594,7 @@ footer {
 	color: var(--accent);
 }
 
-/* Settings > Advanced > Local agents: the command that adds pi-aside to an agent, with Copy. */
+/* Settings > Advanced > Local agents: the command that adds Pagewing to an agent, with Copy. */
 .agent-command {
 	display: flex;
 	align-items: center;

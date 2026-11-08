@@ -28,11 +28,11 @@ function startHost() {
 		if ((value as { type: string }).type === "ready") ready = true;
 		else fromHost.push(value as Record<string, unknown>);
 	});
-	const socketPath = join(home, ".pi-aside", "bridge.sock");
+	const socketPath = join(home, ".pagewing", "bridge.sock");
 	return { child, home, socketPath, fromHost, ready: () => vi.waitFor(() => expect(ready).toBe(true)) };
 }
 
-/** An MCP server stand-in on the host's socket, once it listens: `lines` collects what pi-aside sends it. */
+/** An MCP server stand-in on the host's socket, once it listens: `lines` collects what Pagewing sends it. */
 async function agent(host: ReturnType<typeof startHost>) {
 	await host.ready();
 	const socket: Socket = connect(host.socketPath);
@@ -95,7 +95,7 @@ describe("the socket", () => {
 	it("is readable by the user alone, and goes when Chrome closes the port", async () => {
 		const host = startHost();
 		await agent(host);
-		expect(statSync(join(host.home, ".pi-aside")).mode & 0o777).toBe(0o700);
+		expect(statSync(join(host.home, ".pagewing")).mode & 0o777).toBe(0o700);
 		expect(statSync(host.socketPath).mode & 0o777).toBe(0o600);
 		const exited = new Promise((resolve) => host.child.once("exit", resolve));
 		host.child.stdin!.end();

@@ -179,7 +179,7 @@ function syncAgents(): Promise<void> {
 			const { localAgents: on } = await loadSettings();
 			localAgents.sync(on, await chrome.permissions.contains({ permissions: ["nativeMessaging"] }));
 		})
-		.catch((error: unknown) => console.error("[pi-aside] local agents", error));
+		.catch((error: unknown) => console.error("[pagewing] local agents", error));
 	return agentsSynced;
 }
 

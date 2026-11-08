@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// pi-aside-mcp (design 6.45). Without a command: the MCP server, for an MCP client such as `pi mcp add pi-aside --
-// npx -y pi-aside-mcp`; it registers the native host with Chrome first. `install --extension-id` also allows an
-// unpacked pi-aside; `uninstall` removes the registration. `host`: the native host, which Chrome starts.
+// pagewing-mcp (design 6.45). Without a command: the MCP server, for an MCP client such as `pi mcp add pagewing --
+// npx -y pagewing-mcp`; it registers the native host with Chrome first. `install --extension-id` also allows an
+// unpacked Pagewing; `uninstall` removes the registration. `host`: the native host, which Chrome starts.
 
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
@@ -10,11 +10,11 @@ import { install, uninstall } from "./install.ts";
 import { serve } from "./server.ts";
 
 const USAGE = `Usage:
-  pi-aside-mcp                       the MCP server (stdio), for an MCP client
-  pi-aside-mcp install [--extension-id ID]... [--user-data-dir DIR]...
+  pagewing-mcp                       the MCP server (stdio), for an MCP client
+  pagewing-mcp install [--extension-id ID]... [--user-data-dir DIR]...
                                      register the native host with Chrome (the server does
-                                     this itself; use it to allow an unpacked pi-aside)
-  pi-aside-mcp uninstall [--user-data-dir DIR]...`;
+                                     this itself; use it to allow an unpacked Pagewing)
+  pagewing-mcp uninstall [--user-data-dir DIR]...`;
 
 const [command, ...rest] = process.argv.slice(2);
 // Chrome starts the host with the calling extension's origin as its first argument.
@@ -25,7 +25,7 @@ else if (command === undefined || command === "serve") {
 	try {
 		written = install(fileURLToPath(import.meta.url), []);
 	} catch (error) {
-		console.error(`pi-aside-mcp: cannot register with Chrome: ${error instanceof Error ? error.message : error}`);
+		console.error(`pagewing-mcp: cannot register with Chrome: ${error instanceof Error ? error.message : error}`);
 	}
 	serve(process.stdin, process.stdout, { retryUntil: written.length > 0 ? Date.now() + 40_000 : 0 });
 } else if (command === "install" || command === "uninstall") {

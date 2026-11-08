@@ -36,7 +36,7 @@ function client(path: string, retryUntil = 0) {
 }
 
 /** A host stand-in on a socket, at `path` or a new one: records what each session sends. */
-function fakeHost(path = join(mkdtempSync(join(tmpdir(), "pi-aside-mcp-")), "bridge.sock")) {
+function fakeHost(path = join(mkdtempSync(join(tmpdir(), "pagewing-mcp-")), "bridge.sock")) {
 	const received: Record<string, unknown>[] = [];
 	const sockets: Socket[] = [];
 	const server: Server = createServer((socket) => {
@@ -64,7 +64,7 @@ describe("MCP methods", () => {
 		const mcp = client("/nonexistent/bridge.sock");
 		mcp.send({ id: 1, method: "initialize", params: { protocolVersion: "2025-03-26", clientInfo: { name: "pi" } } });
 		const init = await mcp.response(1);
-		expect(init.result).toMatchObject({ protocolVersion: "2025-03-26", serverInfo: { name: "pi-aside" } });
+		expect(init.result).toMatchObject({ protocolVersion: "2025-03-26", serverInfo: { name: "pagewing" } });
 		mcp.send({ id: 2, method: "initialize", params: { protocolVersion: "1999-01-01" } });
 		expect((await mcp.response(2)).result?.protocolVersion).toBe("2025-06-18");
 		mcp.send({ id: 3, method: "tools/list" });
@@ -93,7 +93,7 @@ describe("MCP methods", () => {
 });
 
 describe("tool calls", () => {
-	it("without a host, a call says how to connect pi-aside", async () => {
+	it("without a host, a call says how to connect Pagewing", async () => {
 		const mcp = client("/nonexistent/bridge.sock");
 		mcp.send({ id: 1, method: "tools/call", params: { name: "list_tabs", arguments: {} } });
 		expect((await mcp.response(1)).result).toEqual({
@@ -103,8 +103,8 @@ describe("tool calls", () => {
 		mcp.end();
 	});
 
-	it("after a new registration, a call waits for pi-aside to start the host", async () => {
-		const path = join(mkdtempSync(join(tmpdir(), "pi-aside-mcp-")), "bridge.sock");
+	it("after a new registration, a call waits for Pagewing to start the host", async () => {
+		const path = join(mkdtempSync(join(tmpdir(), "pagewing-mcp-")), "bridge.sock");
 		const mcp = client(path, Date.now() + 10_000);
 		mcp.send({ id: 1, method: "tools/call", params: { name: "list_tabs", arguments: {} } });
 		await new Promise((resolve) => setTimeout(resolve, 1500));
@@ -142,7 +142,7 @@ describe("tool calls", () => {
 		mcp.end();
 	});
 
-	it("a cancel goes to pi-aside with the call's bridge ID", async () => {
+	it("a cancel goes to Pagewing with the call's bridge ID", async () => {
 		const host = await fakeHost();
 		const mcp = client(host.path);
 		mcp.send({ id: "r1", method: "tools/call", params: { name: "run_script", arguments: { code: "1" } } });

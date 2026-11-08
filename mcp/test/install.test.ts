@@ -10,7 +10,7 @@ import { install, uninstall } from "../src/install.ts";
 let home = "";
 const saved = process.env.HOME;
 beforeEach(() => {
-	home = mkdtempSync(join(tmpdir(), "pi-aside-install-"));
+	home = mkdtempSync(join(tmpdir(), "pagewing-install-"));
 	process.env.HOME = home;
 });
 afterEach(() => {
@@ -20,18 +20,18 @@ afterEach(() => {
 describe("install", () => {
 	it("registers the host for the store ID and the given IDs, in the given profile", () => {
 		const profile = join(home, "profile");
-		const [file] = install("/opt/pi-aside-mcp/cli.ts", ["abc"], [profile]);
+		const [file] = install("/opt/pagewing-mcp/cli.ts", ["abc"], [profile]);
 		expect(file).toBe(join(profile, "NativeMessagingHosts", `${HOST_NAME}.json`));
 		const manifest = JSON.parse(readFileSync(file!, "utf8"));
 		expect(manifest).toEqual({
 			name: HOST_NAME,
-			description: "pi-aside local agents bridge",
-			path: join(home, ".pi-aside", "host.sh"),
+			description: "Pagewing local agents bridge",
+			path: join(home, ".pagewing", "host.sh"),
 			type: "stdio",
 			allowed_origins: [`chrome-extension://${STORE_ID}/`, "chrome-extension://abc/"],
 		});
 		const script = readFileSync(manifest.path, "utf8");
-		expect(script).toMatch(/^exec '[^']*node' '\/opt\/pi-aside-mcp\/cli.ts' host "\$@"$/m);
+		expect(script).toMatch(/^exec '[^']*node' '\/opt\/pagewing-mcp\/cli.ts' host "\$@"$/m);
 		expect(statSync(manifest.path).mode & 0o777).toBe(0o700);
 	});
 
@@ -39,7 +39,7 @@ describe("install", () => {
 		const profile = join(home, "profile");
 		const [file] = install("/old/cli.ts", ["unpacked"], [profile]);
 		// The manifest stays as it was; the script names the new CLI.
-		expect(install("/new/cli.ts", [], [profile])).toEqual([join(home, ".pi-aside", "host.sh")]);
+		expect(install("/new/cli.ts", [], [profile])).toEqual([join(home, ".pagewing", "host.sh")]);
 		const manifest = JSON.parse(readFileSync(file!, "utf8"));
 		expect(manifest.allowed_origins).toEqual([`chrome-extension://${STORE_ID}/`, "chrome-extension://unpacked/"]);
 		expect(readFileSync(manifest.path, "utf8")).toContain("/new/cli.ts");
@@ -53,7 +53,7 @@ describe("install", () => {
 		mkdirSync(chrome, { recursive: true });
 		expect(install("/cli.ts", [])).toEqual([
 			join(chrome, "NativeMessagingHosts", `${HOST_NAME}.json`),
-			join(home, ".pi-aside", "host.sh"),
+			join(home, ".pagewing", "host.sh"),
 		]);
 	});
 
@@ -68,6 +68,6 @@ describe("install", () => {
 		const [file] = install("/cli.ts", [], [profile]);
 		expect(uninstall([profile])).toEqual([file]);
 		expect(existsSync(file!)).toBe(false);
-		expect(existsSync(join(home, ".pi-aside", "host.sh"))).toBe(false);
+		expect(existsSync(join(home, ".pagewing", "host.sh"))).toBe(false);
 	});
 });

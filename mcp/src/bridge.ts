@@ -5,15 +5,15 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import type { Readable, Writable } from "node:stream";
 
-/** The native messaging host pi-aside connects to; Chrome finds its manifest by this name. */
-export const HOST_NAME = "io.github.yzhg1983.pi_aside";
-/** pi-aside's ID in the Chrome Web Store. */
+/** The native messaging host Pagewing connects to; Chrome finds its manifest by this name. */
+export const HOST_NAME = "io.github.yzhg1983.pagewing";
+/** Pagewing's ID in the Chrome Web Store. */
 export const STORE_ID = "eamkpenaglckggljpkdljhillecgpjlp";
 /** Chrome refuses a native message to the extension over 1 MB; the host refuses a socket line over this first. */
 export const MAX_MESSAGE_BYTES = 1_000_000;
 
-/** pi-aside's folder in the user's home: the host script and the socket, readable by the user alone. */
-export const homeDir = () => join(homedir(), ".pi-aside");
+/** Pagewing's folder in the user's home: the host script and the socket, readable by the user alone. */
+export const homeDir = () => join(homedir(), ".pagewing");
 export const socketPath = () => join(homeDir(), "bridge.sock");
 
 /** A call result as MCP's tools/call returns it. */
@@ -22,13 +22,13 @@ export type ToolResult = {
 	isError?: boolean;
 };
 
-/** From an MCP server to pi-aside, through the host; the host adds the session. */
+/** From an MCP server to Pagewing, through the host; the host adds the session. */
 export type AgentRequest =
 	| { type: "open"; name: string }
 	| { type: "call"; id: number; tool: string; args: Record<string, unknown> }
 	| { type: "cancel"; id: number };
 
-/** From pi-aside to an MCP server, through the host. */
+/** From Pagewing to an MCP server, through the host. */
 export type AgentReply = { type: "result"; id: number; result: ToolResult };
 
 /** A text result; `isError` marks a refusal or failure the agent should read. */

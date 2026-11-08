@@ -176,7 +176,7 @@ export type Settings = {
 	scriptsOnboarded: boolean;
 	/**
 	 * Local agents (design 6.45): programs on this computer, such as a pi coding-agent session, use the page tools
-	 * through the pi-aside-mcp bridge, each in a tab group of its own, without asking. Off by default.
+	 * through the pagewing-mcp bridge, each in a tab group of its own, without asking. Off by default.
 	 */
 	localAgents: boolean;
 };

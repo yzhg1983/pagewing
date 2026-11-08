@@ -1,5 +1,5 @@
 // Local agents (design 6.45): programs on this computer, such as a pi coding-agent session, use the page tools through
-// Chrome's native messaging and the pi-aside-mcp bridge. Each session works in a Chrome tab group of its own and reaches
+// Chrome's native messaging and the pagewing-mcp bridge. Each session works in a Chrome tab group of its own and reaches
 // only the tabs in it. Turning on the Local agents switch is the user's consent, so the tools do not ask (Ask counts as
 // On); Off, the page agent's refusals, and the switch going off are checked at every dispatch to Chrome.
 
@@ -30,8 +30,8 @@ import { letterOf, type RefMaps, targetOf } from "./page-tools.ts";
 import { CAPTURE_GAP_MS, RETRY_GAP_MS } from "./screenshot.ts";
 import { ScopeDenied, type ScopeTab } from "./tab-groups.ts";
 
-/** The bridge's native host; pi-aside-mcp install registers it under this name. */
-export const HOST_NAME = "io.github.yzhg1983.pi_aside";
+/** The bridge's native host; pagewing-mcp install registers it under this name. */
+export const HOST_NAME = "io.github.yzhg1983.pagewing";
 
 /** What the page tools need from the worker, without a chat. */
 export type AgentDeps = Pick<PageDeps, "access" | "currentSettings" | "captures">;
@@ -80,7 +80,7 @@ const text = (value: string, isError = false): ToolResult => ({
 const json = (value: unknown) => text(JSON.stringify(value));
 const messageOf = (error: unknown) => (error instanceof Error ? error.message : String(error)).replace(/\.$/, "");
 const LEFT_GROUP = "The tab left this session's tab group during the call; it may have happened in part.";
-const NO_ACCESS = `Cannot reach the page: Chrome does not let pi-aside script it (a browser page, the Web Store, or a \
+const NO_ACCESS = `Cannot reach the page: Chrome does not let Pagewing script it (a browser page, the Web Store, or a \
 page still loading).`;
 
 /** The bridge connection and its sessions. */
@@ -138,7 +138,7 @@ export class LocalAgents {
 		}
 		const port = this.#port;
 		this.#port = null;
-		this.#endAll("Local agents were turned off in pi-aside.");
+		this.#endAll("Local agents were turned off in Pagewing.");
 		port?.disconnect();
 		this.#error = null;
 		this.#changed();
@@ -307,7 +307,7 @@ export class LocalAgents {
 			group: async () => null,
 		};
 		const policy = () =>
-			!this.#on || this.#sessions.get(session.id) !== session ? "The session ended in pi-aside." : null;
+			!this.#on || this.#sessions.get(session.id) !== session ? "The session ended in Pagewing." : null;
 		return scopedPageAccess({ ...this.#deps, groups }, tabId, tabId, tool, context, policy);
 	}
 
@@ -333,7 +333,7 @@ export class LocalAgents {
 		context.abortSignal?.throwIfAborted();
 		const off = this.#mode("act", "open_tab");
 		if (off !== null) return text(off, true);
-		if (!this.#on || this.#sessions.get(session.id) !== session) return text("The session ended in pi-aside.", true);
+		if (!this.#on || this.#sessions.get(session.id) !== session) return text("The session ended in Pagewing.", true);
 		const created = await chrome.tabs.create({
 			url,
 			active: true,
@@ -437,12 +437,12 @@ export class LocalAgents {
 			context,
 			PAGE_TIMEOUT_MS,
 		);
-		if (result === null) return text("The page went away while pi-aside observed it; observe again.", true);
+		if (result === null) return text("The page went away while Pagewing observed it; observe again.", true);
 		if (!result.ok) return text(result.error, true);
 		if (!known.some((map) => map.mapId === result.mapId)) {
 			// A new map takes the letter the page wrote, unless another call of the session took it meanwhile.
 			if (letterOf(session.maps.next) !== result.letter)
-				return text("The page's refs changed while pi-aside observed it; observe again.", true);
+				return text("The page's refs changed while Pagewing observed it; observe again.", true);
 			session.maps.next += 1;
 			session.maps.maps.push({ letter: result.letter, documentId: top.documentId, mapId: result.mapId });
 			if (session.maps.maps.length > MAX_MAPS) session.maps.maps.splice(0, session.maps.maps.length - MAX_MAPS);
@@ -484,7 +484,7 @@ export class LocalAgents {
 			const reload = args.url === "reload";
 			const url = reload ? "reload" : httpUrl(args.url);
 			if (url === null) return text('url must be an http or https URL, or "reload".', true);
-			// Also from a page pi-aside cannot script, such as Chrome's error page.
+			// Also from a page Pagewing cannot script, such as Chrome's error page.
 			const before = await wait(() => access.top(tabId), context, PAGE_TIMEOUT_MS).catch(() => null);
 			// The last checks before Chrome: mode, session, switch, and the tab's group.
 			await wait(() => access.check(), context, PAGE_TIMEOUT_MS);
@@ -559,7 +559,7 @@ export class LocalAgents {
 		const code = args.code;
 		if (!this.#deps.access.scripts())
 			return text(
-				`Chrome does not let pi-aside run scripts: ask the user to turn on "Allow User Scripts" on pi-aside's details page (chrome://extensions).`,
+				`Chrome does not let Pagewing run scripts: ask the user to turn on "Allow User Scripts" on Pagewing's details page (chrome://extensions).`,
 				true,
 			);
 		const tabId = await this.#target(session, args.tab);
@@ -657,7 +657,7 @@ export class LocalAgents {
 		return json({ done: closed ? `Closed tab ${tabId}` : `Tab ${tabId} was already closed` });
 	}
 
-	/** The tab's top document, if Chrome lets pi-aside script it; else why not. */
+	/** The tab's top document, if Chrome lets Pagewing script it; else why not. */
 	async #top(
 		access: ReturnType<typeof scopedPageAccess>["access"],
 		wait: typeof bounded,

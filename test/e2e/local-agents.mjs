@@ -1,11 +1,11 @@
 // Local agents end to end (design 6.45), as a user sets them up: the switch turned on in Settings before the bridge is
-// there, which shows the command that adds pi-aside to pi; then an MCP client starts pi-aside-mcp over stdio, which
-// registers the bridge itself, and its first call waits until pi-aside connects. open_tab puts a loopback page in the
+// there, which shows the command that adds Pagewing to pi; then an MCP client starts pagewing-mcp over stdio, which
+// registers the bridge itself, and its first call waits until Pagewing connects. open_tab puts a loopback page in the
 // session's tab group; read_page, observe_page, act_on_page (click, type, navigate), run_script, screenshot_page,
 // list_tabs, and close_tab work there; a tab outside the group is refused; Off in Tools refuses its tool; the switch
 // going off ends the session and leaves the tabs open, and a new client then hears how to connect. The user's home,
-// Chrome profile, and ~/.pi-aside are never touched: Chrome and the bridge run with HOME in a temporary folder, and
-// the profile is that HOME's Chrome for Testing folder, where pi-aside-mcp registers by default.
+// Chrome profile, and ~/.pagewing are never touched: Chrome and the bridge run with HOME in a temporary folder, and
+// the profile is that HOME's Chrome for Testing folder, where pagewing-mcp registers by default.
 import { spawn } from "node:child_process";
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createServer as createHttp } from "node:http";
@@ -88,7 +88,7 @@ await new Promise((resolve) => pages.listen(8702, "127.0.0.1", resolve));
 const A = "http://a.test:8702";
 const B = "http://b.test:8702";
 
-/** An MCP client on a new pi-aside-mcp: `call` gives the tool result. */
+/** An MCP client on a new pagewing-mcp: `call` gives the tool result. */
 function mcpClient(name) {
 	const child = spawn(process.execPath, [join(repo, "mcp/src/cli.ts")], {
 		env: { ...process.env, HOME: home },
@@ -166,7 +166,7 @@ try {
 	});
 	await new Promise((resolve) => allow.once("exit", resolve));
 	// As for a user who never ran setup: no helper yet.
-	rmSync(join(home, ".pi-aside"), { recursive: true, force: true });
+	rmSync(join(home, ".pagewing"), { recursive: true, force: true });
 
 	const panel = await context.newPage();
 	await panel.goto(`chrome-extension://${id}/panel.html`);
@@ -185,20 +185,20 @@ try {
 	);
 	const command = await panel.locator("#agents-command").textContent();
 	check(
-		"the switch on before setup says so, next to the command that adds pi-aside to pi",
-		command === "pi mcp add pi-aside -- npx -y pi-aside-mcp",
+		"the switch on before setup says so, next to the command that adds Pagewing to pi",
+		command === "pi mcp add pagewing -- npx -y pagewing-mcp",
 		{ waiting, command },
 	);
 	console.log(`(status before setup: ${waiting})`);
 
-	// The agent's server registers the helper at its start; its first call waits until pi-aside starts it.
+	// The agent's server registers the helper at its start; its first call waits until Pagewing starts it.
 	const agent = mcpClient("e2e-agent");
 	const init = await agent.initialize();
-	check("initialize names pi-aside", init.result?.serverInfo?.name === "pi-aside", init);
+	check("initialize names Pagewing", init.result?.serverInfo?.name === "pagewing", init);
 	const started = Date.now();
 	const opened = await agent.call("open_tab", { url: `${A}/form` });
 	check(
-		"the first call waits for pi-aside to connect, then open_tab opens the page and waits for it",
+		"the first call waits for Pagewing to connect, then open_tab opens the page and waits for it",
 		!opened.error && opened.text.loaded === true && opened.text.title === "Form page",
 		opened,
 	);
@@ -252,7 +252,7 @@ try {
 		{ clicked, typed, seen },
 	);
 
-	// run_script needs Chrome's Allow User Scripts switch; pi-aside says so until the user turns it on.
+	// run_script needs Chrome's Allow User Scripts switch; Pagewing says so until the user turns it on.
 	let script = await agent.call("run_script", { code: "return document.title" });
 	if (script.error && /Allow User Scripts/.test(script.raw)) {
 		check("run_script asks for Allow User Scripts while it is off", true);
