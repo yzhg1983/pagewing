@@ -158,8 +158,9 @@ MCP: open your app in Chrome, click through it, read the result.
    as a stdio server).
 2. In Pagewing: Settings > Advanced > Local agents > On.
 
-Each agent works in a Chrome tab group of its own and does not ask before acting; Off in Settings > Tools still
-applies. Tabs you open from an agent's tab join its group, as Chrome does for any group, and the agent can use them.
+Each agent works in a Chrome tab group of its own and never asks before acting: Ask in Settings > Tools counts as On
+for agents, scripts included, and only Off stops a tool. Tabs you open from an agent's tab join its group, as Chrome
+does for any group, and the agent can use them.
 Details: [pagewing-mcp](mcp/README.md).
 
 ## Privacy

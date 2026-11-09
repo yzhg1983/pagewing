@@ -1962,7 +1962,7 @@
 		"message": "Let programs on this computer use the page tools"
 	},
 	"localAgentsNote": {
-		"message": "For coding agents such as pi, through pagewing-mcp. They work in a tab group of their own, on any site, without asking you; Off in Tools still applies."
+		"message": "For coding agents such as pi, through pagewing-mcp. They work in a tab group of their own, on any site, and never ask you: Ask in Tools counts as On for them, scripts included. Only Off stops a tool."
 	},
 	"agentsConnected": {
 		"message": "Bridge running. Connected: $NAMES$",
