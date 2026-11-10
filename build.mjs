@@ -112,8 +112,27 @@ if (unreviewed > 0) {
 	process.exit(1);
 }
 
+/** renameSync, retried for a while on Windows, where a virus scanner or file watcher briefly holding a file fails it. */
+function rename(from, to) {
+	const deadline = Date.now() + 10_000;
+	for (;;) {
+		try {
+			return renameSync(from, to);
+		} catch (error) {
+			if (!["EPERM", "EACCES", "EBUSY"].includes(error.code) || Date.now() > deadline) throw error;
+			Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 100);
+		}
+	}
+}
+
 // Two renames: dist/ is missing only between them, for no file read to notice.
 rmSync(previous, { recursive: true, force: true });
-if (existsSync(target)) renameSync(target, previous);
-renameSync(outdir, target);
+const hadTarget = existsSync(target);
+if (hadTarget) rename(target, previous);
+try {
+	rename(outdir, target);
+} catch (error) {
+	if (hadTarget) rename(previous, target);
+	throw error;
+}
 rmSync(previous, { recursive: true, force: true });
