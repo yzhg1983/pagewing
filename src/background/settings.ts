@@ -27,7 +27,7 @@ export function defaultSettings(): Settings {
 		thinking: "medium",
 		prompts: [...PRESETS],
 		// run_script is offered only while Chrome's Allow User Scripts switch is on too (design 6.23).
-		tools: { read: "on", observe: "on", act: "ask", script: "ask", screenshot: "on" },
+		tools: { read: "on", observe: "on", act: "ask", script: "ask", screenshot: "on", diagnostics: "on" },
 		callsPerAnswer: CALLS_PER_ANSWER.default,
 		scriptsOnboarded: false,
 		localAgents: false,
@@ -84,7 +84,7 @@ export function readSettings(stored: unknown, defaults: Settings): Settings {
 }
 
 function readTools(stored: unknown, defaults: ToolModes): ToolModes {
-	const { read, observe, act, script, screenshot } = (
+	const { read, observe, act, script, screenshot, diagnostics } = (
 		typeof stored === "object" && stored !== null ? stored : {}
 	) as Record<string, unknown>;
 	const onOff = (mode: unknown) => mode === "off" || mode === "on";
@@ -95,6 +95,7 @@ function readTools(stored: unknown, defaults: ToolModes): ToolModes {
 		act: mode(act) ? (act as ToolModes["act"]) : defaults.act,
 		script: mode(script) ? (script as ToolModes["script"]) : defaults.script,
 		screenshot: onOff(screenshot) ? (screenshot as ToolModes["screenshot"]) : defaults.screenshot,
+		diagnostics: onOff(diagnostics) ? (diagnostics as ToolModes["diagnostics"]) : defaults.diagnostics,
 	};
 }
 

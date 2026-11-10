@@ -272,6 +272,19 @@ it("shows a message with a page as typed, a tool round as its result, and finds 
 	expect(pageOf(user(6, "plain") as unknown as Parameters<typeof pageOf>[0])).toBeNull();
 });
 
+it("shows a console or network read by its page (design 6.46)", () => {
+	const chat = projectChat(
+		view([
+			toolResult(1, false, "{}", { title: "X", url: "https://x/" }, "read_console_messages"),
+			toolResult(2, false, "{}", { title: "", url: "https://x/" }, "read_network_requests"),
+		]),
+	);
+	expect(chat.entries).toEqual([
+		{ ...step, id: 1, role: "notice", text: "Read the console: X" },
+		{ ...step, id: 2, role: "notice", text: "Read the network requests: https://x/" },
+	]);
+});
+
 it("shows an action as its summary with what pi did, and an observe by its page (design 6.23)", () => {
 	const act = (id: number, isError: boolean, text: string, details?: unknown) =>
 		toolResult(id, isError, text, details, "act_on_page");

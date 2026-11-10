@@ -126,7 +126,7 @@ Save repeatable tasks as prompts: [page translation and YouTube summaries](docs/
 
 ## You stay in control
 
-Settings > Tools turns each tool (read, observe, act, run script, screenshot) Off or On; acting and running scripts
+Settings > Tools turns each tool (read, observe, act, run script, screenshot, console and network) Off or On; acting and running scripts
 can also Ask. Out of the box, acting on a page and running scripts ask first.
 
 **Enforced by Pagewing, whatever the model says:**

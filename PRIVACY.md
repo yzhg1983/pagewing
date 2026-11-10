@@ -3,7 +3,7 @@
 Pagewing is a Chrome extension that sends your questions, and the parts of web pages you choose, to an AI provider
 that you set up. This policy says what it handles, where that goes, and how to delete it.
 
-Last updated: 2026-11-08.
+Last updated: 2026-11-10.
 
 ## In short
 
@@ -26,6 +26,8 @@ the provider of the model you picked, and to no one else. Depending on what you 
   page the tab shows, or the site Pagewing last saw the tab sent to;
 - the text Pagewing reads from the page, and the list of its links, buttons, fields, and headings;
 - screenshots of the tab;
+- the console messages and errors of the tabs pi uses, and the method, address (without its query), and status of
+  their network requests, never their headers or content (Settings > Tools > Console and network);
 - the scripts Pagewing writes, and what they return;
 - the titles and addresses of the tabs in the attached tab's Chrome group;
 - earlier messages and results in the same chat, so the model has the conversation.
@@ -60,6 +62,9 @@ on its own.
 - **Unsent messages** and which chat each tab shows, in `chrome.storage.session`, until the browser closes or the
   extension reloads.
 - **A diagnostics log** of the extension's own events and errors, without keys, shown on its Diagnostics page.
+- **Console messages and network requests** of the tabs in use, in memory only: the requests in the extension's
+  background worker, until the tab closes or leaves its group, Console and network is turned off, or the worker stops;
+  the console messages in the page itself, until the page unloads.
 
 None of this leaves your computer, except as part of a request to your AI provider described above.
 
@@ -79,10 +84,11 @@ site, and Pagewing does not ask you before it acts; Off in Settings > Tools stil
 agent's tab, or drag into its group, join it.
 
 What the tools return goes to that program: the text and outline of the pages in its group, screenshots of them,
-the results of scripts it runs, and the titles and addresses of its tabs. Pagewing sends this only over a connection
+their console messages and network requests, the results of scripts it runs, and the titles and addresses of its
+tabs. Pagewing sends this only over a connection
 on your computer that your user account alone can open, and to no one else. The program may send it on, for example
-to its own AI provider, under its own policy. Turning on Local agents asks Chrome for native messaging and for access
-to all sites; turning it off ends every agent's session.
+to its own AI provider, under its own policy. Turning on Local agents asks Chrome for native messaging, for network
+requests, and for access to all sites; turning it off ends every agent's session.
 
 ## Access to pages
 

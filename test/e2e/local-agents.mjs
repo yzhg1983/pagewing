@@ -3,7 +3,8 @@
 // registers the bridge itself, and its first call waits until Pagewing connects. open_tab puts a loopback page in the
 // session's tab group; read_page, observe_page, act_on_page (click, type, navigate), run_script, screenshot_page,
 // list_tabs, and close_tab work there; a tab outside the group is refused; Off in Tools refuses its tool; the switch
-// going off ends the session and leaves the tabs open, and a new client then hears how to connect. The user's home,
+// going off ends the session and leaves the tabs open, and a new client then hears how to connect. A page open_tab loads
+// is recorded from its start: its console (an error thrown while loading) and its requests (design 6.46). The user's home,
 // Chrome profile, and ~/.pagewing are never touched: Chrome and the bridge run with HOME in a temporary folder, and
 // the profile is that HOME's Chrome for Testing folder, where pagewing-mcp registers by default.
 import { spawn } from "node:child_process";
@@ -38,11 +39,12 @@ const common = {
 };
 await build({ ...common, entryPoints: { background: "src/background/main.ts" } });
 await build({ ...common, entryPoints: { panel: "src/panel/panel.ts" } });
+await build({ ...common, format: "iife", entryPoints: { "hooks/console": "src/hooks/console.ts" } });
 cpSync(join(repo, "static"), ext, { recursive: true });
 rmSync(join(ext, "_locales/zh_CN"), { recursive: true });
 // Granted at install, as the switch's click asks Chrome for them: the click below then gets them without a prompt.
 const manifest = JSON.parse(readFileSync(join(ext, "manifest.json"), "utf8"));
-manifest.permissions.push("nativeMessaging");
+manifest.permissions.push("nativeMessaging", "webRequest");
 manifest.optional_permissions = [];
 manifest.host_permissions = ["<all_urls>"];
 writeFileSync(join(ext, "manifest.json"), JSON.stringify(manifest, null, "\t"));
@@ -94,6 +96,13 @@ document.getElementById("name").addEventListener("input", (event) => seen.push("
 const pages = createHttp((req, res) => {
 	res.setHeader("content-type", "text/html");
 	if (req.url === "/form") return res.end(FORM_PAGE);
+	if (req.url === "/broken")
+		return res.end(`<!doctype html><title>Broken page</title><p>Broken.</p>
+<script>fetch("/api/save?token=secret", { method: "POST" }); throw new TypeError("thrown while loading");</script>`);
+	if (req.url.startsWith("/api/save")) {
+		res.statusCode = 403;
+		return res.end("signed out");
+	}
 	res.end(`<!doctype html><title>Other ${req.url}</title><p>Other page ${req.url}</p>`);
 });
 await new Promise((resolve) => pages.listen(8702, "127.0.0.1", resolve));
@@ -160,7 +169,7 @@ try {
 			"--disable-sync",
 			`--disable-extensions-except=${ext}`,
 			`--load-extension=${ext}`,
-			"--host-resolver-rules=MAP a.test 127.0.0.1:8702, MAP b.test 127.0.0.1:8702, MAP * ~NOTFOUND",
+			"--host-resolver-rules=MAP a.test 127.0.0.1:8702, MAP b.test 127.0.0.1:8702, MAP down.test 127.0.0.1:1, MAP * ~NOTFOUND",
 			"--no-proxy-server",
 			"--window-size=1280,900",
 		],
@@ -341,11 +350,20 @@ try {
 	);
 	await worker.evaluate((tab) => chrome.tabs.remove(tab), lateTab.id);
 
+	const beforeMove = await agent.call("read_network_requests", { tab });
 	const went = await agent.call("act_on_page", { tab, action: "navigate", url: `${B}/next` });
 	check(
 		"act_on_page navigates to another site",
 		!went.error && went.text.navigated && went.text.url === `${B}/next`,
 		went,
+	);
+	const moved = await agent.call("read_network_requests", { tab, since: beforeMove.text.last });
+	check(
+		"a move to another site starts the request list over with the page's own load; nothing of the old site",
+		moved.text.reset === true &&
+			moved.text.requests?.[0]?.url === `${B}/next` &&
+			!moved.text.requests.some((request) => request.url.startsWith(A)),
+		{ beforeMove, moved },
 	);
 
 	const outside = await worker.evaluate(async (url) => (await chrome.tabs.create({ url })).id, `${A}/outside`);
@@ -374,6 +392,63 @@ try {
 		closed,
 	);
 
+	// A page open_tab loads is recorded from its start.
+	const broken = await agent.call("open_tab", { url: `${A}/broken` });
+	const consoleRead = await agent.call("read_console_messages", { tab: broken.text.tab, onlyErrors: true });
+	check(
+		"read_console_messages has the error thrown while open_tab's page loaded",
+		!consoleRead.error &&
+			consoleRead.text.messages.some((message) => message.text.includes("TypeError: thrown while loading")),
+		consoleRead,
+	);
+	const requests = await poll(async () => {
+		const read = await agent.call("read_network_requests", { tab: broken.text.tab });
+		return read.text.requests?.some((request) => request.status === 403) ? read : null;
+	}, "the page's request");
+	check(
+		"read_network_requests has the page's own load and its failed request, without the query",
+		requests.text.requests.some((request) => request.type === "main_frame" && request.url === `${A}/broken`) &&
+			requests.text.requests.some(
+				(request) => request.method === "POST" && request.url === `${A}/api/save` && request.status === 403,
+			) &&
+			!requests.raw.includes("secret"),
+		requests,
+	);
+	// A tab of the same site outside the group: the origin's registration hooks it at its load, and what it logs
+	// before it joins the group is never read.
+	await worker.evaluate((tab) => chrome.tabs.reload(tab), outside);
+	const outsidePage = await poll(async () => {
+		const page = context.pages().find((each) => each.url() === `${A}/outside`);
+		const hooked = await page?.evaluate(() => !console.log.toString().includes("[native code]")).catch(() => false);
+		return hooked ? page : null;
+	}, "the hook in the outside tab");
+	await outsidePage.evaluate(() => console.log("before the agent's use"));
+	await worker.evaluate(
+		async ([tab, from]) => chrome.tabs.group({ tabIds: [tab], groupId: (await chrome.tabs.get(from)).groupId }),
+		[outside, broken.text.tab],
+	);
+	const joined = await agent.call("read_console_messages", { tab: outside });
+	await outsidePage.evaluate(() => console.log("after it joined"));
+	const joinedLater = await agent.call("read_console_messages", { tab: outside, since: joined.text.last });
+	check(
+		"a tab that joins the group shows nothing it logged before, and what it logs after",
+		!joined.error &&
+			!joined.raw.includes("before the agent's use") &&
+			joinedLater.text.messages?.some((message) => message.text === "after it joined"),
+		{ joined, joinedLater },
+	);
+	await agent.call("close_tab", { tab: broken.text.tab });
+	// A server that is down: Chrome's error page cannot be scripted, yet the tab's requests say why.
+	const down = await agent.call("open_tab", { url: "http://down.test/" });
+	const refusedRequests = await agent.call("read_network_requests", { tab: down.text.tab });
+	check(
+		"a navigation that fails shows its error as the tab's first request",
+		refusedRequests.text.requests?.[0]?.url === "http://down.test/" &&
+			refusedRequests.text.requests[0].error === "net::ERR_CONNECTION_REFUSED",
+		{ down, refusedRequests },
+	);
+	await agent.call("close_tab", { tab: down.text.tab });
+
 	// Off in Tools refuses that tool.
 	await panel.click('label:has(input[name="tool-read"][value="off"])');
 	await poll(
@@ -391,6 +466,13 @@ try {
 	const kept = await worker.evaluate(async (tab) => (await chrome.tabs.get(tab).catch(() => null)) !== null, tab);
 	const permission = await worker.evaluate(() => chrome.permissions.contains({ permissions: ["nativeMessaging"] }));
 	check("the switch off ends the session; its tabs stay open", after.error && kept, { after, kept });
+	const registrations = await worker.evaluate(() => chrome.scripting.getRegisteredContentScripts());
+	const unhooked = await outsidePage.evaluate(() => console.log.toString().includes("[native code]"));
+	check(
+		"the session's end removes the console hook's registration and stops the hook in its tabs",
+		registrations.length === 0 && unhooked,
+		{ registrations, unhooked },
+	);
 	console.log(`(nativeMessaging after Off: ${permission}; required in this test build, so Chrome keeps it)`);
 	agent.end();
 	const late = mcpClient("late");

@@ -18,11 +18,19 @@ answers there, until a new chat or Chrome closes. A script card shows the code, 
 | Act on page | Clicks, types, presses keys, scrolls, picks options, and moves through the site and its tabs. | Ask | No |
 | Run script | Runs JavaScript that pi writes, to pull data out of a page or compute over it. | Ask | No |
 | Screenshot page | Captures the tab, or one part of it. | On | Yes |
+| Console and network | Reads the tab's console messages and errors, and the address, method, and status of its requests. | On | Yes |
 
 Screenshot page shows what is on screen, so the image may include what you typed into fields (Read page leaves that
 out), and it goes to your model's provider. pi may scroll the page to the part it captures, also with Act on page Off.
 Chrome lets pi capture a tab only after you open pi on that site with its toolbar button, menu, or shortcut, or on any
 site when you allow pi on all sites (Settings > Advanced > Sites).
+
+Console and network lets pi see why a page does not work: `Uncaught TypeError … (app.js:88)`, or
+`POST /api/save → 403`. pi starts recording a tab when it first acts on it, runs a script there, or reads its console or
+requests, so what happened before is not shown; a new page clears the console, a move to another site the requests.
+Addresses lose their query, and pi never sees headers or content. The first time pi reads requests, a card asks
+**pi asks to see the network requests of the tabs it uses**; Allow opens Chrome's prompt, once. The page can see that it
+is being recorded.
 
 Run script also needs Chrome's **Allow User Scripts** switch for pi, which is off for a new install. Setup asks for it
 with a card after the provider (**Allow pi to run scripts (optional)**); Skip for now leaves Run script as it is, and
@@ -213,7 +221,7 @@ Open Settings with the button at the top of the panel. The defaults below are th
 | Answers | Answer language, also the Translate target ([Languages](#languages)) | Auto (Chrome language) |
 | Sending | **Ask pi**: Send at once or Edit first ([Asking about a page](#asking-about-a-page)). **While pi works**: what Enter does with a message, Join the task or Wait; Alt+Enter does the other, Ctrl+Enter sends now ([How the agent works](#how-the-agent-works)) | Send at once; Join the task |
 | Prompts | The right-click menu and the `/` list: edit, add, delete, reorder, star, switch off, reset ([Prompts](#prompts)) | The 5 built-in prompts, all on, Explain starred |
-| Tools | Read page, Observe page, Screenshot page: Off or On. Act on page, Run script: Off, Ask, or On. Page tool calls per answer, 5 to 200 ([How the agent works](#how-the-agent-works)) | Read page, Observe page, Screenshot page On; Act on page, Run script Ask; 50 calls |
+| Tools | Read page, Observe page, Screenshot page, Console and network: Off or On. Act on page, Run script: Off, Ask, or On. Page tool calls per answer, 5 to 200 ([How the agent works](#how-the-agent-works)) | Read page, Observe page, Screenshot page, Console and network On; Act on page, Run script Ask; 50 calls |
 | Advanced > Sites | The sites pi uses without asking: remove one, or Allow all sites ([Sites](#sites)) | None |
 | Advanced > Shortcuts | Shows the current shortcuts, and opens Chrome's page to change them ([Shortcuts](#shortcuts)) | - |
 | Advanced > Diagnostics | Opens the extension's status, test probes, and log ([Diagnostics](#diagnostics)) | - |

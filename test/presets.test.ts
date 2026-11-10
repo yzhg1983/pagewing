@@ -90,7 +90,14 @@ it("reads stored settings over the defaults, field by field", () => {
 it("reads each tool mode and the calls per answer, and merges a change of one mode into the others (design 6.23)", () => {
 	const defaults = defaultSettings();
 	// run_script defaults to Ask: it is offered only while Chrome's Allow User Scripts switch is on too.
-	expect(defaults.tools).toEqual({ read: "on", observe: "on", act: "ask", script: "ask", screenshot: "on" });
+	expect(defaults.tools).toEqual({
+		read: "on",
+		observe: "on",
+		act: "ask",
+		script: "ask",
+		screenshot: "on",
+		diagnostics: "on",
+	});
 	// A saved Off stays Off under the new default.
 	expect(readSettings({ tools: { script: "off" } }, defaults).tools.script).toBe("off");
 	expect(defaults.callsPerAnswer).toBe(50);
@@ -104,8 +111,9 @@ it("reads each tool mode and the calls per answer, and merges a change of one mo
 		act: "on",
 		script: "ask",
 		screenshot: "on",
+		diagnostics: "on",
 	});
-	expect(readSettings({ tools: { screenshot: "off" } }, defaults).tools.screenshot).toBe("off");
+	expect(readSettings({ tools: { screenshot: "off", diagnostics: "off" } }, defaults).tools.screenshot).toBe("off");
 	expect(readSettings({ tools: "on" }, defaults).tools).toEqual(defaults.tools);
 	expect(readSettings({ tools: { act: "always" } }, defaults).tools.act).toBe("ask");
 	// An invalid mode reads as the default, which for run_script is Ask: still a card for every script.
@@ -124,10 +132,11 @@ it("reads each tool mode and the calls per answer, and merges a change of one mo
 			act: "on" as const,
 			script: "on" as const,
 			screenshot: "on" as const,
+			diagnostics: "on" as const,
 		},
 	};
 	expect(settingsChange({ tools: { act: "ask" }, callsPerAnswer: 9 })(current)).toEqual({
-		tools: { read: "off", observe: "on", act: "ask", script: "on", screenshot: "on" },
+		tools: { read: "off", observe: "on", act: "ask", script: "on", screenshot: "on", diagnostics: "on" },
 		callsPerAnswer: 9,
 	});
 	expect(settingsChange({ thinking: "low" })(current)).toEqual({ thinking: "low" });

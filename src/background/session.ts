@@ -14,6 +14,7 @@ import { LocalAgents } from "./local-agents.ts";
 import { checkModel, imageLimit, models, syncPlanWindows, thinkingFor } from "./models.ts";
 import { chromePageAccess, type PageDeps, pageMove } from "./page.ts";
 import { offeredModes, pageExtension } from "./page-tools.ts";
+import { chromeRecordingAccess, Recording } from "./recording.ts";
 import { CaptureQueue } from "./screenshot.ts";
 import { currentSettings, loadSettings, saveSettings } from "./settings.ts";
 import { StorageFull } from "./storage-full.ts";
@@ -87,6 +88,9 @@ export const asks = new Asks(changed, {
 	set: (keys) => chrome.storage.session.set({ [CHAT_GRANTS_KEY]: keys }),
 });
 
+/** Console and network recording of the tabs the page tools use (design 6.46). */
+export const recording = new Recording(chromeRecordingAccess);
+
 /** The Harness the page tools read the transcript from, set as soon as it is open. */
 let pageHarness: Harness | undefined;
 const pageDeps: PageDeps = {
@@ -111,6 +115,7 @@ const pageDeps: PageDeps = {
 		return (await conversation.context(context)).messages;
 	},
 	captures: new CaptureQueue(),
+	recording,
 };
 
 /** The local agents' bridge (design 6.45), with the page tools' Chrome access and capture queue. */

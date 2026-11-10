@@ -111,6 +111,62 @@ is brought to the front of its window first. Use it for what the text does not s
 		inputSchema: { type: "object", properties: { tab: TAB }, additionalProperties: false },
 	},
 	{
+		name: "read_console_messages",
+		description: `Reads the tab's console: messages, uncaught errors, and unhandled promise rejections, newest last, \
+as \`{level, text, source, t}\` (t in seconds since recordingSince). A tab is recorded from this session's first use of \
+it (open_tab, an action, a script, or a read); its page's start is caught when open_tab or navigate loaded it. A new \
+page starts a new list. Pass a result's last as since to get only newer messages; reset means the page changed and the \
+list starts again; gap means some were lost; omitted counts older matches left out. Best effort: the page can see and \
+undo the recording. ${PAGE_TEXT}`,
+		inputSchema: {
+			type: "object",
+			properties: {
+				tab: TAB,
+				pattern: {
+					type: "string",
+					maxLength: 200,
+					description: "Keep messages that contain this text, ignoring case.",
+				},
+				onlyErrors: { type: "boolean", description: "Keep errors, uncaught errors, and unhandled rejections." },
+				limit: {
+					type: "integer",
+					minimum: 1,
+					maximum: 300,
+					description: "Newest messages to return; default 100.",
+				},
+				since: { type: "string", maxLength: 80, description: "A previous result's last: only newer messages." },
+			},
+			additionalProperties: false,
+		},
+	},
+	{
+		name: "read_network_requests",
+		description: `Reads the tab's requests as Chrome reports them: method, url (without query or fragment), type, \
+status, redirect, or error, and t. A tab is recorded from this session's first use of it, as for \
+read_console_messages; a move to another site starts a new list. since, reset, gap, and omitted work as there. Best \
+effort, not what DevTools shows: memory-cache hits and pending requests are missing; WebSockets show only their \
+handshake. Needs Chrome's permission, which the user grants in Pagewing's Settings.`,
+		inputSchema: {
+			type: "object",
+			properties: {
+				tab: TAB,
+				urlPattern: {
+					type: "string",
+					maxLength: 200,
+					description: "Keep requests whose URL contains this text, ignoring case.",
+				},
+				limit: {
+					type: "integer",
+					minimum: 1,
+					maximum: 300,
+					description: "Newest requests to return; default 100.",
+				},
+				since: { type: "string", maxLength: 80, description: "A previous result's last: only newer requests." },
+			},
+			additionalProperties: false,
+		},
+	},
+	{
 		name: "close_tab",
 		description: "Closes a tab of this session's group. Close the tabs you opened to gather information when done.",
 		inputSchema: {

@@ -311,6 +311,12 @@
 	"screenshotWarning": {
 		"message": "截图可能包含你在输入框中输入的内容，并会发送给模型提供商。"
 	},
+	"consoleNetwork": {
+		"message": "控制台和网络"
+	},
+	"consoleNetworkNote": {
+		"message": "读取标签页的控制台消息，以及其请求的地址和状态。"
+	},
 	"callsPerAnswer": {
 		"message": "每次回答的页面工具调用次数"
 	},
@@ -1073,6 +1079,15 @@
 	"announceNeedsSite": {
 		"message": "pi 需要访问 $1"
 	},
+	"networkQuestion": {
+		"message": "pi 请求查看它所用标签页的网络请求。"
+	},
+	"networkNote": {
+		"message": "Chrome 只会请你确认一次。之后 pi 能看到每个请求的地址、方法和状态，但看不到请求头和内容。可在“设置 > 工具 > 控制台和网络”中关闭。"
+	},
+	"announceNetwork": {
+		"message": "pi 请求查看网络请求"
+	},
 	"movedSite": {
 		"message": "此标签页跳转后的网站"
 	},
@@ -1534,6 +1549,12 @@
 	},
 	"waitedOnPage": {
 		"message": "已在页面上等待：$1"
+	},
+	"readConsoleNotice": {
+		"message": "已读取控制台：$1"
+	},
+	"readNetworkNotice": {
+		"message": "已读取网络请求：$1"
 	},
 	"readPageNotice": {
 		"message": "已读取页面：$1"
@@ -1997,6 +2018,9 @@
 	},
 	"localAgentsOther": {
 		"message": "其他 MCP 客户端：将 npx -y pagewing-mcp 添加为 stdio 服务器。"
+	},
+	"agentsNetworkNeeded": {
+		"message": "本地代理需要 Chrome 授权，才能查看网络请求。"
 	},
 	"copyCommand": {
 		"message": "复制命令"

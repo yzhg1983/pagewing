@@ -30,7 +30,7 @@
 		"userScripts",
 		"unlimitedStorage"
 	],
-	"optional_permissions": ["nativeMessaging"],
+	"optional_permissions": ["nativeMessaging", "webRequest"],
 	"optional_host_permissions": [
 		"https://api.openai.com/*",
 		"https://api.anthropic.com/*",

@@ -184,7 +184,7 @@ it.each([READ_PAGE, OBSERVE_PAGE, ACT_ON_PAGE, RUN_SCRIPT, SCREENSHOT_PAGE])(
 		const rejected = expect(running).rejects.toThrow(/turned off/);
 		s.config.current = {
 			...ALL_ON,
-			tools: { read: "off", observe: "off", act: "off", script: "off", screenshot: "off" },
+			tools: { read: "off", observe: "off", act: "off", script: "off", screenshot: "off", diagnostics: "off" },
 		};
 		gate.resolve();
 		await rejected;

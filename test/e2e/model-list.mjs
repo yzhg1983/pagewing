@@ -36,6 +36,7 @@ const common = {
 };
 await build({ ...common, entryPoints: { background: "src/background/main.ts" } });
 await build({ ...common, entryPoints: { panel: "src/panel/panel.ts" } });
+await build({ ...common, format: "iife", entryPoints: { "hooks/console": "src/hooks/console.ts" } });
 cpSync(join(repo, "static"), ext, { recursive: true });
 // English labels; localization.mjs covers both catalogs.
 rmSync(join(ext, "_locales/zh_CN"), { recursive: true });

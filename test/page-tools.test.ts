@@ -36,6 +36,8 @@ import {
 	PageReadsDoc,
 	type PageToolOffer,
 	type PageToolSettings,
+	READ_CONSOLE,
+	READ_NETWORK,
 	READ_PAGE,
 	RUN_SCRIPT,
 	SCREENSHOT_PAGE,
@@ -64,7 +66,7 @@ import { MESSAGE_KIND } from "../src/background/projection.ts";
 import { CaptureQueue, type Crop } from "../src/background/screenshot.ts";
 import { runScript } from "../src/background/script-runner.ts";
 import { attached } from "../src/shared/attachments.ts";
-import type { PageRef, ToolModes } from "../src/shared/protocol.ts";
+import type { AskCard, PageRef, ToolModes } from "../src/shared/protocol.ts";
 import { ALL_ON, pageDeps } from "./fixtures/page-deps.ts";
 import { memoryStore, openChats, panel } from "./fixtures/tabs.ts";
 
@@ -340,6 +342,7 @@ async function setup(
 		deps,
 		asks,
 		attach: attachHarness,
+		recorded,
 	} = pageDeps(access, config, () => {
 		changes += 1;
 	});
@@ -446,9 +449,10 @@ async function setup(
 		reply(fauxAssistantMessage(Array.isArray(calls) ? calls : [calls], { stopReason: "toolUse" }), before);
 	const answer = (text = "done") => reply(fauxAssistantMessage(text));
 	const idle = (on = tab) => vi.waitFor(() => expect(on.chat.busy).toBe(false), 5000);
+	/** The one card of the chat; these tests ask about sites, acting, and scripts, which name an origin. */
 	const cards = async (on = tab) => {
 		await vi.waitFor(() => expect(asks.cards(on.id!)).toHaveLength(1));
-		return asks.cards(on.id!)[0]!;
+		return asks.cards(on.id!)[0] as Exclude<AskCard, { kind: "network" }>;
 	};
 	return {
 		harness,
@@ -458,6 +462,8 @@ async function setup(
 		tabs,
 		/** The fake page access: a test may replace its methods. */
 		access,
+		/** The fake console hooks and webRequest events (design 6.46). */
+		recorded,
 		calls,
 		config,
 		asks,
@@ -619,7 +625,7 @@ it("Ask shows one card per origin and answer; Allow covers the origin, a follow-
 	asks.answer(card.id, true);
 	const next = await vi.waitFor(() => {
 		const found = asks.cards(tab.id!)[0];
-		if (found === undefined) throw new Error("no card yet");
+		if (found?.kind !== "act") throw new Error("no act card yet");
 		return found;
 	});
 	// The second action on a.test ran without a card; the follow-up attached b.test.
@@ -1990,7 +1996,7 @@ it("the tools and the instructions name run_script only while it is not Off", as
 
 it("the instructions ask for diagrams as Mermaid, which the panel draws, also with every tool Off (design 6.32)", async () => {
 	const off: PageToolSettings = {
-		tools: { read: "off", observe: "off", act: "off", script: "off", screenshot: "off" },
+		tools: { read: "off", observe: "off", act: "off", script: "off", screenshot: "off", diagnostics: "off" },
 		callsPerAnswer: 50,
 	};
 	for (const settings of [ALL_ON, off]) {
@@ -2707,7 +2713,7 @@ it("a scroll is checked like an action: the tab in front, Off, Stop, one chat at
 	// Turned Off while the tab's place is read.
 	const { tabState } = deps.access;
 	deps.access.tabState = async (tabId) => {
-		config.current = { ...ALL_ON, tools: { ...ALL_ON.tools, screenshot: "off" } };
+		config.current = { ...ALL_ON, tools: { ...ALL_ON.tools, screenshot: "off", diagnostics: "off" } };
 		return tabState(tabId);
 	};
 	expect(await look("r2")).toEqual({ name: SCREENSHOT_PAGE, isError: true, text: offText });
@@ -2823,7 +2829,7 @@ it("the tools and the instructions name screenshot_page only while it is On; ref
 		const tool = systems.flatMap((message) => message.toolsAdded ?? []).find((one) => one.name === SCREENSHOT_PAGE);
 		return { tool, all: JSON.stringify(systems) };
 	};
-	const off = await told({ tools: { ...ALL_ON.tools, screenshot: "off" }, callsPerAnswer: 50 });
+	const off = await told({ tools: { ...ALL_ON.tools, screenshot: "off", diagnostics: "off" }, callsPerAnswer: 50 });
 	expect(off.tool).toBeUndefined();
 	expect(off.all).not.toContain(SCREENSHOT_PAGE);
 
@@ -2882,14 +2888,14 @@ it("read_page marks images in its text and names the tools that are not Off; obs
 	);
 	expect(all.observe).toContain('such as `- image "(no alt)" a12 400×360 caption "Sales by region"`');
 	expect(all.observe).toContain("To see one, call screenshot_page with its ref.");
-	const unseen = await told({ tools: { ...ALL_ON.tools, screenshot: "off" }, callsPerAnswer: 50 });
+	const unseen = await told({ tools: { ...ALL_ON.tools, screenshot: "off", diagnostics: "off" }, callsPerAnswer: 50 });
 	expect(unseen.read).toContain('is not in the text: observe_page gives their refs (find "image"). ');
 	expect(unseen.read).not.toContain("did not look at");
 	expect(unseen.observe).not.toContain("screenshot_page");
 	const blind = await told({ tools: { ...ALL_ON.tools, observe: "off", act: "off" }, callsPerAnswer: 50 });
 	expect(blind.read).toContain("is not in the text: screenshot_page shows them. When the answer");
 	const neither = await told({
-		tools: { ...ALL_ON.tools, observe: "off", act: "off", screenshot: "off" },
+		tools: { ...ALL_ON.tools, observe: "off", act: "off", screenshot: "off", diagnostics: "off" },
 		callsPerAnswer: 50,
 	});
 	expect(neither.read).toContain("what they show is not in the text. ");
@@ -3189,7 +3195,7 @@ it.each(["Off", "Stop"])("list_tabs respects %s during a delayed native scope lo
 	if (kind === "Off") {
 		s.config.current = {
 			...ALL_ON,
-			tools: { read: "off", observe: "off", act: "off", script: "off", screenshot: "off" },
+			tools: { read: "off", observe: "off", act: "off", script: "off", screenshot: "off", diagnostics: "off" },
 		};
 		gate.resolve();
 		await s.idle();
@@ -3538,7 +3544,14 @@ it("the instructions route by the tools offered, and look past the items shown o
 	};
 	const coverage = "when the answer needs broader coverage than the items shown";
 	const more = "Then inspect additional relevant pages or load more items";
-	const off = { read: "off", observe: "off", act: "off", script: "off", screenshot: "off" } as const;
+	const off = {
+		read: "off",
+		observe: "off",
+		act: "off",
+		script: "off",
+		screenshot: "off",
+		diagnostics: "off",
+	} as const;
 
 	// read_page alone cannot load more: the scope rule stays, the "load more" sentence does not.
 	const read = await told({ tools: { ...off, read: "on" }, callsPerAnswer: 50 });
@@ -3592,7 +3605,7 @@ it("read-only questions stay on the page: navigation and requests follow the too
 	/** What the model is told: the instructions and the tools' descriptions. */
 	const told = async (act: ToolModes["act"], script: ToolModes["script"]) => {
 		const { tab, faux, tabs, idle } = await setup({
-			tools: { read: "on", observe: "on", act, script, screenshot: "off" },
+			tools: { read: "on", observe: "on", act, script, screenshot: "off", diagnostics: "off" },
 			callsPerAnswer: 50,
 		});
 		let systems: SystemMessage[] = [];
@@ -3888,4 +3901,83 @@ it("a switch turned off after run_script was offered refuses the call before its
 	expect(changes()).toBe(before);
 	expect(asks.cards(tab.id!)).toEqual([]);
 	expect(calls.script).toEqual([]);
+});
+
+it("read_console_messages records a tab from its first use: an action first, then what the page logged after it", async () => {
+	const { tab, faux, tabs, seen, step, call, answer, idle, recorded } = await setup(tools("on"));
+	const page = tabs.get(1)!;
+	recorded.log(page.documentId, "before pi");
+	faux.setResponses([
+		step(call(ACT_ON_PAGE, { action: "scroll", direction: "down" }), () => {}),
+		step(call(READ_CONSOLE), () =>
+			recorded.log(page.documentId, "Uncaught TypeError", "exception", `${page.url}?v=1:8:2`),
+		),
+		step(call(READ_CONSOLE, { onlyErrors: true, since: "nope" })),
+		answer(),
+	]);
+	await tab.send(withPage("r1", "Why is it broken?", attach(1, page)));
+	await idle();
+	expect(recorded.registered).toEqual(["https://a.test/*"]);
+	const first = json(seen[1]!);
+	expect(first).toMatchObject({
+		url: page.url,
+		messages: [{ level: "exception", text: "Uncaught TypeError", source: `${page.url}:8:2` }],
+	});
+	expect(json(seen[2]!)).toMatchObject({ reset: true, messages: [{ text: "Uncaught TypeError" }] });
+	expect(seen.map((one) => one.isError)).toEqual([false, false, false]);
+});
+
+it("read_network_requests asks for Chrome's permission with a card; Cancel blocks, and once granted it reads", async () => {
+	const { tab, faux, tabs, seen, step, call, answer, idle, asks, recorded } = await setup();
+	recorded.allowed = false;
+	faux.setResponses([step(call(READ_NETWORK)), answer()]);
+	await tab.send(withPage("r1", "Requests?", attach(1, tabs.get(1)!)));
+	await vi.waitFor(() => expect(asks.cards(tab.id!)).toHaveLength(1));
+	expect(asks.cards(tab.id!)[0]).toMatchObject({ kind: "network" });
+	asks.answer(asks.cards(tab.id!)[0]!.id, false);
+	await idle();
+	expect(seen[0]).toMatchObject({ isError: true, text: expect.stringContaining("the user did not allow it") });
+	expect(recorded.listeners.size).toBe(0);
+
+	faux.setResponses([
+		step(call(READ_NETWORK)),
+		step(call(READ_NETWORK, { urlPattern: "API" }), () =>
+			recorded.request(1, "q1", "https://a.test/api?k=1", 500, "POST"),
+		),
+		answer(),
+	]);
+	await tab.send(withPage("r2", "Again", attach(1, tabs.get(1)!)));
+	await vi.waitFor(() => expect(asks.cards(tab.id!)).toHaveLength(1));
+	// The card's Allow got Chrome's permission.
+	recorded.allowed = true;
+	asks.answer(asks.cards(tab.id!)[0]!.id, true);
+	await idle();
+	expect(json(seen[1]!)).toMatchObject({ requests: [] });
+	expect(json(seen[2]!)).toMatchObject({ requests: [{ method: "POST", url: "https://a.test/api", status: 500 }] });
+});
+
+it("Console and network Off: neither tool is offered nor named, and nothing is recorded by an action", async () => {
+	const off = { ...tools("on"), tools: { ...tools("on").tools, diagnostics: "off" as const } };
+	const { tab, faux, tabs, idle, recorded, answer } = await setup(off);
+	let systems: SystemMessage[] = [];
+	faux.setResponses([
+		(transcript: TranscriptContext) => {
+			systems = transcript.messages.filter((message): message is SystemMessage => message.role === "system");
+			return fauxAssistantMessage(
+				[fauxToolCall(ACT_ON_PAGE, { action: "scroll", direction: "down" }, { id: "s1" })],
+				{
+					stopReason: "toolUse",
+				},
+			);
+		},
+		answer(),
+	]);
+	await tab.send(withPage("r1", "Scroll", attach(1, tabs.get(1)!)));
+	await idle();
+	const names = systems.flatMap((message) => message.toolsAdded ?? []).map((tool) => tool.name);
+	expect(names).not.toContain(READ_CONSOLE);
+	expect(names).not.toContain(READ_NETWORK);
+	expect(JSON.stringify(systems)).not.toContain(READ_CONSOLE);
+	expect(recorded.registered).toEqual([]);
+	expect(recorded.listeners.size).toBe(0);
 });

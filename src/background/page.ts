@@ -42,6 +42,7 @@ import {
 	type ScrollResult,
 } from "./page-agent.ts";
 import { INPUT_KINDS, pageOf } from "./projection.ts";
+import type { Recording } from "./recording.ts";
 import { type CaptureQueue, type Crop, dataBytes, imageRect, tabChangeCount, watchTab } from "./screenshot.ts";
 import { runScript } from "./script-runner.ts";
 import { ScopeDenied, type TabGroups } from "./tab-groups.ts";
@@ -54,6 +55,8 @@ export const ACT_ON_PAGE = "act_on_page";
 export const RUN_SCRIPT = "run_script";
 export const SCREENSHOT_PAGE = "screenshot_page";
 export const WAIT_ON_PAGE = "wait_on_page";
+export const READ_CONSOLE = "read_console_messages";
+export const READ_NETWORK = "read_network_requests";
 /** Text kept of one page; the rest is cut and the result says so. */
 export const MAX_PAGE_CHARS = 200_000;
 /** UTF-8 size of one result, the envelope included. */
@@ -221,6 +224,8 @@ export type PageDeps = {
 	context(conversationId: ConversationId, context: Context): Promise<readonly Message[]>;
 	/** The worker's one queue of captures (design 6.26). */
 	captures: CaptureQueue;
+	/** Console and network recording of the tabs in use (design 6.46). */
+	recording: Recording;
 	/** Internal bounded wait paired with a call-local access guard. */
 	wait?: typeof bounded;
 };
@@ -367,7 +372,9 @@ export function scopedPageAccess(
 									? "act"
 									: tool === RUN_SCRIPT
 										? "script"
-										: "screenshot"
+										: tool === READ_CONSOLE || tool === READ_NETWORK
+											? "diagnostics"
+											: "screenshot"
 					];
 		if (mode === "off") throw new PageRefused(offText(tool));
 		const refused = policy();

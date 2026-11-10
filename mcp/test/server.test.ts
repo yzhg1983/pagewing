@@ -77,6 +77,8 @@ describe("MCP methods", () => {
 			"act_on_page",
 			"run_script",
 			"screenshot_page",
+			"read_console_messages",
+			"read_network_requests",
 			"close_tab",
 		]);
 		mcp.end();

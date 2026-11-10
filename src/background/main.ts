@@ -88,6 +88,7 @@ import {
 	installPageTools,
 	localAgents,
 	onChange,
+	recording,
 	session,
 	storageFull,
 	tabs,
@@ -122,7 +123,9 @@ chrome.runtime.onInstalled.addListener(() => {
 	void wake("install");
 });
 
-chrome.runtime.onStartup.addListener(() => void wake("browser startup"));
+chrome.runtime.onStartup.addListener(() => {
+	void wake("browser startup");
+});
 
 chrome.alarms.onAlarm.addListener((alarm) => {
 	if (alarm.name === RECOVERY_ALARM) {
@@ -255,6 +258,7 @@ function liveTab(tabId: number): number | undefined {
 }
 
 chrome.tabs.onRemoved.addListener((tabId) => {
+	void recording.forget(tabId);
 	closed.add(tabId);
 	tabGestures.delete(tabId);
 	notices.delete(tabId);
@@ -324,9 +328,16 @@ chrome.permissions.onAdded.addListener(() => {
 chrome.storage.local.onChanged.addListener((changes) => {
 	if (CREDENTIALS_KEY in changes) void refreshAccess();
 });
-chrome.permissions.onRemoved.addListener(() => {
+chrome.permissions.onRemoved.addListener(({ permissions, origins }) => {
+	// Lost access ends the recording at once (design 6.46); without webRequest, requests are no longer listened to.
+	if (origins !== undefined && origins.length > 0) void recording.disarmAll();
+	else if (permissions?.includes("webRequest")) recording.unlistenAll();
 	void refreshAccess();
 	void syncAgents();
+});
+// A tab that leaves the group it was recorded in leaves the page tools' scope: its recording ends (design 6.46).
+chrome.tabs.onUpdated.addListener((tabId, { groupId }) => {
+	if (groupId !== undefined) void recording.regrouped(tabId, groupId);
 });
 
 /** What the gesture saw: the frame and its URL, the tab's top-level URL, and for the context menu Chrome's copy of the selection. */
@@ -1114,6 +1125,7 @@ async function run(command: Command, tabId: number | null): Promise<unknown> {
 			// Also when the tools offered stay the same, as while Chrome blocks scripts: a change of the modes the user
 			// chose takes back what was allowed under the modes that were.
 			if (installed || JSON.stringify(chosen) !== JSON.stringify(settings.tools)) asks.recheck();
+			if (settings.tools.diagnostics === "off") await recording.disarmAll();
 			await syncAgents();
 			return menusAfterSave();
 		}

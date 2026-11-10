@@ -17,6 +17,8 @@ import {
 	type PageDeps,
 	PageRefused,
 	PageTimeout,
+	READ_CONSOLE,
+	READ_NETWORK,
 	READ_PAGE,
 	RUN_SCRIPT,
 	readTab,
@@ -27,6 +29,7 @@ import {
 } from "./page.ts";
 import { type ActAction, type ActRequest, type AgentTarget, stepText } from "./page-agent.ts";
 import { letterOf, type RefMaps, targetOf } from "./page-tools.ts";
+import { type ConsoleQuery, consoleResult, type NetworkQuery, networkResult } from "./recording.ts";
 import { CAPTURE_GAP_MS, RETRY_GAP_MS } from "./screenshot.ts";
 import { ScopeDenied, type ScopeTab } from "./tab-groups.ts";
 
@@ -34,7 +37,7 @@ import { ScopeDenied, type ScopeTab } from "./tab-groups.ts";
 export const HOST_NAME = "io.github.yzhg1983.pagewing";
 
 /** What the page tools need from the worker, without a chat. */
-export type AgentDeps = Pick<PageDeps, "access" | "currentSettings" | "captures">;
+export type AgentDeps = Pick<PageDeps, "access" | "currentSettings" | "captures" | "recording">;
 
 /** A call result as MCP's tools/call returns it. */
 type ToolResult = {
@@ -82,6 +85,8 @@ const messageOf = (error: unknown) => (error instanceof Error ? error.message : 
 const LEFT_GROUP = "The tab left this session's tab group during the call; it may have happened in part.";
 const NO_ACCESS = `Cannot reach the page: Chrome does not let Pagewing script it (a browser page, the Web Store, or a \
 page still loading).`;
+const NO_NETWORK = `Chrome does not let Pagewing see network requests yet: ask the user to click Allow under Settings > \
+Advanced > Local agents in Pagewing.`;
 
 /** The bridge connection and its sessions. */
 export class LocalAgents {
@@ -254,6 +259,10 @@ export class LocalAgents {
 				return this.#screenshot(session, args, context);
 			case "close_tab":
 				return this.#closeTab(session, args, context);
+			case READ_CONSOLE:
+				return this.#readConsole(session, args, context);
+			case READ_NETWORK:
+				return this.#readNetwork(session, args, context);
 			default:
 				return Promise.resolve(text(`Unknown tool: ${tool}`, true));
 		}
@@ -262,6 +271,7 @@ export class LocalAgents {
 	#end(session: Session, reason: string): void {
 		for (const stop of session.calls.values()) stop(reason);
 		this.#sessions.delete(session.id);
+		if (session.groupId !== null) void this.#deps.recording.disarmGroup(session.groupId);
 		this.#changed();
 	}
 
@@ -334,8 +344,9 @@ export class LocalAgents {
 		const off = this.#mode("act", "open_tab");
 		if (off !== null) return text(off, true);
 		if (!this.#on || this.#sessions.get(session.id) !== session) return text("The session ended in Pagewing.", true);
+		// Blank first, so that the tab is recorded from the page's first request and script (design 6.46).
 		const created = await chrome.tabs.create({
-			url,
+			url: "about:blank",
 			active: true,
 			...(group === undefined ? {} : { windowId: group.windowId }),
 		});
@@ -347,6 +358,12 @@ export class LocalAgents {
 		if (group === undefined) await chrome.tabGroups.update(groupId, { title: session.name, color: "purple" });
 		session.groupId = groupId;
 		session.tab = tabId;
+		await this.#record(session, tabId, null, url);
+		// The last checks before the navigation, again: the call, Act's mode, the session, the switch, or the tab's group
+		// may have changed while the recording was set up.
+		const { access, wait } = this.#scoped(session, tabId, ACT_ON_PAGE, context);
+		await wait(() => access.check(), context, PAGE_TIMEOUT_MS);
+		await chrome.tabs.update(tabId, { url });
 		const loaded = await bounded(
 			(signal) => this.#deps.access.loaded(tabId, LOAD_MS, signal),
 			context,
@@ -486,6 +503,7 @@ export class LocalAgents {
 			if (url === null) return text('url must be an http or https URL, or "reload".', true);
 			// Also from a page Pagewing cannot script, such as Chrome's error page.
 			const before = await wait(() => access.top(tabId), context, PAGE_TIMEOUT_MS).catch(() => null);
+			await wait(() => this.#record(session, tabId, before, reload ? null : url), context, PAGE_TIMEOUT_MS);
 			// The last checks before Chrome: mode, session, switch, and the tab's group.
 			await wait(() => access.check(), context, PAGE_TIMEOUT_MS);
 			if (reload) await chrome.tabs.reload(tabId);
@@ -520,6 +538,7 @@ export class LocalAgents {
 			outlineMs: 800,
 			maxUrl: MAX_URL_CHARS,
 		};
+		await wait(() => this.#record(session, tabId, top, null), context, PAGE_TIMEOUT_MS);
 		// Tabs the page opens during the action, as a link with target _blank does, join the session's group.
 		const stopNoting = this.#deps.access.opened(tabId);
 		let result: Awaited<ReturnType<typeof access.act>>;
@@ -572,6 +591,7 @@ export class LocalAgents {
 		const top = await this.#top(access, wait, tabId, context);
 		if (typeof top === "string") return text(top, true);
 		session.reads.delete(tabId);
+		await wait(() => this.#record(session, tabId, top, null), context, PAGE_TIMEOUT_MS);
 		await wait(() => access.scriptWorld(), context, PAGE_TIMEOUT_MS);
 		let result: string | null;
 		try {
@@ -661,6 +681,75 @@ export class LocalAgents {
 		return json({ done: closed ? `Closed tab ${tabId}` : `Tab ${tabId} was already closed` });
 	}
 
+	async #readConsole(session: Session, args: Args, context: Context): Promise<ToolResult> {
+		const tab = await this.#recorded(session, args, READ_CONSOLE, context);
+		if (typeof tab === "string") return text(tab, true);
+		const { tabId, top, access, wait } = tab;
+		if (typeof top === "string") return text(top, true);
+		const state = await wait(() => this.#deps.recording.console(tabId, top.documentId), context, PAGE_TIMEOUT_MS);
+		// The last checks before any record leaves the worker: mode, session, switch, and the tab's group.
+		await wait(() => access.check(), context, PAGE_TIMEOUT_MS);
+		if (state === null) return text(`Cannot read the console: the page went away or Chrome refused.`, true);
+		const query: ConsoleQuery = {
+			...recordsQuery(args),
+			pattern: pattern(args.pattern),
+			onlyErrors: args.onlyErrors === true,
+		};
+		return text(consoleResult(state, top.url, query, MAX_RESULT_BYTES));
+	}
+
+	async #readNetwork(session: Session, args: Args, context: Context): Promise<ToolResult> {
+		if (!(await this.#deps.recording.networkAllowed())) return text(NO_NETWORK, true);
+		const tab = await this.#recorded(session, args, READ_NETWORK, context);
+		if (typeof tab === "string") return text(tab, true);
+		const { tabId, top, access, wait } = tab;
+		// Chrome's error page after a failed load cannot be scripted, yet a recorded tab's requests say why it failed;
+		// it keeps the failed http or https URL, which other pages Pagewing cannot script (chrome://…) do not have.
+		let url: string;
+		if (typeof top === "string") {
+			const shown = httpUrl((await chrome.tabs.get(tabId).catch(() => undefined))?.url);
+			if (shown === null || !this.#deps.recording.armed(tabId)) return text(top, true);
+			url = shown;
+		} else url = top.url;
+		await wait(() => access.check(), context, PAGE_TIMEOUT_MS);
+		const state = this.#deps.recording.network(tabId);
+		if (state === null) return text("The tab stopped being recorded during the call; call again.", true);
+		const query: NetworkQuery = { ...recordsQuery(args), urlPattern: pattern(args.urlPattern) };
+		return text(networkResult(state, url, query, MAX_RESULT_BYTES));
+	}
+
+	/**
+	 * The tab of a console or network read, in the session's group, and recorded from now on if it was not (design
+	 * 6.46); its top document, or why the page tools cannot use it; a refusal otherwise.
+	 */
+	async #recorded(session: Session, args: Args, tool: typeof READ_CONSOLE | typeof READ_NETWORK, context: Context) {
+		const off = this.#mode("diagnostics", tool);
+		if (off !== null) return off;
+		const tabId = await this.#target(session, args.tab);
+		if (typeof tabId === "string") return tabId;
+		const { access, wait } = this.#scoped(session, tabId, tool, context);
+		const top = await this.#top(access, wait, tabId, context);
+		if (typeof top !== "string") await wait(() => this.#record(session, tabId, top, null), context, PAGE_TIMEOUT_MS);
+		return { tabId, top, access, wait };
+	}
+
+	/**
+	 * Records the session's tab from now on, at document `top` (null for none Pagewing can script), and
+	 * registers the console hook for the origin of `next`, the URL the tab is about to load. Nothing while Console and
+	 * network is Off.
+	 */
+	async #record(session: Session, tabId: number, top: TopDocument | null, next: string | null): Promise<void> {
+		const { recording, currentSettings } = this.#deps;
+		if (currentSettings().tools.diagnostics === "off") return;
+		const scripted = top === null || top.origin === "null" ? null : top;
+		try {
+			await recording.arm(tabId, session.groupId ?? -1, scripted?.origin ?? null, scripted?.documentId ?? null);
+			if (next !== null) await recording.registerOrigin(tabId, new URL(next).origin);
+		} catch {
+			// Best effort: recording never stops the call; a read injects the hook if the registration failed.
+		}
+	}
+
 	/** The tab's top document, if Chrome lets Pagewing script it; else why not. */
 	async #top(
 		access: ReturnType<typeof scopedPageAccess>["access"],
@@ -683,6 +772,19 @@ function httpUrl(value: unknown): string | null {
 	} catch {
 		return null;
 	}
+}
+
+/** `value` as a filter: at most 200 characters, or none. */
+function pattern(value: unknown): string | undefined {
+	return typeof value === "string" ? value.slice(0, 200) : undefined;
+}
+
+/** The `limit` and `since` both reads take, from wire input: a limit outside 1 to 300 is brought within. */
+function recordsQuery(args: Args): { limit?: number; since?: string } {
+	return {
+		...(Number.isInteger(args.limit) ? { limit: Math.min(300, Math.max(1, args.limit as number)) } : {}),
+		...(typeof args.since === "string" ? { since: args.since.slice(0, 80) } : {}),
+	};
 }
 
 const ACTIONS = ["click", "type", "press", "scroll", "select_option", "navigate"];

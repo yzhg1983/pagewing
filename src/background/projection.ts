@@ -681,6 +681,10 @@ function toolNotice(
 		const waited = typeof details?.waited === "string" ? details.waited : null;
 		return { ...base, role: "notice", text: t("waitedOnPage", [name]), detail: waited };
 	}
+	if (result.toolName === "read_console_messages")
+		return { ...base, role: "notice", text: t("readConsoleNotice", [name]) };
+	if (result.toolName === "read_network_requests")
+		return { ...base, role: "notice", text: t("readNetworkNotice", [name]) };
 	if (result.toolName === "observe_page") {
 		const text =
 			typeof details?.find === "string" ? t("observedPageFind", [name, details.find]) : t("observedPage", [name]);

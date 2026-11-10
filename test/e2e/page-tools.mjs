@@ -48,6 +48,7 @@ await build({
 	footer: { js: "globalThis.__piTest = { begin };" },
 });
 await build({ ...common, entryPoints: { panel: "src/panel/panel.ts" } });
+await build({ ...common, format: "iife", entryPoints: { "hooks/console": "src/hooks/console.ts" } });
 cpSync(join(repo, "static"), ext, { recursive: true });
 // English labels; localization.mjs covers both catalogs.
 rmSync(join(ext, "_locales/zh_CN"), { recursive: true });
@@ -251,7 +252,27 @@ const pages = createHttp((req, res) => {
 		res.writeHead(200, { "content-type": "text/html", "content-security-policy": "script-src 'none'" });
 		return res.end("<!doctype html><title>Strict page</title><p id='p'>No scripts here.</p>");
 	}
+	if (path === "/api/save") {
+		res.writeHead(403, { "content-type": "application/json" });
+		return res.end('{"error":"signed out"}');
+	}
+	if (path.startsWith("/status/")) {
+		res.writeHead(Number(path.slice("/status/".length)), { "content-type": "text/plain" });
+		return res.end("status");
+	}
+	if (path === "/redirect") {
+		res.writeHead(302, { location: "/second" });
+		return res.end();
+	}
+	if (path === "/nocontent") {
+		res.writeHead(204);
+		return res.end();
+	}
 	res.writeHead(200, { "content-type": "text/html" });
+	if (path === "/broken")
+		return res.end(
+			'<!doctype html><title>Broken page</title><p>Broken.</p><script>throw new TypeError("thrown while loading")</script>',
+		);
 	if (path === "/second") return res.end("<!doctype html><title>Second page</title><p>The second page.</p>");
 	if (path === "/frame") return res.end(FRAME_PAGE);
 	if (path === "/figures") return res.end(FIGURES_PAGE);
@@ -920,6 +941,130 @@ try {
 	await setMode("script", "off");
 	got = await turn("Off", [call("observe_page", {})]);
 	check("Off: run_script is not offered", !offered.includes("run_script"), offered);
+
+	// Console and network (design 6.46): recorded from the tab's first use; a page an action loads is caught from its
+	// start; the first network read asks for Chrome's permission with a card, and Chrome (headless) grants it.
+	await web.goto(`${A}/form`);
+	await attach();
+	// pi acted on this tab above, so it is recorded: a page loaded since is recorded from its start.
+	await web.evaluate(() => console.log("before the read"));
+	got = await turn("Console", [call("read_console_messages", {})]);
+	let recorded = parse(got.at(-1)?.text);
+	check(
+		"read_console_messages: a page loaded in a tab pi used is recorded from its start",
+		offered.includes("read_console_messages") &&
+			recorded.messages?.some((message) => message.level === "log" && message.text === "before the read") &&
+			typeof recorded.recordingSince === "string",
+		got.at(-1),
+	);
+	// A getter of a logged object is never called: it could send a request or change the page.
+	const getterCalls = await web.evaluate(() => {
+		let calls = 0;
+		const logged = { code: 7 };
+		Object.defineProperty(logged, "token", { enumerable: true, get: () => ++calls });
+		console.error("after the first use", logged);
+		return calls;
+	});
+	got = await turn("Console", [call("read_console_messages", { since: recorded.last })]);
+	recorded = parse(got.at(-1)?.text);
+	check(
+		"a message logged after it is read, newer than since; its object's getter not called",
+		recorded.messages?.length === 1 &&
+			recorded.messages[0].level === "error" &&
+			recorded.messages[0].text === "after the first use {code: 7, token: (...)}" &&
+			getterCalls === 0,
+		{ result: got.at(-1), getterCalls },
+	);
+	got = await turn("Broken", [
+		call("act_on_page", { action: "navigate", url: `${A}/broken` }),
+		call("read_console_messages", { onlyErrors: true }),
+	]);
+	recorded = parse(got.at(-1)?.text);
+	check(
+		"an error thrown while a page loads is caught, once an action loaded it",
+		recorded.messages?.some(
+			(message) =>
+				message.level === "exception" &&
+				message.text.includes("TypeError: thrown while loading") &&
+				message.source?.startsWith(`${A}/broken:`),
+		),
+		got.at(-1),
+	);
+	let networkCard = "";
+	got = await turn("Requests", [call("read_network_requests", {})], async () => {
+		const card = panel.locator(".ask");
+		await card.waitFor({ timeout: 20_000 });
+		networkCard = await card.textContent();
+		await card.getByRole("button", { name: "Allow", exact: true }).click();
+	});
+	check(
+		"the first network read shows the card; Allow gets Chrome's permission and the read runs",
+		networkCard.includes("network requests") && Array.isArray(parse(got.at(-1)?.text).requests),
+		{ networkCard, result: got.at(-1) },
+	);
+	await web.evaluate(() => fetch("/api/save?token=secret#x", { method: "POST" }));
+	got = await turn("Requests", [call("read_network_requests", { urlPattern: "API/save" })]);
+	recorded = parse(got.at(-1)?.text);
+	check(
+		"a failed request shows its method, address without its query, and status",
+		recorded.requests?.length === 1 &&
+			recorded.requests[0].method === "POST" &&
+			recorded.requests[0].url === `${A}/api/save` &&
+			recorded.requests[0].status === 403 &&
+			!got.at(-1).text.includes("secret"),
+		got.at(-1),
+	);
+	// A refused connection and a move to another site are checked with local agents, which see every site.
+	await web.evaluate(() => Promise.allSettled([fetch("/status/404"), fetch("/status/500"), fetch("/redirect")]));
+	got = await turn("Requests", [call("read_network_requests", { since: recorded.last })]);
+	recorded = parse(got.at(-1)?.text);
+	const requestOf = (url) => recorded.requests?.find((request) => request.url === url);
+	check(
+		"404, 500, and a redirect with its target",
+		requestOf(`${A}/status/404`)?.status === 404 &&
+			requestOf(`${A}/status/500`)?.status === 500 &&
+			requestOf(`${A}/redirect`)?.redirect === `${A}/second` &&
+			requestOf(`${A}/second`)?.status === 200,
+		got.at(-1),
+	);
+	const beforeNoContent = recorded.last;
+	await web.evaluate((url) => {
+		location.href = url;
+	}, `${B}/nocontent`);
+	await sleep(1_000);
+	got = await turn("Requests", [call("read_network_requests", { since: beforeNoContent })]);
+	recorded = parse(got.at(-1)?.text);
+	check(
+		"a 204 on another site leaves the page where it is, and its list too",
+		web.url().startsWith(A) && recorded.reset === undefined && Array.isArray(recorded.requests),
+		got.at(-1),
+	);
+	got = await turn("Console", [call("read_console_messages", {})]);
+	const beforeReload = parse(got.at(-1)?.text).last;
+	await web.reload();
+	await attach();
+	await web.evaluate(() => console.log("after the reload"));
+	got = await turn("Console", [call("read_console_messages", { since: beforeReload })]);
+	recorded = parse(got.at(-1)?.text);
+	check(
+		"a reload starts a new console list: the old cursor resets",
+		recorded.reset === true && recorded.messages?.some((message) => message.text === "after the reload"),
+		got.at(-1),
+	);
+	const hooked = await web.evaluate(() => !console.log.toString().includes("[native code]"));
+	await setMode("diagnostics", "off");
+	got = await turn("Off", [call("observe_page", {})]);
+	const unhooked = await web.evaluate(() => console.log.toString().includes("[native code]"));
+	check(
+		"Off: neither tool is offered, the hook's registration is gone, and the hook in the page is stopped",
+		!offered.includes("read_console_messages") &&
+			!offered.includes("read_network_requests") &&
+			(await worker.evaluate(() => chrome.scripting.getRegisteredContentScripts())).length === 0 &&
+			hooked &&
+			unhooked,
+		{ offered, hooked, unhooked },
+	);
+	await setMode("diagnostics", "on");
 
 	// wait_on_page (design 6.40): it follows Read page, so it is offered with Run script Off.
 	await web.goto(`${A}/media`);

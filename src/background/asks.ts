@@ -10,11 +10,12 @@ import type { AskCard } from "../shared/protocol.ts";
 export type AskAnswer = "allow" | "deny" | "recheck";
 
 /**
- * What a card asks: for Chrome's access to a site pi needs, `origin` when pi knows it (design 6.28), to act on
- * `origin`, or to run this task's script in document `documentId`.
+ * What a card asks: for Chrome's access to a site pi needs, `origin` when pi knows it (design 6.28), for Chrome's
+ * permission to see a tab's requests (6.46), to act on `origin`, or to run this task's script in document `documentId`.
  */
 export type AskRequest = { conversationId: number; run: number } & (
 	| { kind: "site"; origin: string | null }
+	| { kind: "network" }
 	| { kind: "act"; origin: string }
 	| { kind: "script"; origin: string; taskId: string; documentId: string; code: string; summary: string | null }
 );
@@ -187,7 +188,9 @@ export class Asks {
 					? { id, kind: "script", origin: request.origin, summary: request.summary, code: request.code }
 					: request.kind === "act"
 						? { id, kind: "act", origin: request.origin }
-						: { id, kind: "site", origin: request.origin };
+						: request.kind === "network"
+							? { id, kind: "network" }
+							: { id, kind: "site", origin: request.origin };
 			this.#waiting.set(id, {
 				card,
 				request,
@@ -207,7 +210,8 @@ export class Asks {
 	 * The user's answer; false when the card is gone. Allow covers acting on an act card's origin for the rest of the
 	 * run, and `scope` "chat" in the chat's later runs too. On a script card it lets the call run its code in the card's
 	 * document; `scope` "answer" also lets the site's later scripts in the run go without a card, and "chat" those in the
-	 * chat's later runs. A site card's Allow grants nothing here: Chrome's access, which the panel requested, is the grant.
+	 * chat's later runs. A site or network card's Allow grants nothing here: Chrome's permission, which the panel
+	 * requested, is the grant.
 	 */
 	answer(id: string, allow: boolean, scope: RunScope = "once"): boolean {
 		const waiting = this.#waiting.get(id);
@@ -220,7 +224,7 @@ export class Asks {
 				this.#run(request, signal);
 				if (scope === "answer") this.#scripts.add(`${request.conversationId} ${request.run} ${request.origin}`);
 			}
-			if (request.kind !== "site" && scope === "chat") {
+			if ((request.kind === "act" || request.kind === "script") && scope === "chat") {
 				this.#chats.add(`${request.kind} ${request.conversationId} ${request.origin}`);
 				this.#saveChats();
 			}

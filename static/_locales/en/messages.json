@@ -311,6 +311,12 @@
 	"screenshotWarning": {
 		"message": "The image may include what you typed into fields, and goes to your model's provider."
 	},
+	"consoleNetwork": {
+		"message": "Console and network"
+	},
+	"consoleNetworkNote": {
+		"message": "Reads the tab's console messages and the addresses and status of its requests."
+	},
 	"callsPerAnswer": {
 		"message": "Page tool calls per answer"
 	},
@@ -1073,6 +1079,15 @@
 	"announceNeedsSite": {
 		"message": "pi needs $1"
 	},
+	"networkQuestion": {
+		"message": "pi asks to see the network requests of the tabs it uses."
+	},
+	"networkNote": {
+		"message": "Chrome asks you to confirm once. pi then sees each request's address, method, and status, never its headers or content. Settings > Tools > Console and network turns it off."
+	},
+	"announceNetwork": {
+		"message": "pi asks to see network requests"
+	},
 	"movedSite": {
 		"message": "the site this tab moved to"
 	},
@@ -1534,6 +1549,12 @@
 	},
 	"waitedOnPage": {
 		"message": "Waited on the page: $1"
+	},
+	"readConsoleNotice": {
+		"message": "Read the console: $1"
+	},
+	"readNetworkNotice": {
+		"message": "Read the network requests: $1"
 	},
 	"readPageNotice": {
 		"message": "Read the page: $1"
@@ -1997,6 +2018,9 @@
 	},
 	"localAgentsOther": {
 		"message": "Other MCP clients: add npx -y pagewing-mcp as a stdio server."
+	},
+	"agentsNetworkNeeded": {
+		"message": "Agents need Chrome's permission to see network requests."
 	},
 	"copyCommand": {
 		"message": "Copy command"

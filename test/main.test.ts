@@ -716,7 +716,7 @@ it("a change of tool modes installs the page tools again and sends waiting cards
 	expect(await waiting).toBe("recheck");
 	expect(installs.slice(before)).toEqual([
 		expect.objectContaining({
-			tools: { read: "on", observe: "on", act: "on", script: "ask", screenshot: "on" },
+			tools: { read: "on", observe: "on", act: "on", script: "ask", screenshot: "on", diagnostics: "on" },
 			callsPerAnswer: 50,
 		}),
 	]);
