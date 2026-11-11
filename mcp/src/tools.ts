@@ -120,7 +120,8 @@ ${CONFIRM} ${PAGE_TEXT}`,
 	{
 		name: "screenshot_page",
 		description: `Captures what the tab shows, as an image, and returns its url, title, width, and height. The tab \
-is brought to the front of its window first. Use it for what the text does not show: layout, colors, charts, images.`,
+is brought to the front of its window first; the window is not raised. A page in a covered or minimized window is \
+refused: Chrome would give an old picture. Use it for what the text does not show: layout, colors, charts, images.`,
 		inputSchema: { type: "object", properties: { tab: TAB }, additionalProperties: false },
 	},
 	{

@@ -136,6 +136,22 @@ const TEXTS: readonly (readonly [string, MessageKey, string[]])[] = [
 		[],
 	],
 	["The tab changed during the capture; try again.", "reasonTabChangedCapture", []],
+	[
+		"No screenshot returned: Chrome reports this page as hidden, so the image may be out of date. Bring its tab and window into view, then try again.",
+		"reasonHidden",
+		[],
+	],
+	[
+		"No screenshot returned: the page was hidden during the capture, so the image may be out of date; try again.",
+		"reasonHiddenDuring",
+		[],
+	],
+	["No screenshot returned: a new page loaded during the capture; try again.", "reasonNewPageCapture", []],
+	[
+		"No screenshot returned: Pagewing could not check that the page is shown, so the image may be out of date.",
+		"reasonNotChecked",
+		[],
+	],
 	["Chrome allows only 2 captures a second, and refused this one; try again.", "reasonCaptureQuota", []],
 	["Cannot encode the image within 10 s.", "reasonEncodeTimeout", ["10"]],
 	["Cannot encode the image: out of memory.", "reasonCannotEncode", ["out of memory"]],

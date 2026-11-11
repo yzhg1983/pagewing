@@ -27,6 +27,7 @@ export const NO_AGENT: Pick<
 	| "media"
 	| "locate"
 	| "scroll"
+	| "shown"
 	| "tabState"
 	| "allSites"
 	| "leadsTo"
@@ -49,6 +50,7 @@ export const NO_AGENT: Pick<
 	media: async () => null,
 	locate: async () => null,
 	scroll: async () => null,
+	shown: async () => ({ documentId: "top", hidden: false, changes: 0 }),
 	tabState: async () => null,
 	allSites: async () => true,
 	leadsTo: () => null,

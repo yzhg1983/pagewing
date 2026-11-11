@@ -59,6 +59,7 @@ it.each([
 	"script",
 	"locate",
 	"scroll",
+	"shown",
 	"tabState",
 	"capture",
 	"close",
@@ -127,6 +128,8 @@ it.each([
 				return a.locate(99, "d", { op: "locate", target: { letter: "a", mapId: "m", number: 1 } });
 			case "scroll":
 				return a.scroll(99, "d", { op: "scroll", target: null, direction: "down" });
+			case "shown":
+				return a.shown(99);
 			case "tabState":
 				return a.tabState(99);
 			case "capture":

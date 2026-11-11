@@ -166,6 +166,8 @@ async function setup(
 		[1, { windowId: 1, active: true, minimized: false, focused: true }],
 		[2, { windowId: 2, active: true, minimized: false }],
 	]);
+	/** Each tab's page visibility (design 6.48), shown by default; null: pi cannot read it. */
+	const visibility = new Map<number, { hidden: boolean; changes: number } | null>();
 	/** Chrome's tab events, as the worker counts them, and the tabs whose navigations count. */
 	const tabEvents = { count: 0 };
 	const watching = new Set<number>();
@@ -299,6 +301,12 @@ async function setup(
 						? { kind: "reveal", target: what ?? "the page" }
 						: { kind: "scroll", target: what, direction, end: null },
 			};
+		},
+		async shown(tabId) {
+			const now = tabs.get(tabId);
+			const state = visibility.get(tabId);
+			if (now == null || state === null) return null;
+			return { documentId: now.documentId, hidden: false, changes: 0, ...state };
 		},
 		tabState: async (tabId) => (tabs.get(tabId) == null ? null : (places.get(tabId) ?? null)),
 		switchBack: async () => null,
@@ -492,6 +500,7 @@ async function setup(
 		deps,
 		images,
 		places,
+		visibility,
 		tabEvents,
 		watching,
 		clock,
@@ -2108,6 +2117,12 @@ it("a script's Run is for its task only, and goes when the task is stopped befor
 const NOT_IN_FRONT =
 	"The tab is not in front, so pi cannot capture it: Chrome captures only the tab shown in its window.";
 const CHANGED = "The tab changed during the capture; try again.";
+const HIDDEN =
+	"No screenshot returned: Chrome reports this page as hidden, so the image may be out of date. Bring its tab and window into view, then try again.";
+const NOT_CHECKED =
+	"No screenshot returned: Pagewing could not check that the page is shown, so the image may be out of date.";
+const HIDDEN_DURING =
+	"No screenshot returned: the page was hidden during the capture, so the image may be out of date; try again.";
 
 it("screenshot_page captures the tab in front, or the visible part of one element; the chat shows a line, not the image", async () => {
 	const { tab, other, faux, tabs, calls, seen, images, watching, step, call, answer, idle } = await setup();
@@ -2199,7 +2214,7 @@ it("screenshot_page is refused for a model without images, naming only the text 
 	}
 });
 
-it("screenshot_page needs Chrome's grant, and the tab in front of a window that is not minimized", async () => {
+it("screenshot_page needs Chrome's grant, and the tab in front of its window", async () => {
 	const { tab, faux, tabs, calls, places, seen, step, call, answer, idle, captureWith } = await setup();
 	const page = attach(1, tabs.get(1)!);
 	captureWith(async () => {
@@ -2214,17 +2229,89 @@ it("screenshot_page needs Chrome's grant, and the tab in front of a window that 
 
 	captureWith(undefined);
 	const before = calls.capture.length;
-	for (const place of [
-		{ windowId: 1, active: false, minimized: false },
-		{ windowId: 1, active: true, minimized: true },
-	]) {
-		places.set(1, place);
-		faux.setResponses([step(call(SCREENSHOT_PAGE)), answer()]);
-		await tab.send(withPage(`r${place.active}`, "Look", page));
-		await idle();
-		expect(seen.at(-1)).toMatchObject({ isError: true, text: NOT_IN_FRONT });
-	}
+	places.set(1, { windowId: 1, active: false, minimized: false });
+	faux.setResponses([step(call(SCREENSHOT_PAGE)), answer()]);
+	await tab.send(withPage("r2", "Look", page));
+	await idle();
+	expect(seen.at(-1)).toMatchObject({ isError: true, text: NOT_IN_FRONT });
 	expect(calls.capture).toHaveLength(before);
+});
+
+it("screenshot_page refuses a hidden page (design 6.48), in a minimized window too, and one whose visibility pi cannot read, before capturing", async () => {
+	const { tab, faux, tabs, calls, places, visibility, seen, step, call, answer, idle } = await setup();
+	const page = attach(1, tabs.get(1)!);
+	const cases: [string, () => void, string][] = [
+		["covered", () => visibility.set(1, { hidden: true, changes: 1 }), HIDDEN],
+		[
+			"minimized",
+			() => {
+				places.set(1, { windowId: 1, active: true, minimized: true });
+				visibility.set(1, { hidden: true, changes: 1 });
+			},
+			HIDDEN,
+		],
+		["unreadable", () => visibility.set(1, null), NOT_CHECKED],
+	];
+	for (const [name, set, text] of cases) {
+		set();
+		faux.setResponses([step(call(SCREENSHOT_PAGE)), answer()]);
+		await tab.send(withPage(name, "Look", page));
+		await idle();
+		expect(seen.at(-1), name).toMatchObject({ name: SCREENSHOT_PAGE, isError: true, text });
+	}
+	expect(calls.capture).toEqual([]);
+});
+
+it("screenshot_page drops the image when the page is hidden after the capture, was hidden and shown during it, or is a new page", async () => {
+	const { tab, faux, tabs, calls, access, visibility, seen, images, step, call, answer, idle, captureWith } =
+		await setup();
+	const page = attach(1, tabs.get(1)!);
+	const during: [string, () => void, string][] = [
+		["hidden", () => visibility.set(1, { hidden: true, changes: 1 }), HIDDEN],
+		["hidden and shown", () => visibility.set(1, { hidden: false, changes: 2 }), HIDDEN_DURING],
+	];
+	for (const [name, change, text] of during) {
+		visibility.set(1, { hidden: false, changes: 0 });
+		captureWith(async () => {
+			change();
+			return "data:image/png;base64,AAAA";
+		});
+		faux.setResponses([step(call(SCREENSHOT_PAGE)), answer()]);
+		await tab.send(withPage(name, "Look", page));
+		await idle();
+		expect(seen.at(-1), name).toMatchObject({ name: SCREENSHOT_PAGE, isError: true, text });
+	}
+	expect(calls.capture).toHaveLength(2);
+	expect(images).toEqual([]);
+
+	// A new page whose count starts at 0 again, after the tab's own checks: only the document's ID tells.
+	const { shown } = access;
+	let looks = 0;
+	access.shown = async (tabId) => {
+		const state = await shown(tabId);
+		return state === null || looks++ === 0 ? state : { ...state, documentId: "another" };
+	};
+	visibility.set(1, { hidden: false, changes: 0 });
+	captureWith(undefined);
+	faux.setResponses([step(call(SCREENSHOT_PAGE)), answer()]);
+	await tab.send(withPage("new page", "Look", page));
+	await idle();
+	expect(seen.at(-1)).toMatchObject({
+		name: SCREENSHOT_PAGE,
+		isError: true,
+		text: "No screenshot returned: a new page loaded during the capture; try again.",
+	});
+	expect(images).toEqual([]);
+	access.shown = shown;
+
+	// Shown before and after, with no change between: the image is kept.
+	visibility.set(1, { hidden: false, changes: 2 });
+	captureWith(undefined);
+	faux.setResponses([step(call(SCREENSHOT_PAGE)), answer()]);
+	await tab.send(withPage("shown", "Look", page));
+	await idle();
+	expect(seen.at(-1)).toMatchObject({ name: SCREENSHOT_PAGE, isError: false });
+	expect(images).toHaveLength(1);
 });
 
 it("a tab switch, a navigation, or a new document during the capture drops the image; the watch ends each time", async () => {

@@ -75,7 +75,7 @@ import {
 } from "./page-agent.ts";
 import { codePreview, summaryOf } from "./projection.ts";
 import { consoleResult, DEFAULT_RECORDS, networkResult } from "./recording.ts";
-import { CAPTURE_GAP_MS, chatImages, cropOf, RETRY_GAP_MS, sameView } from "./screenshot.ts";
+import { CAPTURE_GAP_MS, capturable, chatImages, cropOf, RETRY_GAP_MS, sameView, staleText } from "./screenshot.ts";
 import type { ScriptResult } from "./script-runner.ts";
 import { SCOPE_DENIED, ScopeDenied } from "./tab-groups.ts";
 
@@ -434,7 +434,8 @@ equals shown.of; while an element that scrolls itself moves its content, shown s
 	} \
 Use it for what the text${refs ? " and the outline" : ""} do not show: icons, colors, charts, images, canvas, layout, \
 and what is highlighted; not to read text${tools.read !== "off" ? ` (${READ_PAGE} is cheaper and reads the whole page)` : ""}. \
-The tab must be in front, and Chrome allows it only after the user opened pi on this site. A chat sends at most \
+The tab must be in front and its window in view (not covered or minimized), and Chrome allows it only after the \
+user opened pi on this site. A chat sends at most \
 ${MAX_IMAGES} images (screenshots and the user's attachments) with each request, so take one only when needed. Result: the image, and JSON: url, title, \
 width, height, clipped (part of the element is outside the view)${
 		refs
@@ -1720,7 +1721,7 @@ to start a new chat.`;
 				);
 				if (typeof state === "string") return state;
 				if (state === null) return `Cannot reach the page. ${NO_ACCESS}`;
-				if (!state.active || state.minimized) return notInFront;
+				if (!state.active) return notInFront;
 				const now = await bounded(() => access.top(page.tabId), context, timeoutMs).catch((error: unknown) => {
 					if (context.abortSignal?.aborted) throw error;
 					if (error instanceof ScopeDenied || error instanceof PageRefused) return error.message;
@@ -1730,6 +1731,13 @@ to start a new chat.`;
 				if (now === null || now.documentId !== top.documentId) return CHANGED;
 				return { windowId: state.windowId, url: now.url, title: now.title };
 			};
+			/** The page's visibility (design 6.48), or why pi cannot read it. */
+			const shownOf = () =>
+				bounded(() => access.shown(page.tabId), context, timeoutMs).catch((error: unknown) => {
+					if (context.abortSignal?.aborted) throw error;
+					if (error instanceof ScopeDenied || error instanceof PageRefused) return error.message;
+					return null;
+				});
 			/** Where the element is now, if it can be captured. */
 			const locate = async (element: AgentTarget): Promise<Located | string> => {
 				let found: Awaited<ReturnType<typeof access.locate>>;
@@ -1754,8 +1762,8 @@ to start a new chat.`;
 			let scrollStep: Step | null = null;
 			/**
 			 * One capture, in its turn (design 6.26). The count of tab changes and the tab's place are read before and after
-			 * it, and the element's place too; a change drops the image. The model, then the mode and Stop, are checked last:
-			 * nothing is awaited between those and the capture.
+			 * it, and the element's place and the page's visibility (6.48) too; a change drops the image. The model, then the
+			 * mode and Stop, are checked last: nothing is awaited between those and the capture.
 			 */
 			const attempt = async () => {
 				const unwatch = access.watch(page.tabId);
@@ -1777,6 +1785,10 @@ to start a new chat.`;
 						}
 						located = found;
 					}
+					const shown = await shownOf();
+					if (typeof shown === "string") return shown;
+					const visible = capturable(shown);
+					if (typeof visible === "string") return visible;
 					const model = await imageLimit(api, tools, context);
 					if (typeof model === "string") return model;
 					const latest = await deps.settings();
@@ -1796,6 +1808,10 @@ to start a new chat.`;
 					const after = await placeOf(CHANGED);
 					if (typeof after === "string") return after;
 					if (after.windowId !== place.windowId) return CHANGED;
+					const shownAfter = await shownOf();
+					if (typeof shownAfter === "string") return shownAfter;
+					const stale = staleText(visible, shownAfter);
+					if (stale !== null) return stale;
 					if (target !== null && located !== null) {
 						const again = await locate(target);
 						if (typeof again === "string") return again;

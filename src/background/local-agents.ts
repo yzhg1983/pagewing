@@ -30,7 +30,7 @@ import {
 import { type ActAction, type ActRequest, type AgentTarget, DRAG_MOVES, DRAG_MS, stepText } from "./page-agent.ts";
 import { letterOf, type RefMaps, targetOf } from "./page-tools.ts";
 import { type ConsoleQuery, consoleResult, type NetworkQuery, networkResult } from "./recording.ts";
-import { CAPTURE_GAP_MS, RETRY_GAP_MS } from "./screenshot.ts";
+import { CAPTURE_GAP_MS, capturable, RETRY_GAP_MS, staleText } from "./screenshot.ts";
 import { ScopeDenied, type ScopeTab } from "./tab-groups.ts";
 
 /** The bridge's native host; pagewing-mcp install registers it under this name. */
@@ -87,6 +87,11 @@ const NO_ACCESS = `Cannot reach the page: Chrome does not let Pagewing script it
 page still loading).`;
 const NO_NETWORK = `Chrome does not let Pagewing see network requests yet: ask the user to click Allow under Settings > \
 Advanced > Local agents in Pagewing.`;
+const CAPTURE_TIMEOUT = `The capture did not finish within ${PAGE_TIMEOUT_MS / 1000} s; the screen may be locked or \
+asleep.`;
+const NOT_FRONT = "Another tab came to the front during the capture; try again.";
+/** Chrome's quota error: the capture is tried once more, later. */
+const QUOTA = Symbol("quota");
 
 /** The bridge connection and its sessions. */
 export class LocalAgents {
@@ -351,9 +356,10 @@ export class LocalAgents {
 			...(group === undefined ? {} : { windowId: group.windowId }),
 		});
 		const tabId = created.id!;
+		// A new group goes in the tab's window: Chrome's default, the last focused window, would move the tab there.
 		const groupId = await chrome.tabs.group({
 			tabIds: [tabId],
-			...(group === undefined ? {} : { groupId: group.id }),
+			...(group === undefined ? { createProperties: { windowId: created.windowId } } : { groupId: group.id }),
 		});
 		if (group === undefined) await chrome.tabGroups.update(groupId, { title: session.name, color: "purple" });
 		session.groupId = groupId;
@@ -624,7 +630,6 @@ export class LocalAgents {
 		const { access, wait } = this.#scoped(session, tabId, SCREENSHOT_PAGE, context);
 		const place = await wait(() => access.tabState(tabId), context, PAGE_TIMEOUT_MS);
 		if (place === null) return text("The tab is gone.", true);
-		if (place.minimized) return text("The tab's window is minimized: Chrome cannot capture it.", true);
 		if (!place.active) {
 			// Chrome captures what a window shows: the session's tab comes to the front of its window, not the window to
 			// the front of the screen.
@@ -632,22 +637,38 @@ export class LocalAgents {
 			await chrome.tabs.update(tabId, { active: true });
 			await new Promise((resolve) => setTimeout(resolve, 300));
 		}
-		const attempt = async (): Promise<string | null> => {
-			const png = await wait(() => access.capture(place.windowId), context, PAGE_TIMEOUT_MS);
-			const now = await chrome.tabs.get(tabId);
-			// Another tab came to the front during the capture: the image would show it.
-			return now.active && now.windowId === place.windowId ? png : null;
-		};
-		const capture = async (gap: number) =>
-			this.#deps.captures.run(attempt, context, gap).catch((error: unknown) => {
-				if (messageOf(error).includes("MAX_CAPTURE_VISIBLE_TAB_CALLS_PER_SECOND")) return "quota" as const;
+		// The page's visibility before and after the capture (design 6.48): a hidden page's capture is an old picture.
+		// A page that does not answer cannot be checked: null, which refuses the image.
+		const shown = () =>
+			wait(() => access.shown(tabId), context, PAGE_TIMEOUT_MS).catch((error: unknown) => {
+				if (error instanceof PageTimeout && !context.abortSignal?.aborted) return null;
 				throw error;
 			});
-		let png = await capture(CAPTURE_GAP_MS);
-		if (png === "quota") png = await capture(RETRY_GAP_MS);
-		if (png === "quota") return text("Chrome allows only 2 captures a second; try again.", true);
-		if (png === null) return text("Another tab came to the front during the capture; try again.", true);
-		const shot = png;
+		const attempt = async (): Promise<{ png: string } | string> => {
+			const before = capturable(await shown());
+			if (typeof before === "string") return before;
+			let png: string;
+			try {
+				png = await wait(() => access.capture(place.windowId), context, PAGE_TIMEOUT_MS);
+			} catch (error) {
+				if (error instanceof PageTimeout && !context.abortSignal?.aborted) return CAPTURE_TIMEOUT;
+				throw error;
+			}
+			const now = await chrome.tabs.get(tabId);
+			// Another tab came to the front during the capture: the image would show it.
+			if (!now.active || now.windowId !== place.windowId) return NOT_FRONT;
+			return staleText(before, await shown()) ?? { png };
+		};
+		const capture = async (gap: number): Promise<{ png: string } | string | typeof QUOTA> =>
+			this.#deps.captures.run(attempt, context, gap).catch((error: unknown) => {
+				if (messageOf(error).includes("MAX_CAPTURE_VISIBLE_TAB_CALLS_PER_SECOND")) return QUOTA;
+				throw error;
+			});
+		let result = await capture(CAPTURE_GAP_MS);
+		if (result === QUOTA) result = await capture(RETRY_GAP_MS);
+		if (result === QUOTA) return text("Chrome allows only 2 captures a second; try again.", true);
+		if (typeof result === "string") return text(result, true);
+		const shot = result.png;
 		const image = await bounded(
 			async () => {
 				for (const [longSide, quality] of ENCODINGS) {

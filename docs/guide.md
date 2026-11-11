@@ -23,7 +23,8 @@ answers there, until a new chat or Chrome closes. A script card shows the code, 
 Screenshot page shows what is on screen, so the image may include what you typed into fields (Read page leaves that
 out), and it goes to your model's provider. pi may scroll the page to the part it captures, also with Act on page Off.
 Chrome lets pi capture a tab only after you open pi on that site with its toolbar button, menu, or shortcut, or on any
-site when you allow pi on all sites (Settings > Advanced > Sites).
+site when you allow pi on all sites (Settings > Advanced > Sites). The page must be in view: Chrome gives an old picture of
+a window that another window covers or that is minimized, so pi refuses and asks you to bring it forward.
 
 Console and network lets pi see why a page does not work: `Uncaught TypeError … (app.js:88)`, or
 `POST /api/save → 403`. pi starts recording a tab when it first acts on it, runs a script there, or reads its console or

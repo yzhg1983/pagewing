@@ -1511,6 +1511,18 @@
 	"reasonTabChangedCapture": {
 		"message": "The tab changed during the capture."
 	},
+	"reasonHidden": {
+		"message": "No screenshot: Chrome reports this page as hidden, so the image may be out of date. Bring its tab and window into view."
+	},
+	"reasonHiddenDuring": {
+		"message": "No screenshot: the page was hidden during the capture, so the image may be out of date."
+	},
+	"reasonNewPageCapture": {
+		"message": "No screenshot: a new page loaded during the capture."
+	},
+	"reasonNotChecked": {
+		"message": "No screenshot: Pagewing could not check that the page is shown, so the image may be out of date."
+	},
 	"reasonCaptureQuota": {
 		"message": "Chrome allows only 2 captures a second, and refused this one."
 	},

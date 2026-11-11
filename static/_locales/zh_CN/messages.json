@@ -1511,6 +1511,18 @@
 	"reasonTabChangedCapture": {
 		"message": "截图时标签页发生了变化。"
 	},
+	"reasonHidden": {
+		"message": "没有截图：Chrome 报告这个页面处于隐藏状态，截到的画面可能是旧的。请把它的标签页和窗口移到前面。"
+	},
+	"reasonHiddenDuring": {
+		"message": "没有截图：截图时页面被隐藏过，画面可能是旧的。"
+	},
+	"reasonNewPageCapture": {
+		"message": "没有截图：截图时载入了新页面。"
+	},
+	"reasonNotChecked": {
+		"message": "没有截图：Pagewing 无法确认页面正在显示，画面可能是旧的。"
+	},
 	"reasonCaptureQuota": {
 		"message": "Chrome 每秒只允许截图 2 次，拒绝了这一次。"
 	},
