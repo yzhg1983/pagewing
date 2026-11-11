@@ -68,8 +68,11 @@ typing. find keeps elements whose role and name contain every word; within lists
 		description: `Acts on the page as a user would, with simulated events, then waits until the page is quiet (at most \
 5 s). click, type, select_option need a ref from observe_page; type replaces the field's content, and submit submits \
 its form; press sends a key ("Enter", "Escape", "Shift+I"); scroll moves the page or, with ref, the element up, down, \
-top, or bottom; navigate loads an http or https URL in the tab, or "reload". The action is refused, and not sent, if \
-the element is gone, hidden, disabled, or covered. A tab the page opens joins this session's group; the result names \
+top, or bottom; hover moves the pointer onto ref; drag presses on ref, moves onto the ref to (or by {x, y} CSS \
+pixels, as for a slider), and releases; navigate loads an http or https URL in the tab, or "reload". The action is \
+refused, and not sent, if the element is gone, hidden, disabled, or covered. hover and drag send simulated pointer, \
+mouse, and drag events for the page's scripts, best effort: no CSS :hover, no native controls (range inputs, selects, \
+scrollbars, text selection), no pointer capture; after a drag, observe to see whether it took effect. A tab the page opens joins this session's group; the result names \
 it. Result JSON: done, url, title, navigated, timedOut, opened. A call that failed or timed out may still have \
 happened: observe and check before trying again, and never repeat a submit or a send without asking the user. \
 ${CONFIRM} ${PAGE_TEXT}`,
@@ -77,13 +80,23 @@ ${CONFIRM} ${PAGE_TEXT}`,
 			type: "object",
 			properties: {
 				tab: TAB,
-				action: { enum: ["click", "type", "press", "scroll", "select_option", "navigate"] },
+				action: { enum: ["click", "type", "press", "scroll", "select_option", "hover", "drag", "navigate"] },
 				ref: { type: "string", maxLength: 20 },
 				text: { type: "string", maxLength: 10000 },
 				submit: { type: "boolean" },
 				key: { type: "string", maxLength: 40 },
 				option: { type: "string", maxLength: 1000 },
 				direction: { enum: ["up", "down", "top", "bottom"] },
+				to: { type: "string", maxLength: 20, description: "drag: a ref." },
+				by: {
+					type: "object",
+					properties: {
+						x: { type: "integer", minimum: -4000, maximum: 4000 },
+						y: { type: "integer", minimum: -4000, maximum: 4000 },
+					},
+					required: ["x", "y"],
+					additionalProperties: false,
+				},
 				url: { type: "string", maxLength: 2048 },
 			},
 			required: ["action"],

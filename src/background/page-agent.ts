@@ -26,7 +26,7 @@ export type ObserveResult =
 	| { ok: true; mapId: string; letter: string; url: string; title: string; outline: string; omitted: string | null }
 	| { ok: false; error: string };
 
-export type ActAction = "click" | "type" | "press" | "scroll" | "select_option";
+export type ActAction = "click" | "type" | "press" | "scroll" | "select_option" | "hover" | "drag";
 
 /** Up or down by most of a view, or to the top or the bottom. */
 export type ScrollDirection = "up" | "down" | "top" | "bottom";
@@ -42,7 +42,13 @@ export type ActRequest = {
 	key: string | null;
 	option: string | null;
 	direction: ScrollDirection | null;
+	/** drag: the element to drag to, or the move in CSS pixels; exactly one. */
+	to: AgentTarget | null;
+	by: { x: number; y: number } | null;
 	summary: string | null;
+	/** drag: the moves between the press and the release, and the time they may take from the press. */
+	dragMoves: number;
+	dragMs: number;
 	quietMs: number;
 	maxWaitMs: number;
 	outlineMs: number;
@@ -80,6 +86,20 @@ export type Step =
 	| { kind: "choose"; option: string; target: string }
 	| { kind: "scroll"; target: string | null; direction: ScrollDirection; end: "top" | "bottom" | null }
 	| { kind: "reveal"; target: string }
+	| { kind: "hover"; target: string }
+	| {
+			kind: "drag";
+			target: string;
+			/** `to` as named before the press, or null for a move `by`. */
+			to: string | null;
+			by: { x: number; y: number } | null;
+			/** What got the release, when it was not `to` or inside it (design 6.47). */
+			over: string | null;
+			/** "notAccepted": an HTML5 drag the page did not take; "stopped": the deadline passed before the release. */
+			end: "released" | "dropped" | "notAccepted" | "stopped";
+			/** The moves sent. */
+			moves: number;
+	  }
 	| { kind: "switchTab"; tab: number }
 	| { kind: "closeTab"; tab: number; closed: boolean; back: number | null };
 
@@ -97,11 +117,31 @@ export function stepText(step: Step): string {
 			return `Scrolled ${step.target ?? "the page"} ${step.direction}${step.end === null ? "" : ` (at the ${step.end})`}`;
 		case "reveal":
 			return `Scrolled ${step.target} into view`;
+		case "hover":
+			return `Hovered over ${step.target}`;
+		case "drag": {
+			const line = `Dragged ${step.target} ${dragWhere(step)}`;
+			if (step.end === "stopped")
+				return `${line}: stopped after ${step.moves} of ${DRAG_MOVES} moves, the page was too slow; not released`;
+			return `${line}${step.over === null ? "" : `; released over ${step.over}`}${step.end === "notAccepted" ? "; the page did not accept the drop" : ""}`;
+		}
 		case "switchTab":
 			return `Switched to tab ${step.tab}`;
 		case "closeTab":
 			return `${step.closed ? `Closed tab ${step.tab}` : `Tab ${step.tab} was already closed`}${step.back === null ? "" : `; the page tools now work on tab ${step.back}`}`;
 	}
+}
+
+/** How many moves a drag sends between the press and the release (design 6.47). */
+export const DRAG_MOVES = 10;
+
+/** How long a drag's moves may take from the press, in hidden tabs too (design 6.47). */
+export const DRAG_MS = 2_000;
+
+/** Where a drag went, as its step says: "to" only when the release reached `to`. */
+function dragWhere(step: Extract<Step, { kind: "drag" }>): string {
+	if (step.by !== null) return `by ${step.by.x}, ${step.by.y} px`;
+	return step.end !== "stopped" && step.over === null ? `to ${step.to}` : `toward ${step.to}`;
 }
 
 /** A rectangle in CSS pixels from the top left of the view. */
@@ -147,6 +187,8 @@ export async function pageAgent(
 							key: input.key ?? null,
 							option: input.option ?? null,
 							direction: input.direction ?? null,
+							to: input.to ?? null,
+							by: input.by ?? null,
 							summary: input.summary ?? null,
 						};
 	type Refs = {
@@ -1030,6 +1072,145 @@ export async function pageAgent(
 			active = inner;
 		}
 	};
+	/**
+	 * The element under `target`'s center after it scrolls to the middle of the view, where a press would land; why
+	 * not, if the center is outside the window, covered, or another interactive element.
+	 */
+	const aim = (target: Element): { x: number; y: number; hit: Element } | string => {
+		const { x, y } = center(target);
+		const hit = hitAt(x, y);
+		if (hit === null) return `The center of ${ref} is outside the window`;
+		// From the element hit up to the target: no other interactive element between them.
+		let between: Element | null = null;
+		let at: Element | null = hit;
+		while (at !== null && at !== target) {
+			if (between === null && (interactive(at) || roleOf(at, false) === "link" || clickable(at))) between = at;
+			at = parentOf(at);
+		}
+		if (at === null) return `${ref} is covered by ${coverOf(hit)}`;
+		if (between !== null) return `The center of ${ref} is ${describe(between, act.letter)}; act on that ref instead`;
+		return { x, y, hit };
+	};
+	/** The nearest listed element at or above `hit`, as messages name it. */
+	const coverOf = (hit: Element) => {
+		let cover: Element | null = hit;
+		while (cover !== null && roleOf(cover, false) === null) cover = parentOf(cover);
+		return describe(cover ?? hit, act.letter);
+	};
+	/** `element` is `ancestor` or inside it, in the flat tree. */
+	const within = (element: Element, ancestor: Element) => {
+		let at: Element | null = element;
+		while (at !== null && at !== ancestor) at = parentOf(at);
+		return at !== null;
+	};
+	/** As a real press: the focusable element under the pointer takes the focus. */
+	const focusAt = (hit: Element) => {
+		let focusable: Element | null = hit;
+		while (
+			focusable !== null &&
+			!(focusable instanceof HTMLElement && (focusable.tabIndex >= 0 || isField(focusable)))
+		)
+			focusable = parentOf(focusable);
+		if (focusable instanceof HTMLElement) focusable.focus({ preventScroll: true });
+	};
+	/**
+	 * The site a link at or above `from` leads to, sent before a click: a site card names it if Chrome does not let pi
+	 * follow it there (design 6.28). The worker notes it by the tab Chrome says the message came from.
+	 */
+	const noteLink = (from: Element) => {
+		for (let at: Element | null = from; at !== null; at = parentOf(at))
+			if ((at instanceof HTMLAnchorElement || at instanceof HTMLAreaElement) && at.hasAttribute("href")) {
+				if (typeof chrome !== "undefined")
+					void chrome.runtime.sendMessage({ type: "pi-link", url: at.href }).catch(() => {});
+				return;
+			}
+	};
+	// The pointer's place for hover and drag (design 6.47): the path it is over, innermost first, kept per document in
+	// the isolated world as the ref map is.
+	const pointerHolder = globalThis as unknown as { piasidePointer?: WeakRef<Element>[] };
+	/** `element` and its flat-tree ancestors, innermost first. */
+	const pathOf = (element: Element): Element[] => {
+		const path: Element[] = [];
+		for (let at: Element | null = element; at !== null; at = parentOf(at)) path.push(at);
+		return path;
+	};
+	/** The path the pointer is over: from the deepest kept element still in the page. */
+	const pointerPath = (): Element[] => {
+		for (const kept of pointerHolder.piasidePointer ?? []) {
+			const element = kept.deref();
+			if (element?.isConnected && element.ownerDocument === document) return pathOf(element);
+		}
+		return [];
+	};
+	/** What every pi pointer event says about the pointer. */
+	const POINTER = { pointerId: 1, pointerType: "mouse", isPrimary: true };
+	/** The fields of a mouse event at (x, y) with `buttons` held. */
+	const pointAt = (x: number, y: number, buttons: number) => ({
+		composed: true,
+		clientX: x,
+		clientY: y,
+		view: window,
+		button: 0,
+		buttons,
+	});
+	/**
+	 * Moves the pointer onto `hit` at (x, y), as Chrome does for a real mouse: out and leave events for the elements it
+	 * leaves below the deepest shared one, over and enter for those it enters, the pointer's before the mouse's; then
+	 * the moves. `mouse` false: the page cancelled `pointerdown`, so no `mousemove`.
+	 */
+	const moveTo = (hit: Element, x: number, y: number, buttons: number, mouse: boolean) => {
+		const from = pointerPath();
+		const to = pathOf(hit);
+		const point = pointAt(x, y, buttons);
+		if (from[0] !== hit) {
+			const shared = new Set(to);
+			const common = from.findIndex((element) => shared.has(element));
+			const left = common === -1 ? from : from.slice(0, common);
+			const entered = to.slice(0, common === -1 ? to.length : to.indexOf(from[common]!)).reverse();
+			const old = from[0] ?? null;
+			const boundary = (prefix: string, make: (type: string, init: MouseEventInit) => Event) => {
+				if (old !== null) {
+					old.dispatchEvent(
+						make(`${prefix}out`, { ...point, bubbles: true, cancelable: true, relatedTarget: hit }),
+					);
+					for (const element of left)
+						element.dispatchEvent(make(`${prefix}leave`, { ...point, composed: false, relatedTarget: hit }));
+				}
+				hit.dispatchEvent(make(`${prefix}over`, { ...point, bubbles: true, cancelable: true, relatedTarget: old }));
+				for (const element of entered)
+					element.dispatchEvent(make(`${prefix}enter`, { ...point, composed: false, relatedTarget: old }));
+			};
+			boundary("pointer", (type, init) => new PointerEvent(type, { ...init, ...POINTER, button: -1 }));
+			boundary("mouse", (type, init) => new MouseEvent(type, init));
+		}
+		hit.dispatchEvent(
+			new PointerEvent("pointermove", { ...point, ...POINTER, bubbles: true, cancelable: true, button: -1 }),
+		);
+		if (mouse) hit.dispatchEvent(new MouseEvent("mousemove", { ...point, bubbles: true, cancelable: true }));
+		keep(to);
+	};
+	/** Keeps `path` as the path the pointer is over. */
+	const keep = (path: Element[]) => {
+		pointerHolder.piasidePointer = path.map((element) => new WeakRef(element));
+	};
+	/**
+	 * The next animation frame, or sooner when the page is or becomes hidden: Chrome sends a hidden page no frames and
+	 * throttles its timers, but not its message-channel tasks.
+	 */
+	const pause = () =>
+		new Promise<void>((resolve) => {
+			const channel = new MessageChannel();
+			const done = () => {
+				cancelAnimationFrame(frame);
+				document.removeEventListener("visibilitychange", done);
+				channel.port1.close();
+				resolve();
+			};
+			const frame = requestAnimationFrame(done);
+			document.addEventListener("visibilitychange", done);
+			channel.port1.onmessage = done;
+			if (document.visibilityState === "hidden") channel.port2.postMessage(null);
+		});
 	const focusText = (target: Element): string | null => {
 		const now = focused();
 		return now === target
@@ -1137,32 +1318,10 @@ export async function pageAgent(
 		switch (act.action) {
 			case "click": {
 				if (element === undefined) return refused("click needs a ref");
-				const { x, y } = center(element);
-				const hit = hitAt(x, y);
-				if (hit === null) return refused(`The center of ${ref} is outside the window`);
-				// From the element hit up to the target: no other interactive element between them.
-				let between: Element | null = null;
-				let at: Element | null = hit;
-				while (at !== null && at !== element) {
-					if (between === null && (interactive(at) || roleOf(at, false) === "link" || clickable(at))) between = at;
-					at = parentOf(at);
-				}
-				if (at === null) {
-					// Covered: name the nearest listed element over it.
-					let cover: Element | null = hit;
-					while (cover !== null && roleOf(cover, false) === null) cover = parentOf(cover);
-					return refused(`${ref} is covered by ${describe(cover ?? hit, act.letter)}`);
-				}
-				if (between !== null)
-					return refused(`The center of ${ref} is ${describe(between, act.letter)}; act on that ref instead`);
-				// The site a link leads to, sent before the click: a site card names it if Chrome does not let pi follow it
-				// there (design 6.28). The worker notes it by the tab Chrome says the message came from.
-				for (let at: Element | null = element; at !== null; at = parentOf(at))
-					if ((at instanceof HTMLAnchorElement || at instanceof HTMLAreaElement) && at.hasAttribute("href")) {
-						if (typeof chrome !== "undefined")
-							void chrome.runtime.sendMessage({ type: "pi-link", url: at.href }).catch(() => {});
-						break;
-					}
+				const aimed = aim(element);
+				if (typeof aimed === "string") return refused(aimed);
+				const { x, y, hit } = aimed;
+				noteLink(element);
 				const shown = outline(element);
 				const pointer = {
 					bubbles: true,
@@ -1177,16 +1336,7 @@ export async function pageAgent(
 				sent = true;
 				hit.dispatchEvent(new PointerEvent("pointerdown", { ...touch, buttons: 1 }));
 				const down = hit.dispatchEvent(new MouseEvent("mousedown", { ...pointer, buttons: 1 }));
-				// As a real click: the focusable element under the pointer takes the focus.
-				if (down) {
-					let focusable: Element | null = hit;
-					while (
-						focusable !== null &&
-						!(focusable instanceof HTMLElement && (focusable.tabIndex >= 0 || isField(focusable)))
-					)
-						focusable = parentOf(focusable);
-					if (focusable instanceof HTMLElement) focusable.focus({ preventScroll: true });
-				}
+				if (down) focusAt(hit);
 				hit.dispatchEvent(new PointerEvent("pointerup", { ...touch, buttons: 0 }));
 				hit.dispatchEvent(new MouseEvent("mouseup", { ...pointer, buttons: 0 }));
 				hit.dispatchEvent(new MouseEvent("click", { ...pointer, buttons: 0, detail: 1 }));
@@ -1358,6 +1508,200 @@ export async function pageAgent(
 					{ kind: "choose", option: short(clean(option.label), 60), target: describe(element, act.letter) },
 					shown,
 				);
+			}
+			case "hover": {
+				if (element === undefined) return refused("hover needs a ref");
+				const aimed = aim(element);
+				if (typeof aimed === "string") return refused(aimed);
+				const shown = outline(element);
+				sent = true;
+				moveTo(aimed.hit, aimed.x, aimed.y, 0, true);
+				return await finish({ kind: "hover", target: describe(element, act.letter) }, shown);
+			}
+			case "drag": {
+				if (element === undefined) return refused("drag needs a ref");
+				if ((act.to === null) === (act.by === null)) return refused("drag needs either to or by");
+				const goal = act.to === null ? null : elementOf(act.to);
+				const goalRef = act.to === null ? "" : `${act.to.letter}${act.to.number}`;
+				if (goal === undefined) return refused(gone(goalRef));
+				const aimed = aim(element);
+				if (typeof aimed === "string") return refused(aimed);
+				const { x, y, hit: start } = aimed;
+				const outside = (point: { x: number; y: number }) =>
+					point.x < 0 || point.y < 0 || point.x >= innerWidth || point.y >= innerHeight;
+				let end: { x: number; y: number };
+				if (goal === null) {
+					end = { x: x + act.by!.x, y: y + act.by!.y };
+					if (outside(end)) return refused(`The end of the drag is outside the window`);
+				} else {
+					const box = goal.getBoundingClientRect();
+					if (!goal.checkVisibility({ visibilityProperty: true }) || box.width === 0 || box.height === 0)
+						return refused(`${goalRef} is not drawn (hidden, collapsed, or empty): observe again`);
+					end = { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+					if (outside(end)) return refused(`${ref} and ${goalRef} do not fit in the window together`);
+					const hit = hitAt(end.x, end.y);
+					if (hit === null || !within(hit, goal))
+						return refused(`${goalRef} is covered by ${coverOf(hit ?? document.documentElement)}`);
+				}
+				const shown = outline(element);
+				const step = {
+					kind: "drag" as const,
+					target: describe(element, act.letter),
+					to: goal === null ? null : describe(goal, act.letter),
+					by: act.by,
+				};
+				sent = true;
+				moveTo(start, x, y, 0, true);
+				// As Chrome: no click once the pressed element left the document after the press, also to be put back
+				// elsewhere, as a sortable list does. Watched from the press on, its own handlers included.
+				const downPath = new Set<Node>(pathOf(start));
+				let moved = false;
+				const note = (records: MutationRecord[]) => {
+					moved ||= records.some((record) => [...record.removedNodes].some((node) => downPath.has(node)));
+				};
+				const removals = new MutationObserver(note);
+				// The document's observer does not see into shadow roots: also each one the pressed element is in.
+				const roots = new Set<Node>([document]);
+				for (const node of downPath) roots.add(node.getRootNode());
+				for (const root of roots) removals.observe(root, { childList: true, subtree: true });
+				try {
+					const deadline = performance.now() + act.dragMs;
+					// A page that cancels pointerdown gets no mouse events but the boundary ones, and no HTML5 drag, as in
+					// Chrome.
+					const mouse = start.dispatchEvent(
+						new PointerEvent("pointerdown", { ...pointAt(x, y, 1), ...POINTER, bubbles: true, cancelable: true }),
+					);
+					const pressed =
+						mouse &&
+						start.dispatchEvent(
+							new MouseEvent("mousedown", { ...pointAt(x, y, 1), bubbles: true, cancelable: true }),
+						);
+					if (!mouse || pressed) focusAt(start);
+					// As Chrome: the press can start an HTML5 drag from a draggable element under it (links and images are).
+					let source: HTMLElement | null = null;
+					for (let at: Element | null = pressed ? start : null; at !== null && source === null; at = parentOf(at))
+						if (at instanceof HTMLElement && at.draggable) source = at;
+					// Chrome ignores writes to effectAllowed and dropEffect on a constructed DataTransfer, so a cancelled
+					// dragover is the only sign that the page takes the drop (design 6.47).
+					let html5: { data: DataTransfer; over: Element | null; accepted: boolean } | null = null;
+					const dragEvent = (
+						type: string,
+						target: Element,
+						point: { x: number; y: number },
+						cancelable: boolean,
+						related: Element | null = null,
+					) =>
+						target.dispatchEvent(
+							new DragEvent(type, {
+								...pointAt(point.x, point.y, 1),
+								bubbles: true,
+								cancelable,
+								dataTransfer: html5!.data,
+								relatedTarget: related,
+							}),
+						);
+					/** An HTML5 move: drag on the source; enter and leave only when the element under the point changes. */
+					const dragMove = (drag: NonNullable<typeof html5>, hit: Element, point: { x: number; y: number }) => {
+						dragEvent("drag", source!, point, true);
+						if (hit !== drag.over) {
+							dragEvent("dragenter", hit, point, true, drag.over);
+							if (drag.over !== null) dragEvent("dragleave", drag.over, point, false, hit);
+							drag.over = hit;
+						}
+						drag.accepted = !dragEvent("dragover", hit, point, true);
+					};
+					/** dragend on the source; the pointer stays over the element of the last move, as after a real drag. */
+					const dragEnd = (drag: NonNullable<typeof html5>) => {
+						dragEvent("dragend", source!, end, false);
+						keep(pathOf(drag.over ?? start));
+					};
+					let moves = 0;
+					/** Past the deadline, before the release: the drag ends with no release, drop, or click. */
+					const stop = (): Step => {
+						if (html5 === null)
+							(pointerPath()[0] ?? start).dispatchEvent(
+								new PointerEvent("pointercancel", { ...pointAt(end.x, end.y, 0), ...POINTER, bubbles: true }),
+							);
+						else {
+							if (html5.over !== null) dragEvent("dragleave", html5.over, end, false);
+							dragEnd(html5);
+						}
+						return { ...step, over: null, end: "stopped", moves };
+					};
+					while (moves < act.dragMoves) {
+						await pause();
+						if (performance.now() > deadline) return await finish(stop(), shown);
+						const point = {
+							x: x + ((end.x - x) * (moves + 1)) / act.dragMoves,
+							y: y + ((end.y - y) * (moves + 1)) / act.dragMoves,
+						};
+						const hit = hitAt(point.x, point.y) ?? document.documentElement;
+						moves += 1;
+						if (html5 !== null) {
+							dragMove(html5, hit, point);
+							continue;
+						}
+						moveTo(hit, point.x, point.y, 1, mouse);
+						if (source === null || moves > 1) continue;
+						const data = new DataTransfer();
+						const url =
+							source instanceof HTMLAnchorElement
+								? source.href
+								: source instanceof HTMLImageElement
+									? source.currentSrc
+									: "";
+						if (url !== "") {
+							data.setData("text/uri-list", url);
+							data.setData("text/plain", url);
+						}
+						html5 = { data, over: null, accepted: false };
+						if (!dragEvent("dragstart", source, point, true)) {
+							html5 = null;
+							source = null;
+							continue;
+						}
+						(pointerPath()[0] ?? hit).dispatchEvent(
+							new PointerEvent("pointercancel", { ...pointAt(point.x, point.y, 0), ...POINTER, bubbles: true }),
+						);
+					}
+					if (performance.now() > deadline) return await finish(stop(), shown);
+					// The release: what gets it is noted before, as a handler may change the page (design 6.47).
+					if (html5 !== null) {
+						const receiver = html5.over;
+						const over =
+							goal === null || receiver === null || within(receiver, goal)
+								? null
+								: describe(receiver, act.letter);
+						const dropped = receiver !== null && html5.accepted;
+						if (receiver !== null) dragEvent(dropped ? "drop" : "dragleave", receiver, end, dropped);
+						dragEnd(html5);
+						return await finish({ ...step, over, end: dropped ? "dropped" : "notAccepted", moves }, shown);
+					}
+					const up = hitAt(end.x, end.y) ?? document.documentElement;
+					const over = goal === null || within(up, goal) ? null : describe(up, act.letter);
+					up.dispatchEvent(
+						new PointerEvent("pointerup", {
+							...pointAt(end.x, end.y, 0),
+							...POINTER,
+							bubbles: true,
+							cancelable: true,
+						}),
+					);
+					if (mouse)
+						up.dispatchEvent(
+							new MouseEvent("mouseup", { ...pointAt(end.x, end.y, 0), bubbles: true, cancelable: true }),
+						);
+					note(removals.takeRecords());
+					// As Chrome: the click goes to the deepest element both the press and the release were in.
+					const target = moved ? undefined : pathOf(up).find((element) => downPath.has(element));
+					if (target !== undefined) noteLink(target);
+					target?.dispatchEvent(
+						new MouseEvent("click", { ...pointAt(end.x, end.y, 0), bubbles: true, cancelable: true, detail: 1 }),
+					);
+					return await finish({ ...step, over, end: "released", moves }, shown);
+				} finally {
+					removals.disconnect();
+				}
 			}
 		}
 	} catch (error) {

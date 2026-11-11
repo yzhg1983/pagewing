@@ -1898,6 +1898,27 @@
 	"stepReveal": {
 		"message": "Scrolled $1 into view"
 	},
+	"stepHover": {
+		"message": "Hovered over $1"
+	},
+	"stepDragTo": {
+		"message": "Dragged $1 to $2"
+	},
+	"stepDragToward": {
+		"message": "Dragged $1 toward $2"
+	},
+	"stepDragBy": {
+		"message": "Dragged $1 by $2, $3 px"
+	},
+	"stepReleasedOver": {
+		"message": "$1; released over $2"
+	},
+	"stepNotAccepted": {
+		"message": "$1; the page did not accept the drop"
+	},
+	"stepDragStopped": {
+		"message": "$1: stopped after $2 of $3 moves, the page was too slow; not released"
+	},
 	"stepSwitchTab": {
 		"message": "Switched to tab $1"
 	},

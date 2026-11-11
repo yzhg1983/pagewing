@@ -1898,6 +1898,27 @@
 	"stepReveal": {
 		"message": "已将 $1 滚动到可见位置"
 	},
+	"stepHover": {
+		"message": "已将指针移到 $1 上"
+	},
+	"stepDragTo": {
+		"message": "已将 $1 拖到 $2"
+	},
+	"stepDragToward": {
+		"message": "已将 $1 拖向 $2"
+	},
+	"stepDragBy": {
+		"message": "已将 $1 拖动 $2, $3 px"
+	},
+	"stepReleasedOver": {
+		"message": "$1；在 $2 上松开"
+	},
+	"stepNotAccepted": {
+		"message": "$1；页面没有接受放下"
+	},
+	"stepDragStopped": {
+		"message": "$1：移动 $2 次（共 $3 次）后停止，页面太慢；未松开"
+	},
 	"stepSwitchTab": {
 		"message": "已切换到标签页 $1"
 	},

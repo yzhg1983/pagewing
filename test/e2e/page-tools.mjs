@@ -246,6 +246,141 @@ video.src = URL.createObjectURL(new Blob([data], { type: "audio/wav" }));
 video.play();
 setTimeout(() => { document.getElementById("status").textContent = "Export complete"; }, 3000);
 </script>`;
+// Hover and drag (design 6.47): every pointer, mouse, and drag event on an element with an id goes to `window.log`
+// ("type@target>related"); what the page's own handlers did goes to `window.notes`.
+const POINTER_PAGE = `<!doctype html><title>Pointer page</title>
+<style>
+body { font: 14px sans-serif; margin: 0 }
+.at { position: absolute; width: 100px; height: 40px; box-sizing: border-box; border: 1px solid #888 }
+.zone { position: absolute; top: 320px; width: 150px; height: 120px; border: 2px dashed #888 }
+#sort { position: absolute; left: 10px; top: 110px; display: flex; gap: 20px }
+#sort .card { width: 100px; height: 40px; border: 1px solid #888 }
+</style>
+<button id="start" class="at" style="left: 10px; top: 10px">Start</button>
+<button id="menu" class="at" style="left: 120px; top: 10px"><span id="menu-label">Menu</span></button>
+<div id="menu-items" hidden style="position: absolute; left: 120px; top: 55px">Menu items</div>
+<button id="help" class="at" style="left: 240px; top: 10px"><span id="help-label">Help</span></button>
+<div id="help-items" hidden style="position: absolute; left: 240px; top: 55px">Help items</div>
+<div id="pair" style="position: absolute; left: 360px; top: 10px; width: 230px; height: 40px">
+<button id="one" class="at" style="left: 0; top: 0">One</button><button id="two" class="at" style="left: 120px; top: 0">Two</button>
+</div>
+<div id="sort"><div id="t1" class="card" role="button" aria-label="Task 1">Task 1</div><div id="t2" class="card" role="button" aria-label="Task 2">Task 2</div><div id="t3" class="card" role="button" aria-label="Task 3">Task 3</div></div>
+<div id="grip" class="at" draggable="true" role="button" aria-label="Grip" style="left: 400px; top: 110px">Grip</div>
+<div id="track" style="position: absolute; left: 10px; top: 185px; width: 320px; height: 10px; background: #ddd">
+<div id="thumb" role="slider" aria-label="Volume" aria-valuenow="0" tabindex="0" style="position: absolute; left: 0; top: -5px; width: 20px; height: 20px; background: #0a66c2"></div>
+</div>
+<input id="range" type="range" aria-label="Native" value="50" style="position: absolute; left: 400px; top: 180px; width: 200px">
+<div id="card" class="at" draggable="true" role="button" aria-label="Card" style="left: 10px; top: 250px">Card</div>
+<div id="card2" class="at" draggable="true" role="button" aria-label="Card two" style="left: 130px; top: 250px">Card two</div>
+<div id="card3" class="at" draggable="true" role="button" aria-label="Card three" style="left: 250px; top: 250px">Card three</div>
+<div id="card4" class="at" draggable="true" role="button" aria-label="Card four" style="left: 370px; top: 250px">Card four</div>
+<a id="link" href="/second" style="position: absolute; left: 490px; top: 260px">Link</a>
+<div id="done" class="zone" role="region" aria-label="Done" style="left: 10px">Done</div>
+<div id="nozone" class="zone" role="region" aria-label="Nope" style="left: 170px">Nope</div>
+<div id="linkzone" class="zone" role="region" aria-label="Links" style="left: 490px">Links</div>
+<div id="done2" class="zone" role="region" aria-label="Done two" style="left: 650px">Done two</div>
+<div id="trash" class="zone" role="region" aria-label="Trash" hidden style="left: 650px; background: #fdd; z-index: 1">Trash</div>
+<div id="under" class="zone" role="region" aria-label="Under" style="left: 810px">Under</div>
+<div id="lid" role="dialog" aria-label="Lid" style="position: absolute; left: 800px; top: 310px; width: 180px; height: 140px; background: #eee; z-index: 1">Lid</div>
+<div id="slowdrop" class="zone" role="region" aria-label="Slow drop" style="left: 1000px">Slow drop</div>
+<button id="slowmove" class="at" style="left: 10px; top: 470px">Slow move</button>
+<button id="slowup" class="at" style="left: 130px; top: 470px">Slow up</button>
+<div id="host" style="position: absolute; left: 250px; top: 470px"></div>
+<div id="shelf"></div>
+<div id="liftdown" class="at" role="button" aria-label="Lift down" style="left: 370px; top: 470px">Lift down</div>
+<div id="liftmove" class="at" role="button" aria-label="Lift move" style="left: 490px; top: 470px">Lift move</div>
+<div id="host2" style="position: absolute; left: 610px; top: 470px"></div>
+<script>
+window.log = [];
+window.notes = [];
+const $ = (id) => document.getElementById(id);
+const note = (event) => {
+	if (!(event.target instanceof Element) || event.target.id === "") return;
+	const related = event.relatedTarget instanceof Element && event.relatedTarget.id !== "" ? ">" + event.relatedTarget.id : "";
+	log.push(event.type + "@" + event.target.id + related);
+};
+for (const type of ["pointerover", "pointerdown", "pointermove", "pointerup", "pointercancel", "pointerout", "mouseover",
+	"mousedown", "mousemove", "mouseup", "mouseout", "click", "dragstart", "drag", "dragenter", "dragover", "dragleave",
+	"drop", "dragend"])
+	addEventListener(type, note, true);
+// Chrome sends enter and leave only to elements that listen for them.
+for (const element of document.querySelectorAll("[id]"))
+	for (const type of ["pointerenter", "pointerleave", "mouseenter", "mouseleave"]) element.addEventListener(type, note);
+const block = (ms) => { const until = Date.now() + ms; while (Date.now() < until); };
+for (const [id, items] of [["menu", "menu-items"], ["help", "help-items"]]) {
+	$(id).addEventListener("mouseenter", () => { $(items).hidden = false; notes.push(id + ":open"); });
+	$(id).addEventListener("mouseleave", () => { $(items).hidden = true; notes.push(id + ":close"); });
+}
+let sorting = null;
+for (const card of document.querySelectorAll(".card")) card.addEventListener("pointerdown", () => { sorting = card; });
+document.addEventListener("pointerup", (event) => {
+	const over = document.elementFromPoint(event.clientX, event.clientY)?.closest(".card");
+	if (sorting !== null && over && over !== sorting) over.after(sorting);
+	sorting = null;
+});
+$("grip").addEventListener("pointerdown", (event) => event.preventDefault());
+let slide = null;
+$("thumb").addEventListener("mousedown", (event) => { slide = { x: event.clientX, left: parseFloat($("thumb").style.left) }; });
+document.addEventListener("mousemove", (event) => {
+	if (slide === null) return;
+	$("thumb").style.left = Math.max(0, Math.min(300, slide.left + event.clientX - slide.x)) + "px";
+});
+document.addEventListener("mouseup", () => { slide = null; });
+for (const id of ["card", "card2", "card3", "card4"]) {
+	$(id).addEventListener("dragstart", (event) => {
+		event.dataTransfer.setData("text/plain", id);
+		event.dataTransfer.effectAllowed = "move";
+		if (id === "card2") $("trash").hidden = false;
+	});
+	$(id).addEventListener("dragend", (event) => notes.push("dragend:" + id + ":" + event.dataTransfer.dropEffect));
+}
+const zone = (id, effect, dropped) => {
+	$(id).addEventListener("dragover", (event) => {
+		if (effect === null) return;
+		event.preventDefault();
+		event.dataTransfer.dropEffect = effect;
+	});
+	$(id).addEventListener("drop", (event) => {
+		event.preventDefault();
+		notes.push("drop:" + id);
+		dropped?.(event);
+	});
+};
+const into = (id) => (event) => $(id).append($(event.dataTransfer.getData("text/plain")));
+zone("done", "move", into("done"));
+zone("nozone", null);
+zone("linkzone", null);
+$("linkzone").addEventListener("dragover", (event) => event.preventDefault());
+$("linkzone").addEventListener("drop", (event) => notes.push("uri:" + event.dataTransfer.getData("text/uri-list")));
+zone("done2", "move", into("done2"));
+zone("trash", "move", () => { notes.push("trashed"); $("trash").remove(); });
+zone("slowdrop", "move", (event) => { block(2500); into("slowdrop")(event); });
+let armed = false;
+$("slowmove").addEventListener("pointerdown", () => { armed = true; });
+document.addEventListener("pointermove", (event) => {
+	if (!armed || event.buttons !== 1) return;
+	armed = false;
+	block(2500);
+});
+$("slowup").addEventListener("pointerup", () => block(2500));
+$("host").attachShadow({ mode: "open" }).innerHTML = "<button style='width: 100px; height: 40px'>Shadow</button>";
+for (const type of ["pointerenter", "mouseenter"]) $("host").addEventListener(type, () => notes.push("host:" + type));
+// Both put the pressed element back elsewhere, still under the pointer: a real mouse then sends no click.
+$("liftdown").addEventListener("pointerdown", () => $("shelf").append($("liftdown")));
+// The same inside a shadow root: the button moves to the next container, which takes its place.
+const root2 = $("host2").attachShadow({ mode: "open" });
+root2.innerHTML = "<div id='a'><button style='width: 100px; height: 40px'>Lift shadow</button></div><div id='b'></div>";
+const lifted = root2.querySelector("button");
+lifted.addEventListener("pointerdown", () => root2.getElementById("b").append(lifted));
+for (const type of ["pointerup", "click"]) lifted.addEventListener(type, () => notes.push("shadow:" + type));
+let lifting = false;
+$("liftmove").addEventListener("pointerdown", () => { lifting = true; });
+document.addEventListener("pointermove", (event) => {
+	if (!lifting || event.buttons !== 1) return;
+	lifting = false;
+	$("shelf").append($("liftmove"));
+});
+</script>`;
 const pages = createHttp((req, res) => {
 	const path = req.url.split("?")[0];
 	if (path === "/csp") {
@@ -277,6 +412,7 @@ const pages = createHttp((req, res) => {
 	if (path === "/frame") return res.end(FRAME_PAGE);
 	if (path === "/figures") return res.end(FIGURES_PAGE);
 	if (path === "/media") return res.end(MEDIA_PAGE);
+	if (path === "/pointer") return res.end(POINTER_PAGE);
 	if (path === "/inner")
 		return res.end(
 			`<!doctype html><button id="open" onclick="window.open('${B}/second', '_blank')">Open a tab</button>`,
@@ -514,6 +650,259 @@ try {
 		got.at(-1),
 	);
 	for (const page of context.pages()) if (page.url() === `${B}/second`) await page.close();
+
+	// Hover and drag (design 6.47).
+	await web.goto(`${A}/pointer`);
+	await attach();
+	const notes = () => web.evaluate(() => window.notes.slice());
+	const events = () => web.evaluate(() => window.log.slice());
+	const clearLog = () => web.evaluate(() => (window.log.length = 0));
+	/** Observes the whole page, then calls act_on_page with `args` of the refs of the lines named `labels`. */
+	const onRefs = (labels, args) => [
+		call("observe_page", {}),
+		(seen) => {
+			const outline = parse(seen.at(-1).text).outline ?? "";
+			const refs = labels.map((label) => refOf(outline, label));
+			if (refs.includes(undefined)) throw new Error(`no refs for ${labels}: ${outline}`);
+			return call("act_on_page", args(refs));
+		},
+	];
+	const hover = (label) => onRefs([label], ([ref]) => ({ action: "hover", ref }));
+	const dragTo = (label, to) => onRefs([label, to], ([ref, target]) => ({ action: "drag", ref, to: target }));
+	const dragBy = (label, by) => onRefs([label], ([ref]) => ({ action: "drag", ref, by }));
+	const done = (results) => parse(results.at(-1)?.text).done ?? results.at(-1)?.text ?? "";
+	/** The center of the element with `id`, for Playwright's real mouse. */
+	const centerOf = async (id) => {
+		const box = await web.locator(`#${id}`).boundingBox();
+		return [box.x + box.width / 2, box.y + box.height / 2];
+	};
+
+	const start = await turn("Start", hover("Start"));
+	await clearLog();
+	got = await turn("Menu", hover("Menu"));
+	const menuEvents = await events();
+	check(
+		"hover over a button whose center is its span: mouseenter on the button, then the span; the menu opens",
+		/^Hovered over button "Menu" \(\w+\)$/.test(done(got)) &&
+			(await notes()).join() === "menu:open" &&
+			(await web.isVisible("#menu-items")) &&
+			menuEvents.indexOf("mouseenter@menu>start") < menuEvents.indexOf("mouseenter@menu-label>start") &&
+			menuEvents.indexOf("mouseenter@menu>start") > -1,
+		{ start: start.at(-1), got: got.at(-1), menuEvents },
+	);
+	got = await turn("Help", hover("Help"));
+	const piHover = await events();
+	check(
+		"hover over another element leaves the first: its menu closes, the new one opens",
+		(await notes()).join() === "menu:open,menu:close,help:open" && !(await web.isVisible("#menu-items")),
+		await notes(),
+	);
+	await turn("One", hover("One"));
+	await clearLog();
+	await turn("Two", hover("Two"));
+	const siblings = await events();
+	check(
+		"a move between two children of one parent sends the parent no enter or leave",
+		siblings.includes("mouseover@two>one") &&
+			!siblings.some((event) => /^(pointer|mouse)(enter|leave)@pair/.test(event)),
+		siblings,
+	);
+	await clearLog();
+	await turn("Two again", hover("Two"));
+	check(
+		"hovering the same element again sends only the moves",
+		(await events()).join() === "pointermove@two,mousemove@two",
+		await events(),
+	);
+
+	got = await turn("Sort", dragTo("Task 1", "Task 3"));
+	const piSort = await events();
+	check(
+		"a drag with pointer events reorders a list; the step names both elements",
+		/^Dragged button "Task 1" \(\w+\) to button "Task 3" \(\w+\)$/.test(done(got)) &&
+			(await web.evaluate(() => [...document.querySelectorAll(".card")].map((card) => card.id).join())) ===
+				"t2,t3,t1",
+		got.at(-1),
+	);
+	got = await turn("Grip", dragBy("Grip", { x: 30, y: 0 }));
+	const grip = (await events()).slice((await events()).indexOf("pointerdown@grip"));
+	check(
+		"a cancelled pointerdown on a draggable element: pointer events and click, no mouse events, no HTML5 drag",
+		grip.includes("pointerup@grip") &&
+			grip.includes("click@grip") &&
+			!grip.some((event) => /^(mousedown|mousemove|mouseup|dragstart)@/.test(event)),
+		grip,
+	);
+	got = await turn("Volume", dragBy("Volume", { x: 100, y: 0 }));
+	check(
+		"a drag by moves a slider made with mouse events",
+		(await web.evaluate(() => document.getElementById("thumb").style.left)) === "100px" &&
+			/^Dragged slider "Volume" \(\w+\) by 100, 0 px$/.test(done(got)),
+		got.at(-1),
+	);
+	await turn("Native", dragBy("Native", { x: 60, y: 0 }));
+	check("a native range input does not move (the documented limit)", (await web.inputValue("#range")) === "50");
+
+	await clearLog();
+	got = await turn("Under", dragTo("Card", "Under"));
+	check(
+		"a drag to a covered element is refused, naming what covers it; nothing is sent",
+		/^\w+ is covered by dialog "Lid"/.test(got.at(-1)?.text ?? "") && !(await events()).includes("pointerdown@card"),
+		got.at(-1),
+	);
+	got = await turn("Far", dragBy("Card", { x: 4000, y: 0 }));
+	check(
+		"a drag whose end is outside the window is refused; nothing is sent",
+		got.at(-1)?.text === "The end of the drag is outside the window" &&
+			!(await events()).includes("pointerdown@card"),
+		got.at(-1),
+	);
+	got = await turn("Done", dragTo("Card", "Done"));
+	const board = await events();
+	check(
+		"an HTML5 drag moves a card into a zone that accepts it; dropEffect reads none (Chrome ignores the writes)",
+		(await notes()).includes("drop:done") &&
+			(await notes()).includes("dragend:card:none") &&
+			(await web.evaluate(() => document.getElementById("card").parentElement.id)) === "done" &&
+			/^Dragged button "Card" \(\w+\) to region "Done" \(\w+\)$/.test(done(got)),
+		{ got: got.at(-1), notes: await notes() },
+	);
+	check(
+		"inside one zone: one dragenter, a dragover at every move; no mouseup or click after dragstart",
+		board.filter((event) => event.startsWith("dragenter@done")).length === 1 &&
+			board.filter((event) => event === "dragover@done").length >= 2 &&
+			!board.slice(board.indexOf("dragstart@card")).some((event) => /^(mouseup|click)@/.test(event)),
+		board,
+	);
+	await clearLog();
+	await turn("Card again", hover("Card"));
+	check(
+		"after an HTML5 drag the pointer is over the zone: a hover on the card dropped there enters it from the zone",
+		(await events()).includes("mouseenter@card>done") && !(await events()).includes("mouseleave@done>card"),
+		await events(),
+	);
+	got = await turn("Nope", dragTo("Card three", "Nope"));
+	check(
+		"a zone that does not cancel dragover gets no drop; the step says so",
+		!(await notes()).includes("drop:nozone") &&
+			(await notes()).includes("dragend:card3:none") &&
+			/; the page did not accept the drop$/.test(done(got)),
+		got.at(-1),
+	);
+	got = await turn("Link", dragTo("Link", "Links"));
+	check("a link dragged into a zone gives its URL as text/uri-list", (await notes()).includes(`uri:${A}/second`), {
+		got: got.at(-1),
+		notes: await notes(),
+	});
+	got = await turn("Done two", dragTo("Card two", "Done two"));
+	check(
+		"a zone shown over to at dragstart takes the drop: the step names it, also after its handler removed it",
+		/toward region "Done two" \(\w+\); released over region "Trash"/.test(done(got)) &&
+			(await notes()).includes("trashed"),
+		{ got: got.at(-1), notes: await notes() },
+	);
+	got = await turn("Slow drop", dragTo("Card four", "Slow drop"));
+	check(
+		"a slow accepting drop is kept, and the step says dropped",
+		(await web.evaluate(() => document.getElementById("card4").parentElement.id)) === "slowdrop" &&
+			(await notes()).includes("dragend:card4:none") &&
+			/^Dragged button "Card four" \(\w+\) to region "Slow drop" \(\w+\)$/.test(done(got)),
+		{ got: got.at(-1), notes: await notes() },
+	);
+	await clearLog();
+	got = await turn("Slow move", dragBy("Slow move", { x: 60, y: 0 }));
+	const slow = await events();
+	check(
+		"a held move that blocks past the deadline: pointercancel, no release or click; the step says stopped",
+		slow.some((event) => event.startsWith("pointercancel@")) &&
+			!slow.some((event) => /^(pointerup|mouseup|click)@/.test(event)) &&
+			/: stopped after 1 of 10 moves, the page was too slow; not released$/.test(done(got)),
+		{ got: got.at(-1), slow },
+	);
+	await clearLog();
+	got = await turn("Slow up", dragBy("Slow up", { x: 5, y: 0 }));
+	const slowUp = await events();
+	check(
+		"a slow pointerup still gets mouseup and click; the step says released",
+		slowUp.includes("mouseup@slowup") && slowUp.includes("click@slowup") && !/stopped/.test(done(got)),
+		{ got: got.at(-1), slowUp },
+	);
+
+	got = await turn("Shadow", hover("Shadow"));
+	const host = (await notes()).filter((entry) => entry.startsWith("host:"));
+	check(
+		"hover inside a shadow root: the host's own enter listeners run once each",
+		host.join() === "host:pointerenter,host:mouseenter",
+		{ got: got.at(-1), host },
+	);
+	for (const [label, id] of [
+		["Lift down", "liftdown"],
+		["Lift move", "liftmove"],
+	]) {
+		await clearLog();
+		got = await turn(label, dragBy(label, { x: 5, y: 0 }));
+		const lift = await events();
+		check(
+			`no click after the pressed element was put back elsewhere (${id})`,
+			lift.includes(`pointerup@${id}`) && !lift.includes(`click@${id}`) && !/stopped/.test(done(got)),
+			{ got: got.at(-1), lift },
+		);
+	}
+
+	got = await turn("Lift shadow", dragBy("Lift shadow", { x: 5, y: 0 }));
+	const shadowLift = (await notes()).filter((entry) => entry.startsWith("shadow:"));
+	check(
+		"no click after the pressed element was put back elsewhere inside its shadow root",
+		shadowLift.join() === "shadow:pointerup" && !/stopped/.test(done(got)),
+		{ got: got.at(-1), shadowLift },
+	);
+
+	// The same gestures with Playwright's mouse (real input) send the same events in the same order.
+	await web.reload();
+	await web.mouse.move(...(await centerOf("start")));
+	await clearLog();
+	await web.mouse.move(...(await centerOf("menu")));
+	await web.mouse.move(...(await centerOf("help")));
+	const realHover = await events();
+	check("hover sends the events a real mouse does", piHover.join() === realHover.join(), { piHover, realHover });
+	await web.mouse.move(...(await centerOf("t1")));
+	await web.mouse.down();
+	await web.mouse.move(...(await centerOf("t3")), { steps: 10 });
+	await web.mouse.up();
+	const fromDown = (list) => list.slice(list.indexOf("pointerdown@t1"));
+	const realSort = await events();
+	check(
+		"a pointer drag sends the events a real mouse does; no click after the pressed item moved",
+		fromDown(piSort).join() === fromDown(realSort).join(),
+		{
+			pi: fromDown(piSort),
+			real: fromDown(realSort),
+		},
+	);
+	const liftBox = await web.locator("#host2 button").boundingBox();
+	await web.mouse.move(liftBox.x + 50, liftBox.y + 20);
+	await web.mouse.down();
+	await web.mouse.move(liftBox.x + 55, liftBox.y + 20, { steps: 2 });
+	await web.mouse.up();
+	check(
+		"a real mouse sends no click either (inside a shadow root)",
+		(await notes()).filter((entry) => entry.startsWith("shadow:")).join() === "shadow:pointerup",
+		await notes(),
+	);
+	for (const id of ["liftdown", "liftmove"]) {
+		await clearLog();
+		const [x, y] = await centerOf(id);
+		await web.mouse.move(x, y);
+		await web.mouse.down();
+		await web.mouse.move(x + 5, y, { steps: 2 });
+		await web.mouse.up();
+		const lift = await events();
+		check(
+			`a real mouse sends no click either (${id})`,
+			lift.includes(`pointerup@${id}`) && !lift.includes(`click@${id}`),
+			lift,
+		);
+	}
 
 	// Images: a caption only as drawn, a name from a hidden label without its scripts or fields.
 	await web.goto(`${A}/figures`);

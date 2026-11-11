@@ -16,7 +16,7 @@ import {
 	type ToolExecutionApi,
 	ToolTask,
 } from "@earendil-works/pi-durable";
-import { bool, int, num, opt, str, union } from "@earendil-works/pi-schema";
+import { bool, int, num, obj, opt, str, union } from "@earendil-works/pi-schema";
 import { ENCODINGS, MAX_IMAGE_BYTES, MAX_IMAGE_CHARS, MAX_IMAGES } from "../shared/images.ts";
 import { cut, MAX_URL_CHARS, type PageRef, pageTitle, type ToolMode, type ToolModes } from "../shared/protocol.ts";
 import {
@@ -65,6 +65,8 @@ import {
 	type ActAction,
 	type ActRequest,
 	type AgentTarget,
+	DRAG_MOVES,
+	DRAG_MS,
 	type Located,
 	type ScrollDirection,
 	type ScrollResult,
@@ -337,8 +339,9 @@ function actDescription({ tools, callsPerAnswer }: PageToolSettings): string {
 			: "";
 	return `Acts on the attached page as a user would, with simulated events, then waits until the page is quiet (at \
 most 5 s). Give a summary of what the step is for, such as "Open the diff of foo.cc"; the user sees it. The element is \
-scrolled into view. The action is refused, and not sent, if the element is gone, hidden, or disabled; a click is also \
-refused if the element is covered or its center is another interactive element (the result names it and its ref); \
+scrolled into view. The action is refused, and not sent, if the element is gone, hidden, or disabled; a click, hover, \
+or drag is also refused if the element is covered or its center is another interactive element (the result names it \
+and its ref), and a drag if to is covered or does not fit in the window with ref; \
 typing is refused if the element is not editable or the focus goes elsewhere, and in fields marked as password, \
 payment card, or one-time-code fields.${ask} ${skipText(tools)} Result JSON: done (what was done), url, title, navigated, timedOut (pi could not tell \
 that the page became quiet), and tab when the action opened a new tab (a link with target _blank, window.open): the \
@@ -353,7 +356,11 @@ Accepted openings that Chrome brings forward while the attached tab was in front
 in the background when safe; they stay selected for the page tools, but a screenshot needs the user to bring them forward. \
 A tab ID is not an access grant. Simulated events reach \
 the page's own handlers, not the browser's: a key does not type text (use type), Enter does not submit a form (use \
-type with submit), Tab does not move the focus. Menus that open on CSS hover, file pickers, the clipboard, and sites \
+type with submit), Tab does not move the focus. hover moves the pointer onto ref; drag presses on ref, moves onto to \
+(a ref) or by {x, y} CSS pixels (as for a slider), and releases. They send pointer, mouse, and drag events for the \
+page's scripts, best effort: they do not set CSS :hover, move native controls (range inputs, selects, scrollbars, text \
+selection), or capture the pointer. After a drag, observe to see whether it took effect; do not repeat one that did \
+nothing. Menus that open on CSS hover, file pickers, the clipboard, and sites \
 that reject simulated input do not work. navigate only goes to URLs on the tab's current origin; a link or redirect can \
 still leave it, and the page tools follow the tab. ${navigationNote(tools)} ${BUSINESS} A call that was stopped, interrupted, or timed out, or whose page unloaded before it answered (as \
 after a click on a link; the result is then an error naming the new page), may still have happened: observe and check \
@@ -628,7 +635,18 @@ unrelated actions just to reduce approvals.`);
 	return lines.join(" ");
 }
 
-const ACTIONS = ["click", "type", "press", "scroll", "select_option", "navigate", "switch_tab", "close_tab"] as const;
+const ACTIONS = [
+	"click",
+	"type",
+	"press",
+	"scroll",
+	"select_option",
+	"hover",
+	"drag",
+	"navigate",
+	"switch_tab",
+	"close_tab",
+] as const;
 type Action = (typeof ACTIONS)[number];
 
 /**
@@ -940,7 +958,7 @@ export function pageExtension(deps: PageDeps, config: PageToolOffer): Extension 
 			ref: opt(
 				str({
 					maxLength: 20,
-					description: "Required for click, type, select_option; optional for press and scroll.",
+					description: "Required for click, type, select_option, hover, drag; optional for press and scroll.",
 				}),
 			),
 			text: opt(str({ maxLength: 10_000, description: "type: replaces the field's content." })),
@@ -952,6 +970,13 @@ export function pageExtension(deps: PageDeps, config: PageToolOffer): Extension 
 				}),
 			),
 			option: opt(str({ maxLength: 1_000, description: "select_option: the option's label or value." })),
+			to: opt(str({ maxLength: 20, description: "drag: the ref to drag ref onto." })),
+			by: opt(
+				obj(
+					{ x: int({ minimum: -4000, maximum: 4000 }), y: int({ minimum: -4000, maximum: 4000 }) },
+					{ description: "drag: the move in CSS pixels, as for a slider; instead of to." },
+				),
+			),
 			direction: opt(
 				union(
 					["up", "down", "top", "bottom"].map((direction) => strLit(direction)),
@@ -1179,6 +1204,12 @@ export function pageExtension(deps: PageDeps, config: PageToolOffer): Extension 
 						if (typeof found === "string") return refused(found);
 						target = found;
 					}
+					let to: AgentTarget | null = null;
+					if (args.to !== undefined) {
+						const found = targetOf(maps, args.to, top.documentId);
+						if (typeof found === "string") return refused(found);
+						to = found;
+					}
 					const request: ActRequest = {
 						op: "act",
 						action: action as ActAction,
@@ -1191,7 +1222,11 @@ export function pageExtension(deps: PageDeps, config: PageToolOffer): Extension 
 						key: args.key ?? null,
 						option: args.option ?? null,
 						direction: (args.direction as ActRequest["direction"] | undefined) ?? null,
+						to,
+						by: args.by ?? null,
 						summary,
+						dragMoves: DRAG_MOVES,
+						dragMs: DRAG_MS,
 						quietMs: QUIET_MS,
 						maxWaitMs: MAX_WAIT_MS,
 						outlineMs: OUTLINE_MS,
@@ -2204,7 +2239,17 @@ to start a new chat.`;
 /** Why `action` cannot run with these arguments, before anything is sent. */
 function missingArgument(
 	action: Action,
-	args: { ref?: string; text?: string; key?: string; option?: string; direction?: string; url?: string; tab?: number },
+	args: {
+		ref?: string;
+		text?: string;
+		key?: string;
+		option?: string;
+		direction?: string;
+		url?: string;
+		tab?: number;
+		to?: string;
+		by?: unknown;
+	},
 ): string | null {
 	switch (action) {
 		case "click":
@@ -2219,6 +2264,12 @@ function missingArgument(
 				: null;
 		case "select_option":
 			return args.ref === undefined || args.option === undefined ? "select_option needs a ref and an option." : null;
+		case "hover":
+			return args.ref === undefined ? "hover needs a ref." : null;
+		case "drag":
+			return args.ref === undefined || (args.to === undefined) === (args.by === undefined)
+				? "drag needs a ref, and either to or by."
+				: null;
 		case "navigate":
 			return args.url === undefined || args.url.trim() === "" ? 'navigate needs a url, or "reload".' : null;
 		case "switch_tab":

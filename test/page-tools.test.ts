@@ -3981,3 +3981,78 @@ it("Console and network Off: neither tool is offered nor named, and nothing is r
 	expect(recorded.registered).toEqual([]);
 	expect(recorded.listeners.size).toBe(0);
 });
+
+it("hover and drag need their arguments before anything is sent; to and by reach the page, and the step says what happened (design 6.47)", async () => {
+	const { tab, faux, tabs, calls, seen, step, call, answer, idle, actWith } = await setup();
+	const first = tabs.get(1)!;
+	const dragged: Step = {
+		kind: "drag",
+		target: 'listitem "Task 3" (a1)',
+		to: 'list "Done" (a2)',
+		by: null,
+		over: 'region "Trash"',
+		end: "dropped",
+		moves: 10,
+	};
+	actWith(async (request, page) => ({
+		ok: true,
+		step: request.action === "hover" ? { kind: "hover", target: 'button "Menu" (a1)' } : dragged,
+		url: page.url,
+		title: page.title,
+		timedOut: false,
+		userInput: false,
+	}));
+	faux.setResponses([
+		step(call(OBSERVE_PAGE)),
+		step(call(ACT_ON_PAGE, { action: "hover" })),
+		step(call(ACT_ON_PAGE, { action: "drag", ref: "a1" })),
+		step(call(ACT_ON_PAGE, { action: "drag", ref: "a1", to: "a2", by: { x: 1, y: 0 } })),
+		step(call(ACT_ON_PAGE, { action: "drag", ref: "a1", to: "z9" })),
+		step(call(ACT_ON_PAGE, { action: "hover", ref: "a1" })),
+		step(call(ACT_ON_PAGE, { action: "drag", ref: "a1", to: "a2" })),
+		step(call(ACT_ON_PAGE, { action: "drag", ref: "a1", by: { x: 40, y: 0 } })),
+		answer(),
+	]);
+	await tab.send(withPage("r1", "Move it", attach(1, first)));
+	await idle();
+	const acts = seen.filter((one) => one.name === ACT_ON_PAGE);
+	expect(acts.slice(0, 4).map((one) => one.text)).toEqual([
+		"hover needs a ref.",
+		"drag needs a ref, and either to or by.",
+		"drag needs a ref, and either to or by.",
+		"z9 is gone (the page changed): observe again",
+	]);
+	expect(acts.slice(4).map((one) => json(one).done)).toEqual([
+		'Hovered over button "Menu" (a1)',
+		'Dragged listitem "Task 3" (a1) toward list "Done" (a2); released over region "Trash"',
+		'Dragged listitem "Task 3" (a1) toward list "Done" (a2); released over region "Trash"',
+	]);
+	expect(
+		calls.act.map(({ action, target, to, by, dragMoves, dragMs }) => ({ action, target, to, by, dragMoves, dragMs })),
+	).toEqual([
+		{
+			action: "hover",
+			target: { letter: "a", mapId: first.mapId, number: 1 },
+			to: null,
+			by: null,
+			dragMoves: 10,
+			dragMs: 2000,
+		},
+		{
+			action: "drag",
+			target: { letter: "a", mapId: first.mapId, number: 1 },
+			to: { letter: "a", mapId: first.mapId, number: 2 },
+			by: null,
+			dragMoves: 10,
+			dragMs: 2000,
+		},
+		{
+			action: "drag",
+			target: { letter: "a", mapId: first.mapId, number: 1 },
+			to: null,
+			by: { x: 40, y: 0 },
+			dragMoves: 10,
+			dragMs: 2000,
+		},
+	]);
+});

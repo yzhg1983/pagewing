@@ -1,8 +1,8 @@
 // Local agents end to end (design 6.45), as a user sets them up: the switch turned on in Settings before the bridge is
 // there, which shows the command that adds Pagewing to pi; then an MCP client starts pagewing-mcp over stdio, which
 // registers the bridge itself, and its first call waits until Pagewing connects. open_tab puts a loopback page in the
-// session's tab group; read_page, observe_page, act_on_page (click, type, navigate), run_script, screenshot_page,
-// list_tabs, and close_tab work there; a tab outside the group is refused; Off in Tools refuses its tool; the switch
+// session's tab group; read_page, observe_page, act_on_page (click, type, navigate, and drag in a tab not in front,
+// design 6.47), run_script, screenshot_page, list_tabs, and close_tab work there; a tab outside the group is refused; Off in Tools refuses its tool; the switch
 // going off ends the session and leaves the tabs open, and a new client then hears how to connect. A page open_tab loads
 // is recorded from its start: its console (an error thrown while loading) and its requests (design 6.46). The user's home,
 // Chrome profile, and ~/.pagewing are never touched: Chrome and the bridge run with HOME in a temporary folder, and
@@ -93,9 +93,38 @@ document.getElementById("add").addEventListener("click", () => {
 });
 document.getElementById("name").addEventListener("input", (event) => seen.push("input:" + event.target.value));
 </script>`;
+// Drags in a tab that is not in front (design 6.47): the zone notes whether the page was hidden at the drop. The slow
+// card's press and the drops send beacons, which reach the server while the page is still busy.
+const DRAG_PAGE = `<!doctype html><title>Drag page</title>
+<style>div { position: absolute; width: 100px; height: 40px; border: 1px solid #888 }</style>
+<div id="card" draggable="true" role="button" aria-label="Card" style="left: 10px; top: 10px">Card</div>
+<div id="slow" draggable="true" role="button" aria-label="Slow card" style="left: 130px; top: 10px">Slow card</div>
+<div id="done" role="region" aria-label="Done" style="left: 10px; top: 120px; width: 250px; height: 120px">Done</div>
+<script>
+window.notes = [];
+const $ = (id) => document.getElementById(id);
+$("slow").addEventListener("pointerdown", () => {
+	navigator.sendBeacon("/beacon/down");
+	const until = Date.now() + 300;
+	while (Date.now() < until);
+});
+for (const id of ["card", "slow"]) $(id).addEventListener("dragstart", (event) => event.dataTransfer.setData("text/plain", id));
+$("done").addEventListener("dragover", (event) => event.preventDefault());
+$("done").addEventListener("drop", (event) => {
+	event.preventDefault();
+	notes.push("drop:" + event.dataTransfer.getData("text/plain") + ":" + (document.hidden ? "hidden" : "visible"));
+	navigator.sendBeacon("/beacon/drop:" + event.dataTransfer.getData("text/plain"));
+});
+</script>`;
+const beacons = [];
 const pages = createHttp((req, res) => {
 	res.setHeader("content-type", "text/html");
+	if (req.url.startsWith("/beacon/")) {
+		beacons.push(req.url.slice("/beacon/".length));
+		return res.end();
+	}
 	if (req.url === "/form") return res.end(FORM_PAGE);
+	if (req.url === "/drag") return res.end(DRAG_PAGE);
 	if (req.url === "/broken")
 		return res.end(`<!doctype html><title>Broken page</title><p>Broken.</p>
 <script>fetch("/api/save?token=secret", { method: "POST" }); throw new TypeError("thrown while loading");</script>`);
@@ -391,6 +420,68 @@ try {
 		!closed.error && (await agent.call("list_tabs")).text.tabs.length === 1,
 		closed,
 	);
+
+	// A drag in a group tab that is not in front, also one switched away from while its page is busy. Headless Chrome
+	// keeps such a page visible (also in a minimized window), so the hidden-page pacing of design 6.47 is not tested
+	// here; the zone notes what the page was.
+	// The page's own event: Playwright may still give the tab's first URL, about:blank.
+	const opening = context.waitForEvent("page");
+	const dragTab = (await agent.call("open_tab", { url: `${A}/drag` })).text.tab;
+	const dragPage = await opening;
+	const front = (tabId) => worker.evaluate((tabId) => chrome.tabs.update(tabId, { active: true }), tabId);
+	const dropped = () =>
+		dragPage.evaluate(() => window.notes.map((note) => note.replace(/:(hidden|visible)$/, "")).join());
+	await front(tab);
+	const dragOutline = (await agent.call("observe_page", { tab: dragTab })).text.outline;
+	const dragged = await agent.call("act_on_page", {
+		tab: dragTab,
+		action: "drag",
+		ref: refIn(dragOutline, "Card"),
+		to: refIn(dragOutline, "Done"),
+	});
+	check(
+		"a drag in a group tab that is not in front ends with its drop",
+		!dragged.error &&
+			/^Dragged button "Card" \(\w+\) to region "Done" \(\w+\)$/.test(dragged.text.done) &&
+			(await dropped()) === "drop:card",
+		{ dragged, notes: await dragPage.evaluate(() => window.notes) },
+	);
+	// The slow card's pointerdown blocks 300 ms; once its beacon says it started, another tab comes to the front.
+	await front(dragTab);
+	beacons.length = 0;
+	const slowCall = agent.call("act_on_page", {
+		tab: dragTab,
+		action: "drag",
+		ref: refIn(dragOutline, "Slow card"),
+		to: refIn(dragOutline, "Done"),
+	});
+	await poll(() => beacons.includes("down"), "the slow card's press");
+	await front(tab);
+	beacons.push("switched");
+	const slowDrag = await slowCall;
+	check(
+		"a drag whose tab leaves the front while its press is busy still ends with its drop",
+		!slowDrag.error &&
+			!/stopped/.test(slowDrag.text.done) &&
+			(await dropped()) === "drop:card,drop:slow" &&
+			beacons.join() === "down,switched,drop:slow",
+		{ slowDrag, beacons, notes: await dragPage.evaluate(() => window.notes) },
+	);
+	const card = refIn(dragOutline, "Card");
+	const toAndBy = await agent.call("act_on_page", {
+		tab: dragTab,
+		action: "drag",
+		ref: card,
+		to: card,
+		by: { x: 1, y: 0 },
+	});
+	const fraction = await agent.call("act_on_page", { tab: dragTab, action: "drag", ref: card, by: { x: 1.5, y: 0 } });
+	check(
+		"drag refuses to with by, and a by that is not whole pixels",
+		toAndBy.error && /either to or by/.test(toAndBy.raw) && fraction.error && /by needs integers/.test(fraction.raw),
+		{ toAndBy, fraction },
+	);
+	await agent.call("close_tab", { tab: dragTab });
 
 	// A page open_tab loads is recorded from its start.
 	const broken = await agent.call("open_tab", { url: `${A}/broken` });

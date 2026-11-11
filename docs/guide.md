@@ -15,7 +15,7 @@ answers there, until a new chat or Chrome closes. A script card shows the code, 
 | --- | --- | --- | --- |
 | Read page | Reads the page's text, or only the selected part, and can wait for it to change (a video to reach a time, a text to show or go). | On | Yes |
 | Observe page | Lists the links, buttons, fields, and headings, so pi can act on them. | On | Yes |
-| Act on page | Clicks, types, presses keys, scrolls, picks options, and moves through the site and its tabs. | Ask | No |
+| Act on page | Clicks, types, presses keys, scrolls, picks options, hovers, drags, and moves through the site and its tabs. | Ask | No |
 | Run script | Runs JavaScript that pi writes, to pull data out of a page or compute over it. | Ask | No |
 | Screenshot page | Captures the tab, or one part of it. | On | Yes |
 | Console and network | Reads the tab's console messages and errors, and the address, method, and status of its requests. | On | Yes |
@@ -62,7 +62,8 @@ is in [Page tools: what the model sees](page-tools.md).
 - **Long tasks cost more.** What each step reads goes to the model. The line above the message box shows the cost as it
   grows.
 - **Some sites resist.** A site that checks for real input ignores simulated clicks and keys, and pi cannot use file
-  pickers or the clipboard. The steps show what happened.
+  pickers or the clipboard. Hover and drag reach the page's scripts, not the browser: a menu that opens only by CSS
+  hover stays closed, and a native slider (`<input type="range">`) does not move. The steps show what happened.
 
 ## When Chrome stops pi
 

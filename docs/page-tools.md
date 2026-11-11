@@ -123,13 +123,17 @@ call screenshot_page with its ref." is left out.
 
 ```ts
 act_on_page({
-  action:     "click" | "type" | "press" | "scroll" | "select_option" | "navigate" | "switch_tab" | "close_tab",
-  ref?:       string,   // at most 20 characters; required for click, type, select_option; optional for press, scroll
+  action:     "click" | "type" | "press" | "scroll" | "select_option" | "hover" | "drag" | "navigate" | "switch_tab"
+              | "close_tab",
+  ref?:       string,   // at most 20 characters; required for click, type, select_option, hover, drag; optional for
+                        // press, scroll
   text?:      string,   // type: at most 10000 characters; replaces the field's content
   submit?:    boolean,  // type: submit the field's form afterwards
   key?:       string,   // press, at most 40 characters: "Enter", "Escape", "ArrowDown", "Shift+I", "Control+Enter"
   option?:    string,   // select_option, at most 1000 characters: the option's label or value
   direction?: "up" | "down" | "top" | "bottom",  // scroll: the page, or with ref as a mouse wheel over it
+  to?:        string,   // drag, at most 20 characters: the ref to drag ref onto
+  by?:        { x: integer, y: integer },  // drag, each -4000 to 4000: the move in CSS pixels; instead of to
   url?:       string,   // navigate, at most 2048 characters: a URL on the tab's current origin, or "reload"
   tab?:      integer >= 1,  // a stable Chrome tab ID from list_tabs; default the answer-selected or attached tab
   summary?:   string,   // at most 100 characters: what this step is for, shown to the user
@@ -138,8 +142,9 @@ act_on_page({
 
 Acts on the attached page as a user would, with simulated events, then waits until the page is quiet (at most 5 s). Give
 a summary of what the step is for, such as "Open the diff of foo.cc"; the user sees it. The element is scrolled into
-view. The action is refused, and not sent, if the element is gone, hidden, or disabled; a click is also refused if the
-element is covered or its center is another interactive element (the result names it and its ref); typing is refused if
+view. The action is refused, and not sent, if the element is gone, hidden, or disabled; a click, hover, or drag is also
+refused if the element is covered or its center is another interactive element (the result names it and its ref), and a
+drag if to is covered or does not fit in the window with ref; typing is refused if
 the element is not editable or the focus goes elsewhere, and in fields marked as password, payment card, or
 one-time-code fields. The user may be asked to allow acting on this origin in this answer; if they deny, do not try
 again in this answer. If a call of a reply fails, its later act_on_page and run_script calls are skipped: observe and
@@ -155,7 +160,10 @@ as an outcome, rather than opening it merely as a step toward the answer. Accept
 while the attached tab was in front are put in the background when safe; they stay selected for the page tools, but a
 screenshot needs the user to bring them forward. A tab ID is not an access grant. Simulated events reach the page's own
 handlers, not the browser's: a key does not type text (use type), Enter does not submit a form (use type with submit),
-Tab does not move the focus. Menus that open on CSS hover, file pickers, the clipboard, and sites that reject simulated
+Tab does not move the focus. hover moves the pointer onto ref; drag presses on ref, moves onto to (a ref) or by {x, y}
+CSS pixels (as for a slider), and releases. They send pointer, mouse, and drag events for the page's scripts, best
+effort: they do not set CSS :hover, move native controls (range inputs, selects, scrollbars, text selection), or capture
+the pointer. After a drag, observe to see whether it took effect; do not repeat one that did nothing. Menus that open on CSS hover, file pickers, the clipboard, and sites that reject simulated
 input do not work. navigate only goes to URLs on the tab's current origin; a link or redirect can still leave it, and
 the page tools follow the tab. For questions that only read, answer from the current page first, get more with a
 read-only request from run_script, and navigate only when the user asked to go somewhere or the information needs
@@ -171,6 +179,30 @@ In On, the sentence on allowing acting is left out. With observe_page Off, "obse
 the page and decide again". With run_script Off, the skip sentence names only act_on_page, and the read-only sentence
 is "For questions that only read, answer from the current page first, and navigate only when the user asked to go
 somewhere or the information is on another page or behind a control."
+
+Hover and drag (design 6.47) dispatch events as Chrome does for a real mouse, all with `isTrusted: false`:
+
+- The pointer's place is kept per document. A move to another element sends out and leave events to the elements it
+  leaves and over and enter events to those it enters (below their deepest shared element), the pointer's before the
+  mouse's, then `pointermove` and `mousemove`. A move over the same element sends only the moves.
+- A drag sends `pointerdown` and `mousedown`, 10 moves along the line, one per animation frame, then `pointerup`,
+  `mouseup`, and `click` on the deepest element the press and the release were both in; no `click` if the pressed
+  element was removed or moved after the press (a sortable list), as in Chrome. A page that cancels `pointerdown` gets
+  no `mousedown`, `mousemove`, or `mouseup`.
+- If the press is on a draggable element (links and images are), the first move sends `dragstart` with a new
+  `DataTransfer` (a link's or image's URL as `text/uri-list` and `text/plain`). Unless the page cancels it, the drag
+  goes on as HTML5: `drag`, `dragenter` and `dragleave` when the element under the pointer changes, `dragover` at
+  every move. It drops when the last `dragover` was cancelled, then sends `dragend`. Chrome ignores writes to
+  `effectAllowed` and `dropEffect` on a `DataTransfer` made by a script, so both read `none` throughout: a page that
+  finishes a move only when `dragend.dropEffect` is `move` does not finish it, and a zone that refuses by its effect
+  still gets the drop. `text/html` and the drag image are not made.
+- Chrome sends enter and leave events only to elements that listen for them (directly, or by a capturing listener on
+  an ancestor element or the document); pi sends them to every element on the way, which only a capturing listener on
+  `window` can tell.
+- In a hidden tab, which gets no animation frames, the moves go one task apart. The moves may take 2 s from the press:
+  after that the drag ends without a release (`pointercancel`, or `dragend` with `none`) and the step says so. Once the
+  release is sent, the drag finishes however long the page's handlers take.
+- The step names what got the release when it is not `to`: "Dragged … toward list "Done" (a15); released over …".
 
 The card in Ask is under "The cards and the chat" below.
 

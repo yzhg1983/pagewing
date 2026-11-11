@@ -567,6 +567,51 @@ it("says each step in the interface language, and keeps what the model read afte
 	}
 });
 
+it("says hover and drag steps in English for the model and in the interface language (design 6.47)", () => {
+	vi.stubGlobal("chrome", {
+		i18n: {
+			getMessage: (key: string, values: string[] = []) =>
+				((chinese as Record<string, { message: string }>)[key]?.message ?? "").replace(
+					/\$(\d)/g,
+					(_, n: string) => values[Number(n) - 1] ?? "",
+				),
+		},
+	});
+	try {
+		const drag = { kind: "drag", target: 'listitem "Task 3" (a1)', to: 'list "Done" (a2)', by: null, over: null };
+		const steps: Step[] = [
+			{ kind: "hover", target: 'button "Menu" (a1)' },
+			{ ...drag, end: "dropped", moves: 10 } as Step,
+			{ ...drag, over: 'region "Trash"', end: "notAccepted", moves: 10 } as Step,
+			{ ...drag, end: "stopped", moves: 4 } as Step,
+			{ ...drag, target: 'slider "Volume" (a3)', to: null, by: { x: 40, y: 0 }, end: "released", moves: 10 } as Step,
+		];
+		expect(steps.map(stepText)).toEqual([
+			'Hovered over button "Menu" (a1)',
+			'Dragged listitem "Task 3" (a1) to list "Done" (a2)',
+			'Dragged listitem "Task 3" (a1) toward list "Done" (a2); released over region "Trash"; the page did not accept the drop',
+			'Dragged listitem "Task 3" (a1) toward list "Done" (a2): stopped after 4 of 10 moves, the page was too slow; not released',
+			'Dragged slider "Volume" (a3) by 40, 0 px',
+		]);
+		const chat = projectChat(
+			view(
+				steps.map((step, index) =>
+					toolResult(index + 1, false, "{}", { summary: "Go", done: stepText(step), step }, "act_on_page"),
+				),
+			),
+		);
+		expect(chat.entries.map((entry) => entry.detail)).toEqual([
+			'已将指针移到 button "Menu" (a1) 上',
+			'已将 listitem "Task 3" (a1) 拖到 list "Done" (a2)',
+			'已将 listitem "Task 3" (a1) 拖向 list "Done" (a2)；在 region "Trash" 上松开；页面没有接受放下',
+			'已将 listitem "Task 3" (a1) 拖向 list "Done" (a2)：移动 4 次（共 10 次）后停止，页面太慢；未松开',
+			'已将 slider "Volume" (a3) 拖动 40, 0 px',
+		]);
+	} finally {
+		vi.unstubAllGlobals();
+	}
+});
+
 it("shows a page prompt as its name, with its page (design 6.18)", () => {
 	const filled = "Explain this text from the page:\n\n(the attached page)";
 	const data = { text: filled, page, prompt: "Explain" };

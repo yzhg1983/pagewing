@@ -27,7 +27,7 @@ import {
 	scopedPageAccess,
 	type TopDocument,
 } from "./page.ts";
-import { type ActAction, type ActRequest, type AgentTarget, stepText } from "./page-agent.ts";
+import { type ActAction, type ActRequest, type AgentTarget, DRAG_MOVES, DRAG_MS, stepText } from "./page-agent.ts";
 import { letterOf, type RefMaps, targetOf } from "./page-tools.ts";
 import { type ConsoleQuery, consoleResult, type NetworkQuery, networkResult } from "./recording.ts";
 import { CAPTURE_GAP_MS, RETRY_GAP_MS } from "./screenshot.ts";
@@ -518,6 +518,12 @@ export class LocalAgents {
 			if (typeof found === "string") return text(found, true);
 			target = found;
 		}
+		let to: AgentTarget | null = null;
+		if (typeof args.to === "string") {
+			const found = targetOf(session.maps, args.to, top.documentId);
+			if (typeof found === "string") return text(found, true);
+			to = found;
+		}
 		const request: ActRequest = {
 			op: "act",
 			action: action as ActAction,
@@ -532,7 +538,11 @@ export class LocalAgents {
 			direction: ["up", "down", "top", "bottom"].includes(args.direction as string)
 				? (args.direction as ActRequest["direction"])
 				: null,
+			to,
+			by: moveOf(args.by),
 			summary: null,
+			dragMoves: DRAG_MOVES,
+			dragMs: DRAG_MS,
 			quietMs: 300,
 			maxWaitMs: 5_000,
 			outlineMs: 800,
@@ -787,7 +797,15 @@ function recordsQuery(args: Args): { limit?: number; since?: string } {
 	};
 }
 
-const ACTIONS = ["click", "type", "press", "scroll", "select_option", "navigate"];
+const ACTIONS = ["click", "type", "press", "scroll", "select_option", "hover", "drag", "navigate"];
+
+/** drag's `by` from wire input: integers x and y within 4000 px, or null. */
+function moveOf(value: unknown): { x: number; y: number } | null {
+	if (typeof value !== "object" || value === null) return null;
+	const { x, y } = value as Record<string, unknown>;
+	const fits = (n: unknown): n is number => Number.isInteger(n) && Math.abs(n as number) <= 4000;
+	return fits(x) && fits(y) ? { x, y } : null;
+}
 
 /** Why act_on_page's `action` cannot run with `args`, or null. */
 function missingArgument(action: unknown, args: Args): string | null {
@@ -804,6 +822,17 @@ function missingArgument(action: unknown, args: Args): string | null {
 			return need("key", "press");
 		case "scroll":
 			return typeof args.direction === "string" ? null : "scroll needs direction.";
+		case "hover":
+			return need("ref", "hover");
+		case "drag":
+			return (
+				need("ref", "drag") ??
+				((typeof args.to === "string") === (args.by !== undefined)
+					? "drag needs either to or by."
+					: args.by !== undefined && moveOf(args.by) === null
+						? "by needs integers x and y from -4000 to 4000."
+						: null)
+			);
 		default:
 			return need("url", "navigate");
 	}

@@ -28,7 +28,7 @@ import {
 	type SelectionEntryData,
 	type Usage,
 } from "../shared/protocol.ts";
-import { type Step, stepText } from "./page-agent.ts";
+import { DRAG_MOVES, type Step, stepText } from "./page-agent.ts";
 import { localReason, toolLabel } from "./reasons.ts";
 
 /** A page tool's summary from the model, on one line; null when empty. */
@@ -765,7 +765,18 @@ export function inputData(kind: string, data: JsonValue | undefined): SelectionD
 		: undefined;
 }
 
-const STEP_KINDS = new Set(["click", "type", "press", "choose", "scroll", "reveal", "switchTab", "closeTab"]);
+const STEP_KINDS = new Set([
+	"click",
+	"type",
+	"press",
+	"choose",
+	"scroll",
+	"reveal",
+	"hover",
+	"drag",
+	"switchTab",
+	"closeTab",
+]);
 
 /** A stored step (design 6.23), if it has a known kind; page-tools.ts writes the rest of its shape. */
 function stepOf(step: unknown): Step | null {
@@ -800,6 +811,20 @@ function localStep(step: Step): string {
 		}
 		case "reveal":
 			return t("stepReveal", [step.target]);
+		case "hover":
+			return t("stepHover", [step.target]);
+		case "drag": {
+			const line =
+				step.by !== null
+					? t("stepDragBy", [step.target, step.by.x, step.by.y])
+					: t(step.end !== "stopped" && step.over === null ? "stepDragTo" : "stepDragToward", [
+							step.target,
+							step.to!,
+						]);
+			if (step.end === "stopped") return t("stepDragStopped", [line, step.moves, DRAG_MOVES]);
+			const over = step.over === null ? line : t("stepReleasedOver", [line, step.over]);
+			return step.end === "notAccepted" ? t("stepNotAccepted", [over]) : over;
+		}
 		case "switchTab":
 			return t("stepSwitchTab", [step.tab]);
 		case "closeTab": {
