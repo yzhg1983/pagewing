@@ -64,7 +64,10 @@ on its own.
 - **A diagnostics log** of the extension's own events and errors, without keys, shown on its Diagnostics page.
 - **Console messages and network requests** of the tabs in use, in memory only: the requests in the extension's
   background worker, until the tab closes or leaves its group, Console and network is turned off, or the worker stops;
-  the console messages in the page itself, until the page unloads.
+  the console messages in the page itself, until the page unloads. While a site is in use, any page of that site that
+  loads, also in a tab outside the group, keeps its last 300 console messages the same way: Pagewing reads them only
+  if that tab comes into use, and then starts from an empty list. Turning Console and network off, or ending the use,
+  stops this for pages that load later; a page already loaded keeps its messages until it unloads.
 
 None of this leaves your computer, except as part of a request to your AI provider described above.
 
