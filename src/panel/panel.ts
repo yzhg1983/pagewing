@@ -201,6 +201,8 @@ const ui = {
 	agentsCommand: element("agents-command"),
 	copyAgentsCommand: element<HTMLButtonElement>("copy-agents-command"),
 	agentsStatus: element("agents-status"),
+	agentsNetworkRow: element("agents-network-row"),
+	allowAgentsNetwork: element<HTMLButtonElement>("allow-agents-network"),
 	sitesResult: element("sites-result"),
 	sitesProviders: element("sites-providers"),
 	sitesHeld: element("sites-held"),
@@ -488,7 +490,9 @@ function announceChanges(previous: PanelState, next: PanelState): void {
 		announce(
 			asked.kind === "site"
 				? t("announceNeedsSite", [asked.origin === null ? t("movedSite") : originName(asked.origin)])
-				: t(asked.kind === "script" ? "announceScript" : "announceAct", [asked.origin]),
+				: asked.kind === "network"
+					? t("announceNetwork")
+					: t(asked.kind === "script" ? "announceScript" : "announceAct", [asked.origin]),
 		);
 }
 
@@ -2081,11 +2085,11 @@ function askNode(card: AskCard): HTMLElement {
 		for (const button of buttons) button.disabled = false;
 		showResult(result, message, false);
 	};
-	/** `request`: the Chrome access a site card's button asks for first (design 6.28). */
-	const answer = (reply: AskReply, request: string | null = null) => {
+	/** `request`: the Chrome permission a site or network card's button asks for first (design 6.28, 6.46). */
+	const answer = (reply: AskReply, request: chrome.permissions.Permissions | null = null) => {
 		for (const button of buttons) button.disabled = true;
 		// Inside the click: Chrome asks only during a user gesture.
-		const granted = request === null ? Promise.resolve(true) : chrome.permissions.request({ origins: [request] });
+		const granted = request === null ? Promise.resolve(true) : chrome.permissions.request(request);
 		granted.then(
 			(yes) =>
 				yes
@@ -2097,7 +2101,12 @@ function askNode(card: AskCard): HTMLElement {
 			(error: Error) => fail(error.message),
 		);
 	};
-	const button = (label: string, reply: AskReply, primary = false, request: string | null = null) => {
+	const button = (
+		label: string,
+		reply: AskReply,
+		primary = false,
+		request: chrome.permissions.Permissions | null = null,
+	) => {
 		const made = node("button", primary ? "primary small-button" : "small-button", label);
 		made.addEventListener("click", () => answer(reply, request));
 		buttons.push(made);
@@ -2130,12 +2139,16 @@ function askNode(card: AskCard): HTMLElement {
 		button(t("actForChat"), "chat").title = t("actForChatTip", [hostOf(card.origin)]);
 		button(t("deny"), "deny");
 		question = [node("p", "", t("actQuestion", [card.origin]), node("span", "", t("actWarning")))];
+	} else if (card.kind === "network") {
+		button(t("allow"), "allow", true, { permissions: ["webRequest"] });
+		button(t("cancel"), "deny");
+		question = [node("p", "", t("networkQuestion"), node("span", "", t("networkNote")))];
 	} else {
 		// One of Chrome's grants; Settings > Advanced > Sites lists and removes it.
 		const pattern = card.origin === null ? null : sitePattern(card.origin);
 		const name = pattern === null ? null : siteName(pattern);
-		button(t("onAllSites"), "allow", true, "<all_urls>");
-		if (pattern !== null) button(t("onSite", [name ?? ""]), "allow", false, pattern);
+		button(t("onAllSites"), "allow", true, { origins: ["<all_urls>"] });
+		if (pattern !== null) button(t("onSite", [name ?? ""]), "allow", false, { origins: [pattern] });
 		button(t("cancel"), "deny");
 		question = [
 			node(
@@ -3518,6 +3531,7 @@ function syncSettings(settings: Settings): void {
 	for (const radio of toolRadios) radio.checked = radio.value === settings.tools[toolOf(radio)];
 	if (document.activeElement !== ui.callsPerAnswer) ui.callsPerAnswer.value = String(settings.callsPerAnswer);
 	for (const radio of agentRadios) radio.checked = (radio.value === "on") === settings.localAgents;
+	syncAgentsNetwork();
 	syncUserScripts();
 	renderPrompts(settings);
 }
@@ -3570,7 +3584,10 @@ for (const radio of toolRadios) {
 		const mode = radio.value;
 		if ((tool === "act" || tool === "script") && (mode === "off" || mode === "ask" || mode === "on"))
 			saveSettings({ tools: { [tool]: mode } }, ui.toolsSaved);
-		else if ((tool === "read" || tool === "observe" || tool === "screenshot") && (mode === "off" || mode === "on"))
+		else if (
+			(tool === "read" || tool === "observe" || tool === "screenshot" || tool === "diagnostics") &&
+			(mode === "off" || mode === "on")
+		)
 			saveSettings({ tools: { [tool]: mode } }, ui.toolsSaved);
 		if (tool === "script") syncUserScripts();
 	});
@@ -4091,11 +4108,14 @@ for (const radio of agentRadios) {
 			void chrome.permissions.remove({ permissions: ["nativeMessaging"] }).catch(() => {});
 			return;
 		}
-		// Inside the click: Chrome asks only during a user gesture.
-		chrome.permissions.request({ permissions: ["nativeMessaging"], origins: ["<all_urls>"] }).then(
+		// Inside the click: Chrome asks only during a user gesture. webRequest is for the agents' read_network_requests
+		// (design 6.46).
+		chrome.permissions.request({ permissions: ["nativeMessaging", "webRequest"], origins: ["<all_urls>"] }).then(
 			(granted) => {
-				if (granted) saveSettings({ localAgents: true }, ui.agentsResult);
-				else {
+				if (granted) {
+					saveSettings({ localAgents: true }, ui.agentsResult);
+					syncAgentsNetwork();
+				} else {
 					showResult(ui.agentsResult, t("chromeDenied"), false);
 					if (state !== undefined) syncSettings(state.settings);
 				}
@@ -4107,6 +4127,32 @@ for (const radio of agentRadios) {
 		);
 	});
 }
+
+/**
+ * Local agents turned on before webRequest was asked with the switch (0.4.3): an Allow gives their
+ * read_network_requests Chrome's permission, while Console and network is on (design 6.46).
+ */
+function syncAgentsNetwork(): void {
+	const wanted = state?.settings.localAgents === true && state.settings.tools.diagnostics === "on";
+	if (!wanted) {
+		ui.agentsNetworkRow.hidden = true;
+		return;
+	}
+	void chrome.permissions.contains({ permissions: ["webRequest"] }).then((granted) => {
+		ui.agentsNetworkRow.hidden = granted;
+	});
+}
+window.addEventListener("focus", syncAgentsNetwork);
+ui.allowAgentsNetwork.addEventListener("click", () => {
+	// Inside the click: Chrome asks only during a user gesture.
+	chrome.permissions.request({ permissions: ["webRequest"] }).then(
+		(granted) => {
+			if (!granted) showResult(ui.agentsResult, t("chromeDenied"), false);
+			syncAgentsNetwork();
+		},
+		(error: Error) => showResult(ui.agentsResult, error.message, false),
+	);
+});
 
 ui.copyAgentsCommand.append(icon("copy"));
 copyButton(ui.copyAgentsCommand, () => ui.agentsCommand.textContent ?? "", t("copyCommand"));

@@ -59,6 +59,7 @@ it.each([
 	"script",
 	"locate",
 	"scroll",
+	"shown",
 	"tabState",
 	"capture",
 	"close",
@@ -107,7 +108,11 @@ it.each([
 					key: "Enter",
 					option: null,
 					direction: null,
+					to: null,
+					by: null,
 					summary: null,
+					dragMoves: 10,
+					dragMs: 2000,
 					quietMs: 0,
 					maxWaitMs: 1,
 					outlineMs: 0,
@@ -123,6 +128,8 @@ it.each([
 				return a.locate(99, "d", { op: "locate", target: { letter: "a", mapId: "m", number: 1 } });
 			case "scroll":
 				return a.scroll(99, "d", { op: "scroll", target: null, direction: "down" });
+			case "shown":
+				return a.shown(99);
 			case "tabState":
 				return a.tabState(99);
 			case "capture":
@@ -184,7 +191,7 @@ it.each([READ_PAGE, OBSERVE_PAGE, ACT_ON_PAGE, RUN_SCRIPT, SCREENSHOT_PAGE])(
 		const rejected = expect(running).rejects.toThrow(/turned off/);
 		s.config.current = {
 			...ALL_ON,
-			tools: { read: "off", observe: "off", act: "off", script: "off", screenshot: "off" },
+			tools: { read: "off", observe: "off", act: "off", script: "off", screenshot: "off", diagnostics: "off" },
 		};
 		gate.resolve();
 		await rejected;

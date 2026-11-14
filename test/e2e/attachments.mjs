@@ -72,6 +72,7 @@ const common = {
 };
 await build({ ...common, entryPoints: [entry], outfile: join(ext, "background.js") });
 await build({ ...common, entryPoints: { panel: "src/panel/panel.ts" }, outdir: ext });
+await build({ ...common, format: "iife", entryPoints: { "hooks/console": "src/hooks/console.ts" }, outdir: ext });
 
 const site = createServer((_, res) => {
 	res.setHeader("content-type", "text/html; charset=utf-8");

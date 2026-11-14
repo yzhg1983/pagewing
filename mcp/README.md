@@ -1,8 +1,8 @@
 # pagewing-mcp
 
 Lets a coding agent on your computer, such as [pi](https://github.com/earendil-works/pi), use
-[Pagewing](https://github.com/yzhg1983/pagewing)'s page tools in your Chrome over MCP: open a page, read it, click and
-type, run a script, take a screenshot. macOS and Linux. Needs the Pagewing Chrome extension, 0.4.3 or later.
+[Pagewing](https://github.com/yzhg1983/pagewing)'s page tools in your Chrome over MCP: open a page, read it, click,
+type, hover, and drag, run a script, take a screenshot. macOS and Linux. Needs the Pagewing Chrome extension, 0.4.3 or later.
 
 ## Set up
 
@@ -15,8 +15,9 @@ type, run a script, take a screenshot. macOS and Linux. Needs the Pagewing Chrom
 
    Other MCP clients: add `npx -y pagewing-mcp` as a stdio server.
 
-3. In Pagewing's side panel: Settings > Advanced > Local agents > On. Chrome asks for native messaging and access to
-   all sites.
+3. In Pagewing's side panel: Settings > Advanced > Local agents > On. Chrome asks for native messaging, network
+   requests, and access to all sites. If you turned the switch on before Pagewing asked for network requests, click
+   Allow in the Local agents section.
 
 The first call after setup may take up to 30 s while Pagewing connects.
 
@@ -34,7 +35,8 @@ agent ──MCP──▶ pagewing-mcp ──socket──▶ helper ──native 
 ## What the agent can do
 
 Tools: `open_tab`, `list_tabs`, `read_page`, `observe_page`, `act_on_page`, `run_script`, `screenshot_page`,
-`close_tab`. Each agent session works in a Chrome tab group of its own, named after the agent, and reaches only the
+`read_console_messages`, `read_network_requests`, `close_tab`. The console and network tools record a tab from the
+session's first use of it; a page that `open_tab` or `navigate` loads is recorded from its start. Each agent session works in a Chrome tab group of its own, named after the agent, and reaches only the
 tabs in it. Tabs you open from an agent's tab, or drag into its group, join it, and the agent can use them. The tools
 never ask you before acting: Ask in Settings > Tools counts as On for agents, scripts included, and only Off stops a
 tool. Turning the switch off ends every session.

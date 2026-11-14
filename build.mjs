@@ -46,6 +46,8 @@ const common = {
 
 const bundles = [
 	await build({ ...common, entryPoints: { background: "src/background/main.ts" }, outdir }),
+	// A content script, not a module: Chrome runs it in the page's world at document start (design 6.46).
+	await build({ ...common, format: "iife", entryPoints: { "hooks/console": "src/hooks/console.ts" }, outdir }),
 	await build({
 		...common,
 		entryPoints: {

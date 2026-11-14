@@ -421,6 +421,18 @@
 					</div>
 					<div class="tool">
 						<div class="setting">
+							<div class="tool-text">
+								<span id="tool-diagnostics-title" data-i18n="consoleNetwork">Console and network</span>
+								<span class="note" data-i18n="consoleNetworkNote">Reads the tab's console messages and the addresses and status of its requests.</span>
+							</div>
+							<fieldset class="segmented" aria-labelledby="tool-diagnostics-title">
+								<label><input type="radio" name="tool-diagnostics" value="off" /><span data-i18n="off">Off</span></label>
+								<label><input type="radio" name="tool-diagnostics" value="on" /><span data-i18n="on">On</span></label>
+							</fieldset>
+						</div>
+					</div>
+					<div class="tool">
+						<div class="setting">
 							<label for="calls-per-answer" data-i18n="callsPerAnswer">Page tool calls per answer</label>
 							<input id="calls-per-answer" type="number" min="5" max="200" step="1" aria-describedby="calls-note" />
 						</div>
@@ -474,6 +486,10 @@
 						<p class="note" data-i18n="localAgentsOther">
 							Other MCP clients: add npx -y pagewing-mcp as a stdio server.
 						</p>
+						<div id="agents-network-row" class="needs" hidden>
+							<span class="note" data-i18n="agentsNetworkNeeded">Agents need Chrome's permission to see network requests.</span>
+							<button type="button" id="allow-agents-network" class="small-button" data-i18n="allow">Allow</button>
+						</div>
 						<p id="agents-status" class="note"></p>
 					</section>
 

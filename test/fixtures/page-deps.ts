@@ -4,10 +4,12 @@
 import type { Harness } from "@earendil-works/pi-durable";
 import { Asks } from "../../src/background/asks.ts";
 import type { PageAccess, PageDeps, PageToolSettings } from "../../src/background/page.ts";
+import { Recording } from "../../src/background/recording.ts";
 import { CaptureQueue } from "../../src/background/screenshot.ts";
+import { FakeRecording } from "./recording.ts";
 
 export const ALL_ON: PageToolSettings = {
-	tools: { read: "on", observe: "on", act: "on", script: "on", screenshot: "on" },
+	tools: { read: "on", observe: "on", act: "on", script: "on", screenshot: "on", diagnostics: "on" },
 	callsPerAnswer: 50,
 };
 
@@ -25,6 +27,7 @@ export const NO_AGENT: Pick<
 	| "media"
 	| "locate"
 	| "scroll"
+	| "shown"
 	| "tabState"
 	| "allSites"
 	| "leadsTo"
@@ -47,6 +50,7 @@ export const NO_AGENT: Pick<
 	media: async () => null,
 	locate: async () => null,
 	scroll: async () => null,
+	shown: async () => ({ documentId: "top", hidden: false, changes: 0 }),
 	tabState: async () => null,
 	allSites: async () => true,
 	leadsTo: () => null,
@@ -62,7 +66,12 @@ export const NO_AGENT: Pick<
 };
 
 /** `config.current`: the settings as they are now; `attach()` gives the Harness whose transcript the hook reads. */
-export function pageDeps(access: PageAccess, config: { current: PageToolSettings }, changed: () => void = () => {}) {
+export function pageDeps(
+	access: PageAccess,
+	config: { current: PageToolSettings },
+	changed: () => void = () => {},
+	recorded = new FakeRecording(),
+) {
 	let harness: Harness | undefined;
 	const asks = new Asks(changed);
 	const deps: PageDeps = {
@@ -84,10 +93,12 @@ export function pageDeps(access: PageAccess, config: { current: PageToolSettings
 			return (await conversation.context(context)).messages;
 		},
 		captures: new CaptureQueue(),
+		recording: new Recording(recorded),
 	};
 	return {
 		deps,
 		asks,
+		recorded,
 		attach(opened: Harness) {
 			harness = opened;
 		},

@@ -1,10 +1,12 @@
-// What screenshot_page needs besides the page tools' own checks (design 6.26): the crop of an element, the images a
-// chat already sends, the worker-wide queue of captures, and the count of tab changes that guards each capture.
+// What screenshot_page needs besides the page tools' own checks (design 6.26): the crop of an element, the page's
+// visibility (6.48), the images a chat already sends, the worker-wide queue of captures, and the count of tab changes
+// that guards each capture.
 
 import type { Context } from "@earendil-works/chord/context";
 import { awaitWithContext } from "@earendil-works/chord/context";
 import type { Message } from "@earendil-works/pi-ai";
 import type { InboxState, UserInput } from "@earendil-works/pi-durable";
+import type { Shown } from "./page.ts";
 import type { Located, Rect } from "./page-agent.ts";
 
 /** Around the element, in CSS pixels. */
@@ -76,6 +78,35 @@ export function sameView(a: Located, b: Located): boolean {
 	return (
 		rects && (["innerWidth", "innerHeight", "scrollX", "scrollY", "scale"] as const).every((key) => a[key] === b[key])
 	);
+}
+
+const HIDDEN = `No screenshot returned: Chrome reports this page as hidden, so the image may be out of date. Bring its \
+tab and window into view, then try again.`;
+const NOT_CHECKED =
+	"No screenshot returned: Pagewing could not check that the page is shown, so the image may be out of date.";
+const HIDDEN_DURING =
+	"No screenshot returned: the page was hidden during the capture, so the image may be out of date; try again.";
+const NEW_DOCUMENT = "No screenshot returned: a new page loaded during the capture; try again.";
+
+/**
+ * The page's visibility if it may be captured now, else why not (design 6.48): Chrome captures a hidden page without an
+ * error, but gives the last picture drawn before it was hidden.
+ */
+export function capturable(state: Shown | null): Shown | string {
+	if (state === null) return NOT_CHECKED;
+	return state.hidden ? HIDDEN : state;
+}
+
+/**
+ * Why an image taken after `before` and before `after` may be out of date (design 6.48); null when it is kept. Two shown
+ * checks can miss a hide and show between them: the count of visibility changes catches it. The count belongs to one
+ * document, so both checks must be of the same one.
+ */
+export function staleText(before: Shown, after: Shown | null): string | null {
+	const now = capturable(after);
+	if (typeof now === "string") return now;
+	if (now.documentId !== before.documentId) return NEW_DOCUMENT;
+	return now.changes === before.changes ? null : HIDDEN_DURING;
 }
 
 /** The images of a message's content and their base64 characters. */

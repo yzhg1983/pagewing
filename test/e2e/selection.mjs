@@ -124,6 +124,7 @@ await build({
 	outdir: ext,
 	footer: { js: "globalThis.__piSelectionPanel = () => state;" },
 });
+await build({ ...common, format: "iife", entryPoints: { "hooks/console": "src/hooks/console.ts" }, outdir: ext });
 
 let origin;
 const site = createServer((req, res) => {

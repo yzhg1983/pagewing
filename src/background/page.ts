@@ -42,6 +42,7 @@ import {
 	type ScrollResult,
 } from "./page-agent.ts";
 import { INPUT_KINDS, pageOf } from "./projection.ts";
+import type { Recording } from "./recording.ts";
 import { type CaptureQueue, type Crop, dataBytes, imageRect, tabChangeCount, watchTab } from "./screenshot.ts";
 import { runScript } from "./script-runner.ts";
 import { ScopeDenied, type TabGroups } from "./tab-groups.ts";
@@ -54,6 +55,8 @@ export const ACT_ON_PAGE = "act_on_page";
 export const RUN_SCRIPT = "run_script";
 export const SCREENSHOT_PAGE = "screenshot_page";
 export const WAIT_ON_PAGE = "wait_on_page";
+export const READ_CONSOLE = "read_console_messages";
+export const READ_NETWORK = "read_network_requests";
 /** Text kept of one page; the rest is cut and the result says so. */
 export const MAX_PAGE_CHARS = 200_000;
 /** UTF-8 size of one result, the envelope included. */
@@ -89,6 +92,9 @@ export type TopDocument = { documentId: string; url: string; origin: string; tit
 
 /** The tab's window, active/minimized state, and window focus when known. */
 export type TabState = { windowId: number; active: boolean; minimized: boolean; focused?: boolean };
+
+/** Whether the top document is hidden, and how often its visibility changed since pi first asked (design 6.48). */
+export type Shown = { documentId: string; hidden: boolean; changes: number };
 
 /** A JPEG image as base64, and its size in pixels. */
 export type Encoded = { data: string; width: number; height: number };
@@ -148,6 +154,11 @@ export type PageAccess = {
 	 * during the call. The request goes to Chrome before the first await.
 	 */
 	scroll(tabId: number, documentId: string, request: ScrollRequest): Promise<ScrollResult | null>;
+	/**
+	 * The top document's visibility, after a shown page has had up to two frames to draw (design 6.48). Null when pi may
+	 * not script it.
+	 */
+	shown(tabId: number): Promise<Shown | null>;
 	/** Null when the tab is gone. */
 	tabState(tabId: number, dispatch?: PageDispatch): Promise<TabState | null>;
 	/** Whether Chrome allows pi on all sites (`<all_urls>`, design 6.28). */
@@ -221,6 +232,8 @@ export type PageDeps = {
 	context(conversationId: ConversationId, context: Context): Promise<readonly Message[]>;
 	/** The worker's one queue of captures (design 6.26). */
 	captures: CaptureQueue;
+	/** Console and network recording of the tabs in use (design 6.46). */
+	recording: Recording;
 	/** Internal bounded wait paired with a call-local access guard. */
 	wait?: typeof bounded;
 };
@@ -367,7 +380,9 @@ export function scopedPageAccess(
 									? "act"
 									: tool === RUN_SCRIPT
 										? "script"
-										: "screenshot"
+										: tool === READ_CONSOLE || tool === READ_NETWORK
+											? "diagnostics"
+											: "screenshot"
 					];
 		if (mode === "off") throw new PageRefused(offText(tool));
 		const refused = policy();
@@ -427,6 +442,7 @@ export function scopedPageAccess(
 		media: (tab: number, doc: string, key: string) => send(() => a.media(tab, doc, key)),
 		locate: (tab: number, doc: string, request: LocateRequest) => send(() => a.locate(tab, doc, request)),
 		scroll: (tab: number, doc: string, request: ScrollRequest) => send(() => a.scroll(tab, doc, request)),
+		shown: (tab: number) => send(() => a.shown(tab)),
 		tabState: (tab: number) => send(() => a.tabState(tab, send)),
 		capture: (window: number) => send(() => a.capture(window)),
 		close: (tab: number) => send(() => a.close(tab)),
@@ -1213,6 +1229,27 @@ function readFrameText(maxChars: number, budgetMs: number, maxUrl: number, scope
 	};
 }
 
+/** At most this long for a shown page to draw before its capture (design 6.48). */
+const PAINT_MS = 200;
+
+/** Runs in the page's top document, in pi's isolated world: `Shown` without the document's ID. */
+async function shownState(paintMs: number): Promise<Omit<Shown, "documentId">> {
+	const world = globalThis as { piShown?: { changes: number } };
+	if (world.piShown === undefined) {
+		const counter = { changes: 0 };
+		world.piShown = counter;
+		document.addEventListener("visibilitychange", () => counter.changes++);
+	}
+	// A tab just brought to the front may not have drawn its page yet; a hidden page gets no frames, hence the cap. On
+	// the check after a capture, the wait also lets a pending visibilitychange arrive.
+	if (!document.hidden)
+		await new Promise<void>((resolve) => {
+			setTimeout(resolve, paintMs);
+			requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+		});
+	return { hidden: document.hidden, changes: world.piShown.changes };
+}
+
 /**
  * Runs in the tab's top frame: where it is. Self-contained: Chrome serializes it. It also leaves a watcher for where the
  * page sends the tab next, by a link, a form, or its own script, while pi may still script it: Chrome does not tell pi
@@ -1438,6 +1475,19 @@ export const chromePageAccess: PageAccess = {
 			args: [request],
 		});
 		return (injection?.result as ScrollResult | undefined) ?? null;
+	},
+	async shown(tabId) {
+		try {
+			const [injection] = await chrome.scripting.executeScript({
+				target: { tabId, frameIds: [0] },
+				func: shownState,
+				args: [PAINT_MS],
+			});
+			if (injection?.result == null) return null;
+			return { ...injection.result, documentId: injection.documentId };
+		} catch {
+			return null;
+		}
 	},
 	async tabState(tabId, dispatch = (request) => request()) {
 		try {

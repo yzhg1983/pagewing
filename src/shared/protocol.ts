@@ -9,7 +9,7 @@
 
 import type { Preset } from "./presets.ts";
 
-export const PROTOCOL_VERSION = 44;
+export const PROTOCOL_VERSION = 45;
 export const PANEL_PORT = "panel";
 export const MAX_UNACKED = 4;
 
@@ -127,13 +127,17 @@ export function isThinking(value: unknown): value is Thinking {
 /** A page tool's mode (design 6.23): Off is not offered to the model; Ask shows a card first; On runs without one. */
 export type ToolMode = "off" | "ask" | "on";
 
-/** The modes in Settings > Tools, for every chat and site. Reading, observing, and screenshots have no Ask. */
+/**
+ * The modes in Settings > Tools, for every chat and site. Reading, observing, screenshots, and the console and network
+ * tools (`diagnostics`, design 6.46) have no Ask.
+ */
 export type ToolModes = {
 	read: "off" | "on";
 	observe: "off" | "on";
 	act: ToolMode;
 	script: ToolMode;
 	screenshot: "off" | "on";
+	diagnostics: "off" | "on";
 };
 
 /** "Page tool calls per answer": all page tools together. */
@@ -613,6 +617,8 @@ export type AskReply = "allow" | "answer" | "chat" | "deny";
  */
 export type AskCard =
 	| { id: string; kind: "site"; origin: string | null }
+	/** Chrome's webRequest permission for read_network_requests (design 6.46). */
+	| { id: string; kind: "network" }
 	| { id: string; kind: "act"; origin: string }
 	| { id: string; kind: "script"; origin: string; summary: string | null; code: string };
 

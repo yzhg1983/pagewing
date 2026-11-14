@@ -70,7 +70,7 @@ function setup() {
 			language: "English",
 			thinking: "off",
 			prompts: [...PRESETS],
-			tools: { read: "on", observe: "on", act: "ask", script: "off", screenshot: "on" },
+			tools: { read: "on", observe: "on", act: "ask", script: "off", screenshot: "on", diagnostics: "on" },
 			callsPerAnswer: 50,
 			scriptsOnboarded: false,
 			localAgents: false,

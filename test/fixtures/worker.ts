@@ -13,10 +13,12 @@ import { createRegistry, Harness } from "@earendil-works/pi-durable";
 import { openNodeSqliteStorage } from "@earendil-works/pi-durable/storage/sqlite/node";
 import { Asks } from "../../src/background/asks.ts";
 import { Chats, serial } from "../../src/background/chats.ts";
+import { Recording } from "../../src/background/recording.ts";
 import type { Opened } from "../../src/background/session.ts";
 import { StorageFull } from "../../src/background/storage-full.ts";
 import { Tabs } from "../../src/background/tabs.ts";
 import { PANEL_PORT, type PageMessage, type Settings, type WorkerMessage } from "../../src/shared/protocol.ts";
+import { FakeRecording } from "./recording.ts";
 import { memoryStore } from "./tabs.ts";
 
 type Listener = (...args: unknown[]) => unknown;
@@ -206,6 +208,8 @@ export const workerSession = {
 		},
 		status: () => ({ state: "off" as const, error: null, agents: [] as string[] }),
 	},
+	/** The console and network recorder, on fake hooks and events. */
+	recording: new Recording(new FakeRecording()),
 	storageFull,
 	tabs,
 	wake: () => workerSession.session(),

@@ -36,6 +36,8 @@ import {
 	PageReadsDoc,
 	type PageToolOffer,
 	type PageToolSettings,
+	READ_CONSOLE,
+	READ_NETWORK,
 	READ_PAGE,
 	RUN_SCRIPT,
 	SCREENSHOT_PAGE,
@@ -64,7 +66,7 @@ import { MESSAGE_KIND } from "../src/background/projection.ts";
 import { CaptureQueue, type Crop } from "../src/background/screenshot.ts";
 import { runScript } from "../src/background/script-runner.ts";
 import { attached } from "../src/shared/attachments.ts";
-import type { PageRef, ToolModes } from "../src/shared/protocol.ts";
+import type { AskCard, PageRef, ToolModes } from "../src/shared/protocol.ts";
 import { ALL_ON, pageDeps } from "./fixtures/page-deps.ts";
 import { memoryStore, openChats, panel } from "./fixtures/tabs.ts";
 
@@ -164,6 +166,8 @@ async function setup(
 		[1, { windowId: 1, active: true, minimized: false, focused: true }],
 		[2, { windowId: 2, active: true, minimized: false }],
 	]);
+	/** Each tab's page visibility (design 6.48), shown by default; null: pi cannot read it. */
+	const visibility = new Map<number, { hidden: boolean; changes: number } | null>();
 	/** Chrome's tab events, as the worker counts them, and the tabs whose navigations count. */
 	const tabEvents = { count: 0 };
 	const watching = new Set<number>();
@@ -298,6 +302,12 @@ async function setup(
 						: { kind: "scroll", target: what, direction, end: null },
 			};
 		},
+		async shown(tabId) {
+			const now = tabs.get(tabId);
+			const state = visibility.get(tabId);
+			if (now == null || state === null) return null;
+			return { documentId: now.documentId, hidden: false, changes: 0, ...state };
+		},
 		tabState: async (tabId) => (tabs.get(tabId) == null ? null : (places.get(tabId) ?? null)),
 		switchBack: async () => null,
 		allSites: async () => allSites.on,
@@ -340,6 +350,7 @@ async function setup(
 		deps,
 		asks,
 		attach: attachHarness,
+		recorded,
 	} = pageDeps(access, config, () => {
 		changes += 1;
 	});
@@ -446,9 +457,10 @@ async function setup(
 		reply(fauxAssistantMessage(Array.isArray(calls) ? calls : [calls], { stopReason: "toolUse" }), before);
 	const answer = (text = "done") => reply(fauxAssistantMessage(text));
 	const idle = (on = tab) => vi.waitFor(() => expect(on.chat.busy).toBe(false), 5000);
+	/** The one card of the chat; these tests ask about sites, acting, and scripts, which name an origin. */
 	const cards = async (on = tab) => {
 		await vi.waitFor(() => expect(asks.cards(on.id!)).toHaveLength(1));
-		return asks.cards(on.id!)[0]!;
+		return asks.cards(on.id!)[0] as Exclude<AskCard, { kind: "network" }>;
 	};
 	return {
 		harness,
@@ -458,6 +470,8 @@ async function setup(
 		tabs,
 		/** The fake page access: a test may replace its methods. */
 		access,
+		/** The fake console hooks and webRequest events (design 6.46). */
+		recorded,
 		calls,
 		config,
 		asks,
@@ -486,6 +500,7 @@ async function setup(
 		deps,
 		images,
 		places,
+		visibility,
 		tabEvents,
 		watching,
 		clock,
@@ -619,7 +634,7 @@ it("Ask shows one card per origin and answer; Allow covers the origin, a follow-
 	asks.answer(card.id, true);
 	const next = await vi.waitFor(() => {
 		const found = asks.cards(tab.id!)[0];
-		if (found === undefined) throw new Error("no card yet");
+		if (found?.kind !== "act") throw new Error("no act card yet");
 		return found;
 	});
 	// The second action on a.test ran without a card; the follow-up attached b.test.
@@ -1990,7 +2005,7 @@ it("the tools and the instructions name run_script only while it is not Off", as
 
 it("the instructions ask for diagrams as Mermaid, which the panel draws, also with every tool Off (design 6.32)", async () => {
 	const off: PageToolSettings = {
-		tools: { read: "off", observe: "off", act: "off", script: "off", screenshot: "off" },
+		tools: { read: "off", observe: "off", act: "off", script: "off", screenshot: "off", diagnostics: "off" },
 		callsPerAnswer: 50,
 	};
 	for (const settings of [ALL_ON, off]) {
@@ -2102,6 +2117,12 @@ it("a script's Run is for its task only, and goes when the task is stopped befor
 const NOT_IN_FRONT =
 	"The tab is not in front, so pi cannot capture it: Chrome captures only the tab shown in its window.";
 const CHANGED = "The tab changed during the capture; try again.";
+const HIDDEN =
+	"No screenshot returned: Chrome reports this page as hidden, so the image may be out of date. Bring its tab and window into view, then try again.";
+const NOT_CHECKED =
+	"No screenshot returned: Pagewing could not check that the page is shown, so the image may be out of date.";
+const HIDDEN_DURING =
+	"No screenshot returned: the page was hidden during the capture, so the image may be out of date; try again.";
 
 it("screenshot_page captures the tab in front, or the visible part of one element; the chat shows a line, not the image", async () => {
 	const { tab, other, faux, tabs, calls, seen, images, watching, step, call, answer, idle } = await setup();
@@ -2193,7 +2214,7 @@ it("screenshot_page is refused for a model without images, naming only the text 
 	}
 });
 
-it("screenshot_page needs Chrome's grant, and the tab in front of a window that is not minimized", async () => {
+it("screenshot_page needs Chrome's grant, and the tab in front of its window", async () => {
 	const { tab, faux, tabs, calls, places, seen, step, call, answer, idle, captureWith } = await setup();
 	const page = attach(1, tabs.get(1)!);
 	captureWith(async () => {
@@ -2208,17 +2229,89 @@ it("screenshot_page needs Chrome's grant, and the tab in front of a window that 
 
 	captureWith(undefined);
 	const before = calls.capture.length;
-	for (const place of [
-		{ windowId: 1, active: false, minimized: false },
-		{ windowId: 1, active: true, minimized: true },
-	]) {
-		places.set(1, place);
-		faux.setResponses([step(call(SCREENSHOT_PAGE)), answer()]);
-		await tab.send(withPage(`r${place.active}`, "Look", page));
-		await idle();
-		expect(seen.at(-1)).toMatchObject({ isError: true, text: NOT_IN_FRONT });
-	}
+	places.set(1, { windowId: 1, active: false, minimized: false });
+	faux.setResponses([step(call(SCREENSHOT_PAGE)), answer()]);
+	await tab.send(withPage("r2", "Look", page));
+	await idle();
+	expect(seen.at(-1)).toMatchObject({ isError: true, text: NOT_IN_FRONT });
 	expect(calls.capture).toHaveLength(before);
+});
+
+it("screenshot_page refuses a hidden page (design 6.48), in a minimized window too, and one whose visibility pi cannot read, before capturing", async () => {
+	const { tab, faux, tabs, calls, places, visibility, seen, step, call, answer, idle } = await setup();
+	const page = attach(1, tabs.get(1)!);
+	const cases: [string, () => void, string][] = [
+		["covered", () => visibility.set(1, { hidden: true, changes: 1 }), HIDDEN],
+		[
+			"minimized",
+			() => {
+				places.set(1, { windowId: 1, active: true, minimized: true });
+				visibility.set(1, { hidden: true, changes: 1 });
+			},
+			HIDDEN,
+		],
+		["unreadable", () => visibility.set(1, null), NOT_CHECKED],
+	];
+	for (const [name, set, text] of cases) {
+		set();
+		faux.setResponses([step(call(SCREENSHOT_PAGE)), answer()]);
+		await tab.send(withPage(name, "Look", page));
+		await idle();
+		expect(seen.at(-1), name).toMatchObject({ name: SCREENSHOT_PAGE, isError: true, text });
+	}
+	expect(calls.capture).toEqual([]);
+});
+
+it("screenshot_page drops the image when the page is hidden after the capture, was hidden and shown during it, or is a new page", async () => {
+	const { tab, faux, tabs, calls, access, visibility, seen, images, step, call, answer, idle, captureWith } =
+		await setup();
+	const page = attach(1, tabs.get(1)!);
+	const during: [string, () => void, string][] = [
+		["hidden", () => visibility.set(1, { hidden: true, changes: 1 }), HIDDEN],
+		["hidden and shown", () => visibility.set(1, { hidden: false, changes: 2 }), HIDDEN_DURING],
+	];
+	for (const [name, change, text] of during) {
+		visibility.set(1, { hidden: false, changes: 0 });
+		captureWith(async () => {
+			change();
+			return "data:image/png;base64,AAAA";
+		});
+		faux.setResponses([step(call(SCREENSHOT_PAGE)), answer()]);
+		await tab.send(withPage(name, "Look", page));
+		await idle();
+		expect(seen.at(-1), name).toMatchObject({ name: SCREENSHOT_PAGE, isError: true, text });
+	}
+	expect(calls.capture).toHaveLength(2);
+	expect(images).toEqual([]);
+
+	// A new page whose count starts at 0 again, after the tab's own checks: only the document's ID tells.
+	const { shown } = access;
+	let looks = 0;
+	access.shown = async (tabId) => {
+		const state = await shown(tabId);
+		return state === null || looks++ === 0 ? state : { ...state, documentId: "another" };
+	};
+	visibility.set(1, { hidden: false, changes: 0 });
+	captureWith(undefined);
+	faux.setResponses([step(call(SCREENSHOT_PAGE)), answer()]);
+	await tab.send(withPage("new page", "Look", page));
+	await idle();
+	expect(seen.at(-1)).toMatchObject({
+		name: SCREENSHOT_PAGE,
+		isError: true,
+		text: "No screenshot returned: a new page loaded during the capture; try again.",
+	});
+	expect(images).toEqual([]);
+	access.shown = shown;
+
+	// Shown before and after, with no change between: the image is kept.
+	visibility.set(1, { hidden: false, changes: 2 });
+	captureWith(undefined);
+	faux.setResponses([step(call(SCREENSHOT_PAGE)), answer()]);
+	await tab.send(withPage("shown", "Look", page));
+	await idle();
+	expect(seen.at(-1)).toMatchObject({ name: SCREENSHOT_PAGE, isError: false });
+	expect(images).toHaveLength(1);
 });
 
 it("a tab switch, a navigation, or a new document during the capture drops the image; the watch ends each time", async () => {
@@ -2707,7 +2800,7 @@ it("a scroll is checked like an action: the tab in front, Off, Stop, one chat at
 	// Turned Off while the tab's place is read.
 	const { tabState } = deps.access;
 	deps.access.tabState = async (tabId) => {
-		config.current = { ...ALL_ON, tools: { ...ALL_ON.tools, screenshot: "off" } };
+		config.current = { ...ALL_ON, tools: { ...ALL_ON.tools, screenshot: "off", diagnostics: "off" } };
 		return tabState(tabId);
 	};
 	expect(await look("r2")).toEqual({ name: SCREENSHOT_PAGE, isError: true, text: offText });
@@ -2823,7 +2916,7 @@ it("the tools and the instructions name screenshot_page only while it is On; ref
 		const tool = systems.flatMap((message) => message.toolsAdded ?? []).find((one) => one.name === SCREENSHOT_PAGE);
 		return { tool, all: JSON.stringify(systems) };
 	};
-	const off = await told({ tools: { ...ALL_ON.tools, screenshot: "off" }, callsPerAnswer: 50 });
+	const off = await told({ tools: { ...ALL_ON.tools, screenshot: "off", diagnostics: "off" }, callsPerAnswer: 50 });
 	expect(off.tool).toBeUndefined();
 	expect(off.all).not.toContain(SCREENSHOT_PAGE);
 
@@ -2882,14 +2975,14 @@ it("read_page marks images in its text and names the tools that are not Off; obs
 	);
 	expect(all.observe).toContain('such as `- image "(no alt)" a12 400×360 caption "Sales by region"`');
 	expect(all.observe).toContain("To see one, call screenshot_page with its ref.");
-	const unseen = await told({ tools: { ...ALL_ON.tools, screenshot: "off" }, callsPerAnswer: 50 });
+	const unseen = await told({ tools: { ...ALL_ON.tools, screenshot: "off", diagnostics: "off" }, callsPerAnswer: 50 });
 	expect(unseen.read).toContain('is not in the text: observe_page gives their refs (find "image"). ');
 	expect(unseen.read).not.toContain("did not look at");
 	expect(unseen.observe).not.toContain("screenshot_page");
 	const blind = await told({ tools: { ...ALL_ON.tools, observe: "off", act: "off" }, callsPerAnswer: 50 });
 	expect(blind.read).toContain("is not in the text: screenshot_page shows them. When the answer");
 	const neither = await told({
-		tools: { ...ALL_ON.tools, observe: "off", act: "off", screenshot: "off" },
+		tools: { ...ALL_ON.tools, observe: "off", act: "off", screenshot: "off", diagnostics: "off" },
 		callsPerAnswer: 50,
 	});
 	expect(neither.read).toContain("what they show is not in the text. ");
@@ -3189,7 +3282,7 @@ it.each(["Off", "Stop"])("list_tabs respects %s during a delayed native scope lo
 	if (kind === "Off") {
 		s.config.current = {
 			...ALL_ON,
-			tools: { read: "off", observe: "off", act: "off", script: "off", screenshot: "off" },
+			tools: { read: "off", observe: "off", act: "off", script: "off", screenshot: "off", diagnostics: "off" },
 		};
 		gate.resolve();
 		await s.idle();
@@ -3538,7 +3631,14 @@ it("the instructions route by the tools offered, and look past the items shown o
 	};
 	const coverage = "when the answer needs broader coverage than the items shown";
 	const more = "Then inspect additional relevant pages or load more items";
-	const off = { read: "off", observe: "off", act: "off", script: "off", screenshot: "off" } as const;
+	const off = {
+		read: "off",
+		observe: "off",
+		act: "off",
+		script: "off",
+		screenshot: "off",
+		diagnostics: "off",
+	} as const;
 
 	// read_page alone cannot load more: the scope rule stays, the "load more" sentence does not.
 	const read = await told({ tools: { ...off, read: "on" }, callsPerAnswer: 50 });
@@ -3592,7 +3692,7 @@ it("read-only questions stay on the page: navigation and requests follow the too
 	/** What the model is told: the instructions and the tools' descriptions. */
 	const told = async (act: ToolModes["act"], script: ToolModes["script"]) => {
 		const { tab, faux, tabs, idle } = await setup({
-			tools: { read: "on", observe: "on", act, script, screenshot: "off" },
+			tools: { read: "on", observe: "on", act, script, screenshot: "off", diagnostics: "off" },
 			callsPerAnswer: 50,
 		});
 		let systems: SystemMessage[] = [];
@@ -3888,4 +3988,158 @@ it("a switch turned off after run_script was offered refuses the call before its
 	expect(changes()).toBe(before);
 	expect(asks.cards(tab.id!)).toEqual([]);
 	expect(calls.script).toEqual([]);
+});
+
+it("read_console_messages records a tab from its first use: an action first, then what the page logged after it", async () => {
+	const { tab, faux, tabs, seen, step, call, answer, idle, recorded } = await setup(tools("on"));
+	const page = tabs.get(1)!;
+	recorded.log(page.documentId, "before pi");
+	faux.setResponses([
+		step(call(ACT_ON_PAGE, { action: "scroll", direction: "down" }), () => {}),
+		step(call(READ_CONSOLE), () =>
+			recorded.log(page.documentId, "Uncaught TypeError", "exception", `${page.url}?v=1:8:2`),
+		),
+		step(call(READ_CONSOLE, { onlyErrors: true, since: "nope" })),
+		answer(),
+	]);
+	await tab.send(withPage("r1", "Why is it broken?", attach(1, page)));
+	await idle();
+	expect(recorded.registered).toEqual(["https://a.test/*"]);
+	const first = json(seen[1]!);
+	expect(first).toMatchObject({
+		url: page.url,
+		messages: [{ level: "exception", text: "Uncaught TypeError", source: `${page.url}:8:2` }],
+	});
+	expect(json(seen[2]!)).toMatchObject({ reset: true, messages: [{ text: "Uncaught TypeError" }] });
+	expect(seen.map((one) => one.isError)).toEqual([false, false, false]);
+});
+
+it("read_network_requests asks for Chrome's permission with a card; Cancel blocks, and once granted it reads", async () => {
+	const { tab, faux, tabs, seen, step, call, answer, idle, asks, recorded } = await setup();
+	recorded.allowed = false;
+	faux.setResponses([step(call(READ_NETWORK)), answer()]);
+	await tab.send(withPage("r1", "Requests?", attach(1, tabs.get(1)!)));
+	await vi.waitFor(() => expect(asks.cards(tab.id!)).toHaveLength(1));
+	expect(asks.cards(tab.id!)[0]).toMatchObject({ kind: "network" });
+	asks.answer(asks.cards(tab.id!)[0]!.id, false);
+	await idle();
+	expect(seen[0]).toMatchObject({ isError: true, text: expect.stringContaining("the user did not allow it") });
+	expect(recorded.listeners.size).toBe(0);
+
+	faux.setResponses([
+		step(call(READ_NETWORK)),
+		step(call(READ_NETWORK, { urlPattern: "API" }), () =>
+			recorded.request(1, "q1", "https://a.test/api?k=1", 500, "POST"),
+		),
+		answer(),
+	]);
+	await tab.send(withPage("r2", "Again", attach(1, tabs.get(1)!)));
+	await vi.waitFor(() => expect(asks.cards(tab.id!)).toHaveLength(1));
+	// The card's Allow got Chrome's permission.
+	recorded.allowed = true;
+	asks.answer(asks.cards(tab.id!)[0]!.id, true);
+	await idle();
+	expect(json(seen[1]!)).toMatchObject({ requests: [] });
+	expect(json(seen[2]!)).toMatchObject({ requests: [{ method: "POST", url: "https://a.test/api", status: 500 }] });
+});
+
+it("Console and network Off: neither tool is offered nor named, and nothing is recorded by an action", async () => {
+	const off = { ...tools("on"), tools: { ...tools("on").tools, diagnostics: "off" as const } };
+	const { tab, faux, tabs, idle, recorded, answer } = await setup(off);
+	let systems: SystemMessage[] = [];
+	faux.setResponses([
+		(transcript: TranscriptContext) => {
+			systems = transcript.messages.filter((message): message is SystemMessage => message.role === "system");
+			return fauxAssistantMessage(
+				[fauxToolCall(ACT_ON_PAGE, { action: "scroll", direction: "down" }, { id: "s1" })],
+				{
+					stopReason: "toolUse",
+				},
+			);
+		},
+		answer(),
+	]);
+	await tab.send(withPage("r1", "Scroll", attach(1, tabs.get(1)!)));
+	await idle();
+	const names = systems.flatMap((message) => message.toolsAdded ?? []).map((tool) => tool.name);
+	expect(names).not.toContain(READ_CONSOLE);
+	expect(names).not.toContain(READ_NETWORK);
+	expect(JSON.stringify(systems)).not.toContain(READ_CONSOLE);
+	expect(recorded.registered).toEqual([]);
+	expect(recorded.listeners.size).toBe(0);
+});
+
+it("hover and drag need their arguments before anything is sent; to and by reach the page, and the step says what happened (design 6.47)", async () => {
+	const { tab, faux, tabs, calls, seen, step, call, answer, idle, actWith } = await setup();
+	const first = tabs.get(1)!;
+	const dragged: Step = {
+		kind: "drag",
+		target: 'listitem "Task 3" (a1)',
+		to: 'list "Done" (a2)',
+		by: null,
+		over: 'region "Trash"',
+		end: "dropped",
+		moves: 10,
+	};
+	actWith(async (request, page) => ({
+		ok: true,
+		step: request.action === "hover" ? { kind: "hover", target: 'button "Menu" (a1)' } : dragged,
+		url: page.url,
+		title: page.title,
+		timedOut: false,
+		userInput: false,
+	}));
+	faux.setResponses([
+		step(call(OBSERVE_PAGE)),
+		step(call(ACT_ON_PAGE, { action: "hover" })),
+		step(call(ACT_ON_PAGE, { action: "drag", ref: "a1" })),
+		step(call(ACT_ON_PAGE, { action: "drag", ref: "a1", to: "a2", by: { x: 1, y: 0 } })),
+		step(call(ACT_ON_PAGE, { action: "drag", ref: "a1", to: "z9" })),
+		step(call(ACT_ON_PAGE, { action: "hover", ref: "a1" })),
+		step(call(ACT_ON_PAGE, { action: "drag", ref: "a1", to: "a2" })),
+		step(call(ACT_ON_PAGE, { action: "drag", ref: "a1", by: { x: 40, y: 0 } })),
+		answer(),
+	]);
+	await tab.send(withPage("r1", "Move it", attach(1, first)));
+	await idle();
+	const acts = seen.filter((one) => one.name === ACT_ON_PAGE);
+	expect(acts.slice(0, 4).map((one) => one.text)).toEqual([
+		"hover needs a ref.",
+		"drag needs a ref, and either to or by.",
+		"drag needs a ref, and either to or by.",
+		"z9 is gone (the page changed): observe again",
+	]);
+	expect(acts.slice(4).map((one) => json(one).done)).toEqual([
+		'Hovered over button "Menu" (a1)',
+		'Dragged listitem "Task 3" (a1) toward list "Done" (a2); released over region "Trash"',
+		'Dragged listitem "Task 3" (a1) toward list "Done" (a2); released over region "Trash"',
+	]);
+	expect(
+		calls.act.map(({ action, target, to, by, dragMoves, dragMs }) => ({ action, target, to, by, dragMoves, dragMs })),
+	).toEqual([
+		{
+			action: "hover",
+			target: { letter: "a", mapId: first.mapId, number: 1 },
+			to: null,
+			by: null,
+			dragMoves: 10,
+			dragMs: 2000,
+		},
+		{
+			action: "drag",
+			target: { letter: "a", mapId: first.mapId, number: 1 },
+			to: { letter: "a", mapId: first.mapId, number: 2 },
+			by: null,
+			dragMoves: 10,
+			dragMs: 2000,
+		},
+		{
+			action: "drag",
+			target: { letter: "a", mapId: first.mapId, number: 1 },
+			to: null,
+			by: { x: 40, y: 0 },
+			dragMoves: 10,
+			dragMs: 2000,
+		},
+	]);
 });

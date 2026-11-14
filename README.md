@@ -20,8 +20,8 @@ Pagewing is an experimental project built on [pi-durable](https://github.com/ear
 
 - **It reads the page with you.** Summarize, explain, translate, proofread, or draft a reply, from selected text or
   the whole page. pi can also read a chart from a screenshot, or an image or text file you drop in.
-- **It does tasks, not just answers.** pi clicks, types, picks options, and moves across pages and the tabs in your
-  tab group, checking each step until the task is done.
+- **It does tasks, not just answers.** pi clicks, types, picks options, drags, and moves across pages and the tabs in
+  your tab group, checking each step until the task is done.
 - **It can program the page.** When clicking is slow or impossible, pi writes a short script: it rewrites the page in
   place, collects every row of a long table, or fetches data with your login. By default, you see the code first.
 - **Tasks keep going.** Pagewing runs on
@@ -126,7 +126,7 @@ Save repeatable tasks as prompts: [page translation and YouTube summaries](docs/
 
 ## You stay in control
 
-Settings > Tools turns each tool (read, observe, act, run script, screenshot) Off or On; acting and running scripts
+Settings > Tools turns each tool (read, observe, act, run script, screenshot, console and network) Off or On; acting and running scripts
 can also Ask. Out of the box, acting on a page and running scripts ask first.
 
 **Enforced by Pagewing, whatever the model says:**

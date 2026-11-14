@@ -272,6 +272,19 @@ it("shows a message with a page as typed, a tool round as its result, and finds 
 	expect(pageOf(user(6, "plain") as unknown as Parameters<typeof pageOf>[0])).toBeNull();
 });
 
+it("shows a console or network read by its page (design 6.46)", () => {
+	const chat = projectChat(
+		view([
+			toolResult(1, false, "{}", { title: "X", url: "https://x/" }, "read_console_messages"),
+			toolResult(2, false, "{}", { title: "", url: "https://x/" }, "read_network_requests"),
+		]),
+	);
+	expect(chat.entries).toEqual([
+		{ ...step, id: 1, role: "notice", text: "Read the console: X" },
+		{ ...step, id: 2, role: "notice", text: "Read the network requests: https://x/" },
+	]);
+});
+
 it("shows an action as its summary with what pi did, and an observe by its page (design 6.23)", () => {
 	const act = (id: number, isError: boolean, text: string, details?: unknown) =>
 		toolResult(id, isError, text, details, "act_on_page");
@@ -548,6 +561,51 @@ it("says each step in the interface language, and keeps what the model read afte
 			["已关闭标签页 10；页面工具现在作用于标签页 1", null],
 			["已截图", "已将页面滚动到顶部（已到顶部）; 1280 × 800"],
 			["Go", "Clicked it"],
+		]);
+	} finally {
+		vi.unstubAllGlobals();
+	}
+});
+
+it("says hover and drag steps in English for the model and in the interface language (design 6.47)", () => {
+	vi.stubGlobal("chrome", {
+		i18n: {
+			getMessage: (key: string, values: string[] = []) =>
+				((chinese as Record<string, { message: string }>)[key]?.message ?? "").replace(
+					/\$(\d)/g,
+					(_, n: string) => values[Number(n) - 1] ?? "",
+				),
+		},
+	});
+	try {
+		const drag = { kind: "drag", target: 'listitem "Task 3" (a1)', to: 'list "Done" (a2)', by: null, over: null };
+		const steps: Step[] = [
+			{ kind: "hover", target: 'button "Menu" (a1)' },
+			{ ...drag, end: "dropped", moves: 10 } as Step,
+			{ ...drag, over: 'region "Trash"', end: "notAccepted", moves: 10 } as Step,
+			{ ...drag, end: "stopped", moves: 4 } as Step,
+			{ ...drag, target: 'slider "Volume" (a3)', to: null, by: { x: 40, y: 0 }, end: "released", moves: 10 } as Step,
+		];
+		expect(steps.map(stepText)).toEqual([
+			'Hovered over button "Menu" (a1)',
+			'Dragged listitem "Task 3" (a1) to list "Done" (a2)',
+			'Dragged listitem "Task 3" (a1) toward list "Done" (a2); released over region "Trash"; the page did not accept the drop',
+			'Dragged listitem "Task 3" (a1) toward list "Done" (a2): stopped after 4 of 10 moves, the page was too slow; not released',
+			'Dragged slider "Volume" (a3) by 40, 0 px',
+		]);
+		const chat = projectChat(
+			view(
+				steps.map((step, index) =>
+					toolResult(index + 1, false, "{}", { summary: "Go", done: stepText(step), step }, "act_on_page"),
+				),
+			),
+		);
+		expect(chat.entries.map((entry) => entry.detail)).toEqual([
+			'已将指针移到 button "Menu" (a1) 上',
+			'已将 listitem "Task 3" (a1) 拖到 list "Done" (a2)',
+			'已将 listitem "Task 3" (a1) 拖向 list "Done" (a2)；在 region "Trash" 上松开；页面没有接受放下',
+			'已将 listitem "Task 3" (a1) 拖向 list "Done" (a2)：移动 4 次（共 10 次）后停止，页面太慢；未松开',
+			'已将 slider "Volume" (a3) 拖动 40, 0 px',
 		]);
 	} finally {
 		vi.unstubAllGlobals();
