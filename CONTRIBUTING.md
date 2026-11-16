@@ -55,6 +55,8 @@ pages, and a fake model provider: no accounts, keys, or network. Get Chrome for 
 
 - Unit tests are in `test/`, most named after the module they test; they use Node's SQLite for storage, so storage itself
   is tested in Chrome by the `storage` suite. Shared helpers are in `test/fixtures/`.
+  A test of a panel section (`prompts.test.ts`) starts with `// @vitest-environment happy-dom` and loads
+  `static/panel.html`'s own markup.
 - `src/background/` is the extension's worker, `src/panel/` the side panel, `src/shared/` code both use, and
   `static/` the manifest, pages, and interface text in both languages.
 
