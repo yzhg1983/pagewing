@@ -42,9 +42,11 @@ jobs:
       - run: npm ci --ignore-scripts
       - run: npx biome ci .
       - run: npx tsc --noEmit
+      - run: npx tsc --noEmit -p mcp
       - run: npm test
       # Also fails on an unreviewed import( in the worker and on a package without a licence.
       - run: npm run build
+      - run: npm run build:mcp
       - name: Zip the extension
         if: github.event_name == 'push'
         run: cd dist && zip -qr "../pagewing-${GITHUB_SHA::7}.zip" . -x '*.map'
@@ -67,7 +69,7 @@ jobs:
             if git fetch -q --depth=1 origin "$BASE" 2>/dev/null; then
               changed="$(git diff --name-only "$BASE" HEAD)"
               echo "$changed"
-              pattern='^(src/|static/|test/e2e/|build\.mjs$|tsconfig\.json$|package(-lock)?\.json$|\.github/workflows/ci\.yml$)'
+              pattern='^(src/|static/|mcp/|test/e2e/|build\.mjs$|tsconfig\.json$|package(-lock)?\.json$|\.github/workflows/ci\.yml$)'
               if ! grep -qE "$pattern" <<< "$changed"; then
                 run=false
                 echo "No change the Chrome suites cover: skipping them."
@@ -138,6 +140,10 @@ jobs:
         env:
           CHROME: ${{ steps.chrome.outputs.chrome-path }}
       - run: npm run test:model-list
+        if: ${{ !cancelled() && steps.chrome.outcome == 'success' }}
+        env:
+          CHROME: ${{ steps.chrome.outputs.chrome-path }}
+      - run: npm run test:local-agents
         if: ${{ !cancelled() && steps.chrome.outcome == 'success' }}
         env:
           CHROME: ${{ steps.chrome.outputs.chrome-path }}

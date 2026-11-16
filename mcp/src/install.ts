@@ -23,9 +23,14 @@ function browserFolders(): string[] {
 		].map((name) => join(support, name));
 	}
 	if (process.platform === "linux")
-		return ["google-chrome", "google-chrome-beta", "chromium", "microsoft-edge", "BraveSoftware/Brave-Browser"].map(
-			(name) => join(home, ".config", name),
-		);
+		return [
+			"google-chrome",
+			"google-chrome-beta",
+			"google-chrome-for-testing",
+			"chromium",
+			"microsoft-edge",
+			"BraveSoftware/Brave-Browser",
+		].map((name) => join(home, ".config", name));
 	throw new Error(`Local agents do not support ${process.platform} yet.`);
 }
 

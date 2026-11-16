@@ -6,22 +6,8 @@ import { attached, MAX_ATTACHMENTS, MAX_FILES_CHARS } from "../shared/attachment
 import { interfaceLocale, localizeDocument, t } from "../shared/i18n.ts";
 import { effectiveAnswerLanguage } from "../shared/language.ts";
 import { linkTime } from "../shared/media-link.ts";
+import { ANSWER } from "../shared/presets.ts";
 import {
-	ANSWER,
-	MAX_PRESET_NAME,
-	MAX_PRESETS,
-	MAX_TEMPLATE_CHARS,
-	PRESET_VARIABLES,
-	PRESETS,
-	type Preset,
-	type PresetVariable,
-	presetDisplayName,
-	presetError,
-	presetOn,
-	unknownVariables,
-} from "../shared/presets.ts";
-import {
-	type AgentsStatus,
 	type AskCard,
 	type AskReply,
 	type AttachedPage,
@@ -57,12 +43,13 @@ import {
 	type WhenBusy,
 } from "../shared/protocol.ts";
 import { userScriptsAllowed } from "../shared/user-scripts.ts";
+import { advancedSection } from "./advanced.ts";
 import { prepare } from "./attach.ts";
 import { type Connection, pageTab, WorkerClient } from "./client.ts";
 import { attachedPage as choosePage } from "./compose.ts";
 import { type DiagramColors, Diagrams, MAX_DIAGRAMS } from "./diagram.ts";
+import { copyButton, element, icon, node, showResult, syncChildren } from "./dom.ts";
 import {
-	allowedSites,
 	answerError,
 	answerHelp,
 	answerLine,
@@ -93,6 +80,7 @@ import {
 	verifyText,
 } from "./format.ts";
 import { renderAnswer, safeHref } from "./markdown.ts";
+import { promptsSection } from "./prompts.ts";
 import { expandCommand, matchingCommands, type SlashCommand, slashCommands } from "./slash.ts";
 
 localizeDocument(document);
@@ -100,12 +88,6 @@ localizeDocument(document);
 document
 	.getElementById("busy-note")
 	?.replaceChildren(t("whilePiWorksNote", [/Mac/.test(navigator.platform) ? "Cmd" : "Ctrl"]));
-
-function element<T extends HTMLElement>(id: string): T {
-	const found = document.getElementById(id);
-	if (found === null) throw new Error(`missing #${id}`);
-	return found as T;
-}
 
 const ui = {
 	model: element<HTMLButtonElement>("model"),
@@ -185,35 +167,8 @@ const ui = {
 	userScriptsRow: element("user-scripts-row"),
 	openDetails: element<HTMLButtonElement>("open-details"),
 	callsPerAnswer: element<HTMLInputElement>("calls-per-answer"),
-	promptsSaved: element("prompts-saved"),
-	prompts: element("prompts"),
-	promptsActions: element("prompts-actions"),
-	addPrompt: element<HTMLButtonElement>("add-prompt"),
-	resetPrompts: element<HTMLButtonElement>("reset-prompts"),
-	resetConfirm: element("reset-confirm"),
-	confirmReset: element<HTMLButtonElement>("confirm-reset"),
-	cancelReset: element<HTMLButtonElement>("cancel-reset"),
-	promptsResult: element("prompts-result"),
 	keys: element("keys"),
-	sites: element("sites"),
-	allowAllSites: element<HTMLButtonElement>("allow-all-sites"),
-	agentsResult: element("agents-result"),
-	agentsCommand: element("agents-command"),
-	copyAgentsCommand: element<HTMLButtonElement>("copy-agents-command"),
-	agentsStatus: element("agents-status"),
-	agentsNetworkRow: element("agents-network-row"),
-	allowAgentsNetwork: element<HTMLButtonElement>("allow-agents-network"),
-	sitesResult: element("sites-result"),
-	sitesProviders: element("sites-providers"),
-	sitesHeld: element("sites-held"),
-	shortcuts: element("shortcuts"),
-	editShortcuts: element<HTMLButtonElement>("edit-shortcuts"),
 	openDiagnostics: element<HTMLButtonElement>("open-diagnostics"),
-	deleteChats: element<HTMLButtonElement>("delete-chats"),
-	deleteConfirm: element("delete-confirm"),
-	confirmDelete: element<HTMLButtonElement>("confirm-delete"),
-	cancelDelete: element<HTMLButtonElement>("cancel-delete"),
-	deleteResult: element("delete-result"),
 	updateModels: element<HTMLButtonElement>("update-models"),
 	updateModelsResult: element("update-models-result"),
 	modelsUpdated: element("models-updated"),
@@ -247,52 +202,6 @@ const client = new WorkerClient({
 	onConnection: renderConnection,
 });
 
-// Small DOM helpers. Text always goes in as text nodes.
-
-const SVG = "http://www.w3.org/2000/svg";
-
-function icon(name: string): SVGSVGElement {
-	const svg = document.createElementNS(SVG, "svg");
-	svg.setAttribute("class", "icon");
-	svg.setAttribute("aria-hidden", "true");
-	const use = document.createElementNS(SVG, "use");
-	use.setAttribute("href", `#i-${name}`);
-	svg.append(use);
-	return svg;
-}
-
-function node<K extends keyof HTMLElementTagNameMap>(
-	tag: K,
-	className: string,
-	...children: (Node | string)[]
-): HTMLElementTagNameMap[K] {
-	const created = document.createElement(tag);
-	if (className !== "") created.className = className;
-	created.append(...children);
-	return created;
-}
-
-/** A button that copies `text()`, and says for a moment whether it worked. */
-function copyButton(button: HTMLButtonElement, text: () => string, label: string, title = label): HTMLButtonElement {
-	const show = (status: "idle" | "copied" | "failed") => {
-		const result = status === "idle" ? label : t(status === "copied" ? "copied" : "copyFailed");
-		button.title = status === "idle" ? title : result;
-		button.setAttribute("aria-label", result);
-		button.querySelector("use")?.setAttribute("href", status === "copied" ? "#i-check" : "#i-copy");
-		const textNode = [...button.childNodes].find((child) => child.nodeType === Node.TEXT_NODE);
-		if (textNode !== undefined) textNode.textContent = result;
-	};
-	button.addEventListener("click", () => {
-		void navigator.clipboard.writeText(text()).then(
-			() => show("copied"),
-			() => show("failed"),
-		);
-		setTimeout(() => show("idle"), 1500);
-	});
-	show("idle");
-	return button;
-}
-
 /** OpenAI's "Manage usage" link, which its rules put next to each "Using ChatGPT plan" (design 6.20). */
 function usageLink(): HTMLAnchorElement {
 	const link = node("a", "", t("manageUsage"));
@@ -300,24 +209,6 @@ function usageLink(): HTMLAnchorElement {
 	link.target = "_blank";
 	link.rel = "noopener noreferrer";
 	return link;
-}
-
-/** Puts `nodes` into `parent` in order. Nodes that stay are not moved, so a focused one keeps focus. */
-function syncChildren(parent: HTMLElement, nodes: readonly Node[]): void {
-	const keep = new Set(nodes);
-	for (const child of [...parent.childNodes]) if (!keep.has(child)) child.remove();
-	for (const [index, child] of nodes.entries()) {
-		const at = parent.childNodes[index];
-		if (at !== child) parent.insertBefore(child, at ?? null);
-	}
-}
-
-/** A result line: green when `ok`, red when not, muted when null. Unchanged text is not set again, so it is not re-announced. */
-function showResult(line: HTMLElement, text: string, ok: boolean | null): void {
-	const className = ok === null ? "result" : ok ? "result ok" : "result bad";
-	if (line.textContent === text && line.className === className) return;
-	line.textContent = text;
-	line.className = className;
 }
 
 /** Native radios drawn as segments: arrow keys, one tab stop, and the checked state come with them. */
@@ -396,7 +287,7 @@ function render(next: PanelState): void {
 	ui.noticeText.textContent = next.notice?.text ?? "";
 	renderSetup(next);
 	renderScriptsSetup(next);
-	renderAgents(next.status.agents);
+	advanced.renderAgents(next.status.agents);
 	renderTranscript(next);
 	renderDrafts(next);
 	renderComposer();
@@ -2835,7 +2726,7 @@ ui.allowSite.addEventListener("click", () => {
 const sitesChanged = () => {
 	site = undefined;
 	renderComposer();
-	void renderSites();
+	void advanced.renderSites();
 };
 chrome.permissions.onAdded.addListener(sitesChanged);
 chrome.permissions.onRemoved.addListener(sitesChanged);
@@ -3184,8 +3075,8 @@ function openSettings(): void {
 	closeModels(false);
 	showView("settings", true);
 	syncSettings(state.settings);
-	void renderSites();
-	void renderShortcuts();
+	void advanced.renderSites();
+	void advanced.renderShortcuts();
 }
 
 function openModels(): void {
@@ -3530,10 +3421,9 @@ function syncSettings(settings: Settings): void {
 	ui.language.value = settings.language;
 	for (const radio of toolRadios) radio.checked = radio.value === settings.tools[toolOf(radio)];
 	if (document.activeElement !== ui.callsPerAnswer) ui.callsPerAnswer.value = String(settings.callsPerAnswer);
-	for (const radio of agentRadios) radio.checked = (radio.value === "on") === settings.localAgents;
-	syncAgentsNetwork();
+	advanced.sync(settings);
 	syncUserScripts();
-	renderPrompts(settings);
+	prompts.render(settings);
 }
 
 /** `line`: the result line of the control's section. */
@@ -3624,617 +3514,19 @@ ui.callsPerAnswer.addEventListener("change", () => {
 	saveSettings({ callsPerAnswer: calls }, ui.toolsSaved);
 });
 
-// Settings > Prompts: one row per prompt, in menu order. Edit opens a form in the row; Add prompt adds a row with the
-// form open until it is saved. The switch at the end of a row takes the prompt out of the pi menu and the slash
-// commands, and puts it back, without deleting it. A save sends one prompt, and the worker applies it to the prompts as
-// saved then, so two panels that edit at once do not undo each other's change.
+// Settings > Prompts (prompts.ts). Its star saves the default prompt as the other settings save.
+const prompts = promptsSection({ client, announce, saveSettings, settings: () => state?.settings });
 
-type PromptRow = {
-	node: HTMLElement;
-	editing(): boolean;
-	update(preset: Preset | undefined, settings: Settings): void;
-	open(): void;
-	close(): void;
-};
-
-const VARIABLE_HELP: Record<PresetVariable, string> = {
-	selection: t("variableSelection"),
-	title: t("variableTitle"),
-	url: t("variableUrl"),
-	language: t("variableLanguage"),
-};
-/** A new prompt: the instruction goes above the selection, where the cursor waits; the answer's language after it. */
-const NEW_TEMPLATE = `\n\n{{selection}}${ANSWER}`;
-const promptRows = new Map<string, PromptRow>();
-/** Numbers the forms: their labels need field IDs. */
-let promptForms = 0;
-let promptsTimer: ReturnType<typeof setTimeout> | undefined;
-/** A move button whose row moved: focus goes back to it, or to its row's other one at an end of the list. */
-let promptFocus: HTMLButtonElement | undefined;
-
-function renderPrompts(settings: Settings): void {
-	const rows: PromptRow[] = [];
-	for (const preset of settings.prompts) {
-		let row = promptRows.get(preset.id);
-		if (row === undefined) {
-			row = promptRow(preset.id, false);
-			promptRows.set(preset.id, row);
-		}
-		row.update(preset, settings);
-		rows.push(row);
-	}
-	// An open form whose prompt is not saved (a new one, or one another panel deleted) stays: Save adds it.
-	for (const [id, row] of promptRows) {
-		if (settings.prompts.some((preset) => preset.id === id)) continue;
-		if (row.editing()) {
-			row.update(undefined, settings);
-			rows.push(row);
-		} else {
-			promptRows.delete(id);
-		}
-	}
-	syncChildren(
-		ui.prompts,
-		rows.map((row) => row.node),
-	);
-	syncAddPrompt();
-	ui.resetPrompts.hidden = JSON.stringify(settings.prompts) === JSON.stringify(PRESETS);
-	const moved = promptFocus;
-	if (moved !== undefined && document.activeElement !== moved) {
-		promptFocus = undefined;
-		// Only focus the move dropped: the user may have gone on elsewhere.
-		const lost = document.activeElement === null || document.activeElement === document.body;
-		const other = moved.parentElement?.querySelectorAll<HTMLButtonElement>(".icon-button:not(.star)");
-		const target = moved.disabled ? [...(other ?? [])].find((button) => !button.disabled) : moved;
-		if (lost) target?.focus();
-	}
-}
-
-/** The rows shown count, saved or not; a row the panel removes counts no more before the worker's prompts arrive. */
-function syncAddPrompt(): void {
-	const full = ui.prompts.children.length >= MAX_PRESETS;
-	ui.addPrompt.disabled = full;
-	ui.addPrompt.title = full ? t("promptLimit", [MAX_PRESETS]) : "";
-}
-
-function promptsSaved(text: string, { menuError }: SettingsSaved): void {
-	clearTimeout(promptsTimer);
-	if (menuError !== null) {
-		showResult(ui.promptsSaved, "", null);
-		showResult(ui.promptsResult, t("promptMenuFailed", [text, menuError]), false);
-		return;
-	}
-	showResult(ui.promptsResult, "", null);
-	showResult(ui.promptsSaved, t("saved"), true);
-	announce(text);
-	promptsTimer = setTimeout(() => showResult(ui.promptsSaved, "", null), 1500);
-}
-
-/** `fresh`: a prompt that is not saved yet, with its form open. */
-function promptRow(id: string, fresh: boolean): PromptRow {
-	/** As the worker last sent it. */
-	let preset: Preset | undefined;
-	/** As saved, until the worker sends the prompts again: they follow the reply. */
-	let saved: Preset | undefined;
-	let settings: Settings | undefined;
-	/** Counts the worker's updates, so a reply knows whether a newer one arrived before it. */
-	let updates = 0;
-	let mode: "idle" | "edit" | "confirm" = fresh ? "edit" : "idle";
-	/** A save or delete is waiting for the worker: the form cannot change, so nothing typed meanwhile is lost. */
-	let busy = false;
-	/** A switch is waiting for the worker; the switch keeps focus, so it ignores clicks rather than being disabled. */
-	let switching = false;
-	const form = ++promptForms;
-
-	const star = node("button", "icon-button small star", icon("star"));
-	const name = node("span", "name");
-	const up = node("button", "icon-button small", icon("up"));
-	const down = node("button", "icon-button small", icon("down"));
-	const edit = node("button", "small-button edit", t("edit"));
-	const toggle = node("button", "switch");
-	toggle.setAttribute("role", "switch");
-	const shown = node("div", "prompt-head", star, name, up, down, edit, toggle);
-
-	const nameInput = node("input", "");
-	nameInput.id = `prompt-name-${form}`;
-	nameInput.type = "text";
-	nameInput.autocomplete = "off";
-	nameInput.maxLength = MAX_PRESET_NAME;
-	const nameLabel = node("label", "", t("name"));
-	nameLabel.htmlFor = nameInput.id;
-	const textInput = node("textarea", "");
-	textInput.id = `prompt-text-${form}`;
-	textInput.rows = 6;
-	textInput.dir = "auto";
-	textInput.maxLength = MAX_TEMPLATE_CHARS;
-	const textLabel = node("label", "", t("prompt"));
-	textLabel.htmlFor = textInput.id;
-	const result = node("p", "result");
-	result.setAttribute("role", "status");
-	const save = node("button", "primary small-button", t("save"));
-	const cancel = node("button", "small-button", t("cancel"));
-	const remove = node("button", "small-button danger", t("delete"));
-	const variables = PRESET_VARIABLES.map(variableButton);
-	const editor = node(
-		"div",
-		"",
-		node("div", "field", nameLabel, nameInput),
-		node("div", "field", textLabel, textInput),
-		node("div", "variables", node("span", "", t("insert")), ...variables),
-		result,
-		node("div", "row", save, cancel, node("span", "grow"), remove),
-	);
-
-	const question = node("p", "");
-	const confirmDelete = node("button", "small-button danger", t("delete"));
-	const cancelDelete = node("button", "small-button", t("cancel"));
-	const confirm = node("div", "confirm", question, node("div", "row", confirmDelete, cancelDelete));
-	const row = node("li", "", shown, editor, confirm);
-
-	const current = () => saved ?? preset;
-	const label = () => {
-		const value = current();
-		return value === undefined || settings === undefined
-			? t("newPrompt")
-			: presetDisplayName(value, effectiveAnswerLanguage(settings.language));
-	};
-	const changed = () =>
-		nameInput.value !== (current()?.name ?? "") || textInput.value !== (current()?.template ?? NEW_TEMPLATE);
-
-	/** Inserts `{{variable}}` at the cursor; the textarea keeps its selection while the button has focus. */
-	function variableButton(variable: PresetVariable): HTMLButtonElement {
-		const token = `{{${variable}}}`;
-		const button = node("button", "", token);
-		button.type = "button";
-		button.title = VARIABLE_HELP[variable];
-		button.setAttribute("aria-label", t("insertVariable", [token, VARIABLE_HELP[variable]]));
-		button.addEventListener("click", () => {
-			textInput.setRangeText(token, textInput.selectionStart, textInput.selectionEnd, "end");
-			textInput.focus();
-			check();
-		});
-		return button;
-	}
-
-	/** A placeholder that is not a variable is sent as written: likely a typo, so it is pointed out. */
-	function check(): void {
-		const unknown = unknownVariables(textInput.value).map((variable) => `{{${variable}}}`);
-		showResult(result, unknown.length === 0 ? "" : t("unknownVariable", [unknown.join(", ")]), null);
-	}
-
-	function update(next: Preset | undefined, latest: Settings): void {
-		preset = next;
-		settings = latest;
-		saved = undefined;
-		updates += 1;
-		render();
-	}
-
-	function render(): void {
-		const value = current();
-		name.textContent = label();
-		const prompts = settings?.prompts ?? [];
-		const index = prompts.findIndex((other) => other.id === id);
-		const isDefault = value !== undefined && settings?.defaultPreset === id;
-		const on = value === undefined || presetOn(value);
-		row.classList.toggle("off", !on);
-		star.setAttribute("aria-pressed", String(isDefault));
-		star.setAttribute("aria-label", isDefault ? t("defaultPromptAria", [label()]) : t("usePromptAria", [label()]));
-		star.title = !on ? t("promptOffStarTip") : isDefault ? t("defaultPromptTip") : t("usePromptTip");
-		star.disabled = index < 0 || !on;
-		// The default stays on: Ask pi uses it.
-		toggle.setAttribute("aria-checked", String(on));
-		toggle.setAttribute("aria-label", t("promptSwitchAria", [label()]));
-		toggle.title = isDefault ? t("promptDefaultOn") : on ? t("promptOnTip") : t("promptOffTip");
-		toggle.disabled = index < 0 || isDefault;
-		up.disabled = index <= 0;
-		down.disabled = index < 0 || index === prompts.length - 1;
-		up.setAttribute("aria-label", t("movePromptUp", [label()]));
-		down.setAttribute("aria-label", t("movePromptDown", [label()]));
-		up.title = t("moveUpTip");
-		down.title = t("moveDownTip");
-		edit.setAttribute("aria-label", t("editPromptAria", [label()]));
-		nameInput.readOnly = busy;
-		textInput.readOnly = busy;
-		for (const button of [save, cancel, ...variables, confirmDelete, cancelDelete]) button.disabled = busy;
-		remove.hidden = value === undefined;
-		remove.disabled = busy || !(settings?.prompts.some((other) => other.id !== id && presetOn(other)) ?? false);
-		remove.title = !busy && remove.disabled ? t("promptKeepOne") : "";
-		editor.setAttribute("aria-busy", String(busy));
-		shown.hidden = mode !== "idle";
-		editor.hidden = mode !== "edit";
-		confirm.hidden = mode !== "confirm";
-	}
-
-	function setMode(next: typeof mode, focus: HTMLElement | undefined): void {
-		mode = next;
-		render();
-		focus?.focus();
-	}
-
-	function open(): void {
-		const value = current();
-		// Edit the stored name, never the localized display name.
-		nameInput.value = value?.name ?? "";
-		textInput.value = value?.template ?? NEW_TEMPLATE;
-		if (value === undefined) textInput.setSelectionRange(0, 0);
-		setMode("edit", nameInput);
-		check();
-	}
-
-	function close(focus: boolean): void {
-		if (current() !== undefined) {
-			setMode("idle", focus ? edit : undefined);
-			return;
-		}
-		// Never saved, or deleted: the row goes.
-		mode = "idle";
-		promptRows.delete(id);
-		row.remove();
-		syncAddPrompt();
-		if (focus) ui.addPrompt.focus();
-	}
-
-	function saveRow(): void {
-		if (settings === undefined || busy) return;
-		const next = { id, name: nameInput.value.trim(), template: textInput.value };
-		const error = presetError(next, settings.prompts);
-		if (error !== undefined) {
-			showResult(result, error.text, false);
-			(error.field === "name" ? nameInput : textInput).focus();
-			return;
-		}
-		const { language } = settings;
-		const seen = updates;
-		const focused = document.activeElement instanceof HTMLElement ? document.activeElement : save;
-		busy = true;
-		render();
-		client.request<SettingsSaved>({ type: "save-prompt", prompt: next }).then(
-			(reply) => {
-				busy = false;
-				// Shown until the worker's prompts arrive. Prompts that came first are newer: another panel's save shows,
-				// and after another panel's delete the row goes.
-				if (updates === seen) saved = next;
-				close(true);
-				promptsSaved(t("savedPrompt", [presetDisplayName(next, effectiveAnswerLanguage(language))]), reply);
-			},
-			(error: Error) => {
-				busy = false;
-				setMode("edit", focused);
-				showResult(result, t("notSaved", [error.message]), false);
-			},
-		);
-	}
-
-	edit.addEventListener("click", open);
-	toggle.addEventListener("click", () => {
-		const value = current();
-		if (value === undefined || switching) return;
-		const on = !presetOn(value);
-		const switched = label();
-		const seen = updates;
-		switching = true;
-		client.request<SettingsSaved>({ type: "switch-prompt", promptId: id, on }).then(
-			(reply) => {
-				switching = false;
-				// Shown until the worker's prompts arrive, as after a save.
-				if (updates === seen) {
-					saved = { id, name: value.name, template: value.template, ...(on ? {} : { off: true as const }) };
-					render();
-				}
-				promptsSaved(t(on ? "promptTurnedOn" : "promptTurnedOff", [switched]), reply);
-			},
-			(error: Error) => {
-				switching = false;
-				showResult(ui.promptsResult, t("notSwitched", [error.message]), false);
-			},
-		);
-	});
-	star.addEventListener("click", () => {
-		if (settings?.defaultPreset !== id) saveSettings({ defaultPreset: id }, ui.promptsSaved);
-	});
-	for (const [button, by] of [
-		[up, -1],
-		[down, 1],
-	] as const) {
-		button.addEventListener("click", () => {
-			const moved = label();
-			// The row moves in the list, which takes focus from its button: the next render gives it back.
-			promptFocus = button;
-			client.request<SettingsSaved>({ type: "move-prompt", promptId: id, by }).then(
-				(reply) => promptsSaved(t(by < 0 ? "movedPromptUp" : "movedPromptDown", [moved]), reply),
-				(error: Error) => {
-					promptFocus = undefined;
-					showResult(ui.promptsResult, t("notMoved", [error.message]), false);
-				},
-			);
-		});
-	}
-	save.addEventListener("click", saveRow);
-	cancel.addEventListener("click", () => close(true));
-	nameInput.addEventListener("input", check);
-	textInput.addEventListener("input", check);
-	nameInput.addEventListener("keydown", (event) => {
-		if (event.key !== "Enter" || event.isComposing) return;
-		event.preventDefault();
-		saveRow();
-	});
-	remove.addEventListener("click", () => {
-		if (settings === undefined || busy) return;
-		const { language, prompts, defaultPreset } = settings;
-		const heir = defaultPreset === id ? prompts.find((other) => other.id !== id && presetOn(other)) : undefined;
-		question.replaceChildren(t("deletePromptQuestion", [label()]));
-		if (heir !== undefined)
-			question.append(
-				node("span", "", t("newDefaultPrompt", [presetDisplayName(heir, effectiveAnswerLanguage(language))])),
-			);
-		setMode("confirm", cancelDelete);
-	});
-	cancelDelete.addEventListener("click", () => setMode("edit", remove));
-	confirmDelete.addEventListener("click", () => {
-		if (busy) return;
-		const deleted = label();
-		const seen = updates;
-		busy = true;
-		render();
-		client.request<SettingsSaved>({ type: "delete-prompt", promptId: id }).then(
-			(reply) => {
-				// Focus goes to the next prompt's Edit, as in a list after a deletion.
-				const neighbor = [row.nextElementSibling, row.previousElementSibling]
-					.map((sibling) => sibling?.querySelector<HTMLButtonElement>(".prompt-head > .edit"))
-					.find((button) => button != null && button.closest("[hidden]") === null);
-				busy = false;
-				// Gone until the worker's prompts arrive. Prompts that came first are newer: after another panel saved
-				// this prompt again, it stays.
-				if (updates === seen) {
-					preset = undefined;
-					saved = undefined;
-				}
-				const kept = current() !== undefined;
-				close(false);
-				(kept ? edit : (neighbor ?? ui.addPrompt)).focus();
-				promptsSaved(t("deletedPrompt", [deleted]), reply);
-			},
-			(error: Error) => {
-				busy = false;
-				setMode("edit", remove);
-				showResult(result, t("notDeleted", [error.message]), false);
-			},
-		);
-	});
-	// Esc closes the confirmation or an unchanged form before it would leave Settings; changes are not dropped by it.
-	row.addEventListener("keydown", (event) => {
-		if (event.key !== "Escape" || event.isComposing || mode === "idle") return;
-		event.preventDefault();
-		if (busy) return;
-		if (mode === "confirm") setMode("edit", remove);
-		else if (changed()) showResult(result, t("saveOrCancel"), false);
-		else close(true);
-	});
-
-	return { node: row, editing: () => mode !== "idle", update, open, close: () => close(false) };
-}
-
-ui.addPrompt.addEventListener("click", () => {
-	if (state === undefined) return;
-	const id = crypto.randomUUID();
-	const row = promptRow(id, true);
-	promptRows.set(id, row);
-	renderPrompts(state.settings);
-	row.open();
-});
-
-function closeReset(focus: HTMLElement | undefined): void {
-	ui.resetConfirm.hidden = true;
-	ui.promptsActions.hidden = false;
-	focus?.focus();
-}
-
-ui.resetPrompts.addEventListener("click", () => {
-	ui.resetConfirm.hidden = false;
-	ui.promptsActions.hidden = true;
-	showResult(ui.promptsResult, "", null);
-	ui.cancelReset.focus();
-});
-ui.cancelReset.addEventListener("click", () => closeReset(ui.resetPrompts));
-ui.confirmReset.addEventListener("click", () => {
-	ui.confirmReset.disabled = true;
-	client
-		.request<SettingsSaved>({ type: "reset-prompts" })
-		.then(
-			(reply) => {
-				for (const row of promptRows.values()) row.close();
-				closeReset(ui.addPrompt);
-				promptsSaved(t("promptsRestored"), reply);
-			},
-			(error: Error) => showResult(ui.promptsResult, t("notReset", [error.message]), false),
-		)
-		.finally(() => {
-			ui.confirmReset.disabled = false;
-		});
-});
-ui.resetConfirm.addEventListener("keydown", (event) => {
-	if (event.key !== "Escape" || event.isComposing) return;
-	event.preventDefault();
-	closeReset(ui.resetPrompts);
-});
-
-// Settings > Advanced > Sites: the sites pi reads without a click (design 6.22), each with Remove.
-
-async function renderSites(): Promise<void> {
-	const { origins = [] } = await chrome.permissions.getAll();
-	ui.allowAllSites.hidden = origins.includes("<all_urls>");
-	const kept = [...PROVIDER_IDS.map((provider) => PROVIDERS[provider].origin), CHATGPT.auth, CHATGPT.loopback];
-	const sites = allowedSites(origins, kept);
-	ui.sites.replaceChildren(...(sites.length === 0 ? [node("li", "muted", t("none"))] : sites.map(siteRow)));
-	// Access pi holds for a provider or the ChatGPT sign-in lets it read those sites' pages too (design 6.22).
-	const held = kept.filter((origin) => origins.includes(origin)).map(siteName);
-	ui.sitesProviders.hidden = held.length === 0;
-	ui.sitesHeld.replaceChildren(...held.map((name) => node("li", "", node("span", "", name))));
-}
-
-function siteRow(pattern: string): HTMLElement {
-	const name = siteName(pattern);
-	const remove = node("button", "small-button", t("remove"));
-	remove.setAttribute("aria-label", t("removeSiteAria", [name]));
-	remove.title = t("removeSiteTip");
-	remove.addEventListener("click", () => {
-		chrome.permissions.remove({ origins: [pattern] }).then(
-			(removed) =>
-				showResult(ui.sitesResult, removed ? t("removedSite", [name]) : t("chromeKeptSite", [name]), removed),
-			(error: unknown) => showResult(ui.sitesResult, error instanceof Error ? error.message : String(error), false),
-		);
-	});
-	return node("li", "", node("span", "", name), remove);
-}
-
-ui.allowAllSites.addEventListener("click", () => {
-	// Inside the click: Chrome asks only during a user gesture.
-	chrome.permissions.request({ origins: ["<all_urls>"] }).then(
-		(granted) => showResult(ui.sitesResult, granted ? t("allSitesAllowed") : t("chromeDenied"), granted),
-		(error: Error) => showResult(ui.sitesResult, error.message, false),
-	);
-});
-
-// Settings > Advanced > Local agents (design 6.45): the switch is the consent, so turning it on asks Chrome for native
-// messaging and all sites in the same click; turning it off ends the sessions and gives native messaging back.
-
-const agentRadios = [...document.querySelectorAll<HTMLInputElement>('input[name="local-agents"]')];
-
-for (const radio of agentRadios) {
-	radio.addEventListener("change", () => {
-		if (radio.value === "off") {
-			saveSettings({ localAgents: false }, ui.agentsResult);
-			void chrome.permissions.remove({ permissions: ["nativeMessaging"] }).catch(() => {});
-			return;
-		}
-		// Inside the click: Chrome asks only during a user gesture. webRequest is for the agents' read_network_requests
-		// (design 6.46).
-		chrome.permissions.request({ permissions: ["nativeMessaging", "webRequest"], origins: ["<all_urls>"] }).then(
-			(granted) => {
-				if (granted) {
-					saveSettings({ localAgents: true }, ui.agentsResult);
-					syncAgentsNetwork();
-				} else {
-					showResult(ui.agentsResult, t("chromeDenied"), false);
-					if (state !== undefined) syncSettings(state.settings);
-				}
-			},
-			(error: Error) => {
-				showResult(ui.agentsResult, error.message, false);
-				if (state !== undefined) syncSettings(state.settings);
-			},
-		);
-	});
-}
-
-/**
- * Local agents turned on before webRequest was asked with the switch (0.4.3): an Allow gives their
- * read_network_requests Chrome's permission, while Console and network is on (design 6.46).
- */
-function syncAgentsNetwork(): void {
-	const wanted = state?.settings.localAgents === true && state.settings.tools.diagnostics === "on";
-	if (!wanted) {
-		ui.agentsNetworkRow.hidden = true;
-		return;
-	}
-	void chrome.permissions.contains({ permissions: ["webRequest"] }).then((granted) => {
-		ui.agentsNetworkRow.hidden = granted;
-	});
-}
-window.addEventListener("focus", syncAgentsNetwork);
-ui.allowAgentsNetwork.addEventListener("click", () => {
-	// Inside the click: Chrome asks only during a user gesture.
-	chrome.permissions.request({ permissions: ["webRequest"] }).then(
-		(granted) => {
-			if (!granted) showResult(ui.agentsResult, t("chromeDenied"), false);
-			syncAgentsNetwork();
-		},
-		(error: Error) => showResult(ui.agentsResult, error.message, false),
-	);
-});
-
-ui.copyAgentsCommand.append(icon("copy"));
-copyButton(ui.copyAgentsCommand, () => ui.agentsCommand.textContent ?? "", t("copyCommand"));
-
-function renderAgents({ state: bridge, error, agents }: AgentsStatus): void {
-	ui.agentsStatus.hidden = bridge === "off";
-	ui.agentsStatus.textContent =
-		bridge === "connected"
-			? agents.length === 0
-				? t("agentsNone")
-				: t("agentsConnected", [agents.join(", ")])
-			: bridge === "permission"
-				? t("agentsPermission")
-				: bridge === "starting"
-					? t("agentsStarting")
-					: bridge === "missing"
-						? // Chrome's own words when the host was found but stopped at start, as on a broken ~/.pagewing.
-							error === null || error.includes("not found")
-							? t("agentsMissing")
-							: `${t("agentsMissing")} (${error})`
-						: t("agentsError", [error ?? ""]);
-}
-
-// Settings > Shortcuts.
-
-/** The bindings Chrome actually assigned: a suggested key that conflicts with another extension stays unset. */
-async function renderShortcuts(): Promise<void> {
-	const commands = await chrome.commands.getAll();
-	ui.shortcuts.replaceChildren(
-		...commands
-			.filter((command) => command.name !== "_execute_action")
-			.map((command) =>
-				node(
-					"li",
-					"",
-					node("span", "", command.description ?? command.name ?? ""),
-					command.shortcut ? node("kbd", "key", command.shortcut) : node("span", "key muted", t("notSet")),
-				),
-			),
-	);
-}
-
-// `chrome://` pages open only through the tabs API, not as links.
-ui.editShortcuts.addEventListener("click", () => void chrome.tabs.create({ url: "chrome://extensions/shortcuts" }));
-// Settings > Advanced > Data: Delete all chats, after a confirmation in place (design 6.31).
-function closeDeleteConfirm(focus: HTMLElement | undefined): void {
-	ui.deleteConfirm.hidden = true;
-	ui.deleteChats.hidden = false;
-	focus?.focus();
-}
-ui.deleteChats.addEventListener("click", () => {
-	ui.deleteConfirm.hidden = false;
-	ui.deleteChats.hidden = true;
-	showResult(ui.deleteResult, "", null);
-	ui.cancelDelete.focus();
-});
-ui.cancelDelete.addEventListener("click", () => closeDeleteConfirm(ui.deleteChats));
-ui.deleteConfirm.addEventListener("keydown", (event) => {
-	if (event.key !== "Escape" || event.isComposing) return;
-	event.preventDefault();
-	closeDeleteConfirm(ui.deleteChats);
-});
-ui.confirmDelete.addEventListener("click", () => {
-	ui.confirmDelete.disabled = true;
-	ui.cancelDelete.disabled = true;
-	showResult(ui.deleteResult, t("deleting"), null);
-	client
-		.request({ type: "delete-all-chats" })
-		.then(
-			() => {
-				// A fresh database numbers chats from 1 again.
-				removedHere.clear();
-				closeDeleteConfirm(ui.deleteChats);
-				showResult(ui.deleteResult, t("allChatsDeleted"), true);
-				announce(t("allChatsDeleted"));
-			},
-			(error: Error) => showResult(ui.deleteResult, t("notDeleted", [error.message]), false),
-		)
-		.finally(() => {
-			ui.confirmDelete.disabled = false;
-			ui.cancelDelete.disabled = false;
-		});
+// Settings > Advanced and Shortcuts (advanced.ts).
+const advanced = advancedSection({
+	client,
+	announce,
+	saveSettings,
+	settings: () => state?.settings,
+	resync: () => {
+		if (state !== undefined) syncSettings(state.settings);
+	},
+	chatsDeleted: () => removedHere.clear(),
 });
 
 /** When the model list was updated, short: no seconds, and the year only when it is not this year's. */

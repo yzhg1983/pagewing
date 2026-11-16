@@ -47,8 +47,12 @@ describe("install", () => {
 	});
 
 	it("by default registers in the installed browsers' folders only", () => {
-		const chrome = join(home, "Library", "Application Support", "Google", "Chrome");
-		if (process.platform !== "darwin") return;
+		// Chrome for Testing on Linux: the browser suites and CI run in it.
+		const chrome =
+			process.platform === "darwin"
+				? join(home, "Library", "Application Support", "Google", "Chrome")
+				: join(home, ".config", "google-chrome-for-testing");
+		if (process.platform !== "darwin" && process.platform !== "linux") return;
 		expect(install("/cli.ts", [])).toEqual([]);
 		mkdirSync(chrome, { recursive: true });
 		expect(install("/cli.ts", [])).toEqual([

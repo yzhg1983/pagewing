@@ -23,7 +23,10 @@ const repo = fileURLToPath(new URL("../../", import.meta.url));
 const dir = mkdtempSync(join(tmpdir(), "pa-"));
 const ext = join(dir, "ext");
 const home = join(dir, "h");
-const profile = join(home, "Library", "Application Support", "Google", "Chrome for Testing");
+const profile =
+	process.platform === "darwin"
+		? join(home, "Library", "Application Support", "Google", "Chrome for Testing")
+		: join(home, ".config", "google-chrome-for-testing");
 mkdirSync(profile, { recursive: true });
 console.log("Artifacts:", dir);
 mkdirSync(ext);
@@ -222,6 +225,8 @@ try {
 	await panel.goto(`chrome-extension://${id}/panel.html`);
 	const problems = [];
 	panel.on("pageerror", (error) => problems.push(error.message));
+	// The setup card shows with the worker's first state; before it, the Settings button does nothing.
+	await panel.waitForSelector("#setup:not([hidden])");
 	await panel.click("#open-settings");
 	await panel.click("#settings .advanced summary");
 	await panel.click('label:has(input[name="local-agents"][value="on"])');
