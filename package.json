@@ -20,6 +20,7 @@
 		"illustrations": "node scripts/illustrations.mjs",
 		"screenshots": "node scripts/screenshots.mjs",
 		"test": "vitest --run",
+		"coverage": "vitest --run --coverage",
 		"test:diagrams": "node test/e2e/diagrams.mjs",
 		"test:screenshots": "node test/e2e/screenshots.mjs",
 		"test:slash": "node test/e2e/slash.mjs",
@@ -43,6 +44,7 @@
 	"devDependencies": {
 		"@biomejs/biome": "2.6.4",
 		"@types/chrome": "0.3.7",
+		"@vitest/coverage-v8": "5.1.0",
 		"esbuild": "0.28.2",
 		"playwright-core": "1.64.1",
 		"typescript": "7.0.2",

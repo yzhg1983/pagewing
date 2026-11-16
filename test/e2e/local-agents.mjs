@@ -23,7 +23,10 @@ const repo = fileURLToPath(new URL("../../", import.meta.url));
 const dir = mkdtempSync(join(tmpdir(), "pa-"));
 const ext = join(dir, "ext");
 const home = join(dir, "h");
-const profile = join(home, "Library", "Application Support", "Google", "Chrome for Testing");
+const profile =
+	process.platform === "darwin"
+		? join(home, "Library", "Application Support", "Google", "Chrome for Testing")
+		: join(home, ".config", "google-chrome-for-testing");
 mkdirSync(profile, { recursive: true });
 console.log("Artifacts:", dir);
 mkdirSync(ext);

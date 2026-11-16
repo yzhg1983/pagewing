@@ -44,6 +44,7 @@ jobs:
       - run: npm ci --ignore-scripts
       - run: npx biome ci .
       - run: npx tsc --noEmit
+      - run: npx tsc --noEmit -p mcp
       - run: npm test
       # Also fails when the manifest's version differs from package.json's.
       - run: npm run build

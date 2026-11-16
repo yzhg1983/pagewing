@@ -24,6 +24,10 @@ npm run build   # also fails on an unreviewed import( and on a package without a
 
 Then run the browser suite for the part you changed. CI runs all of them on pull requests and on `main` (CI and releases).
 
+`npm run coverage` runs the unit tests and reports which lines of `src/` and `mcp/src/` they ran, in the terminal and
+in `coverage/index.html`. It is a report, not a gate: it shows code no unit test runs, not whether the tests check
+enough, and it leaves out what only the browser suites run (`panel.ts`, `page-agent.ts`).
+
 ## Browser test suites
 
 Each suite builds a throwaway copy of the extension and tests it in Chrome for Testing, with a fresh profile, local
@@ -42,6 +46,8 @@ pages, and a fake model provider: no accounts, keys, or network. Get Chrome for 
 | `attachments` | images and text files in the message box (`attach.ts`, `attachments.ts`) |
 | `diagrams` | diagrams, pele |
 | `localization` | any interface text (Chrome 147+) |
+| `model-list` | the model list and Update model list (`models.ts`, `catalog.ts`) |
+| `local-agents` | local agents (`local-agents.ts`, `mcp/`); macOS and Linux |
 
 `page-tools` and `screenshots` use the same port: run them one at a time.
 
@@ -64,7 +70,7 @@ Rules that keep the extension correct:
 | Interface text | Both `static/_locales/` catalogs | Keep keys and placeholders in sync; never store a translated prompt name. |
 | New provider | `models.ts`, manifest `optional_host_permissions` | Keys go only to the provider's fixed address, and only with its host permission. |
 | New dependency | `package.json` | A new `import(` fails the build until it is reviewed; a package without a licence fails it too. |
-| pi-durable or pi-ai API | any | Check the 1.4.0 types in `node_modules`, not the pi-mono source. |
+| pi-durable or pi-ai API | any | Check the installed version's types in `node_modules`, not the pi-mono source. |
 | Commit callback | any `commit()` | Await nothing outside `tx` (a Chrome call, a timer): every chat's commits, streaming included, run on one line. Make native calls before or after the commit, as `switch_tab` does. |
 | Icon, illustrations, or screenshots | `assets/`, `scripts/` | `CHROME=… npm run icons`, `npm run illustrations` (the README's two drawings, SVG), or `npm run screenshots`, then commit what they write. The screenshots load live sites: check them before committing. By default the model's turns are scripted and the page tools run for real, so they show the interface, not a model's accuracy or speed; with `LIVE=1` a real model runs them, as for the README's and the store's shots. |
 
@@ -72,7 +78,7 @@ Rules that keep the extension correct:
 
 CI (`.github/workflows/ci.yml`) runs on pushes to `main`, pull requests, weekly, and from the Actions tab, in one job:
 the checks, unit tests, and build, then every browser suite on the Chrome version in `CHROME_VERSION`. A push or pull
-request runs the browser suites only when it changes `src/`, `static/`, `test/e2e/`, the build, or the dependencies, and
+request runs the browser suites only when it changes `src/`, `static/`, `mcp/`, `test/e2e/`, the build, or the dependencies, and
 a change to only Markdown or `docs/` runs nothing. A push to another branch runs nothing: open a pull
 request or run CI from the Actions tab.
 
