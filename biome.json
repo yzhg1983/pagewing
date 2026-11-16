@@ -25,6 +25,7 @@
 			"scripts/**",
 			"mcp/**",
 			"build.mjs",
+			"vitest.config.ts",
 			"*.json",
 			"!**/node_modules",
 			"!**/dist"

@@ -2,14 +2,14 @@
 // Settings > Prompts (prompts.ts) against panel.html's own markup, with a worker that records what it is asked.
 
 import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { join } from "node:path";
 import { beforeEach, expect, it } from "vitest";
 import { promptsSection } from "../src/panel/prompts.ts";
 import { PRESETS, type Preset } from "../src/shared/presets.ts";
 import type { Settings, SettingsChange, SettingsSaved } from "../src/shared/protocol.ts";
 
-// happy-dom gives import.meta.url an http address, so the page is found from the repo root, where vitest runs.
-const html = readFileSync(resolve("static/panel.html"), "utf8");
+// Not `new URL(…, import.meta.url)`: in happy-dom, URL is the page's, which readFileSync does not take.
+const html = readFileSync(join(import.meta.dirname, "../static/panel.html"), "utf8");
 const markup = /<body[^>]*>([\s\S]*)<\/body>/.exec(html)?.[1] ?? "";
 
 type Command = { type: string; [key: string]: unknown };
@@ -62,7 +62,7 @@ beforeEach(() => {
 
 it("lists the prompts in order, stars the default, and hides Reset while they are the built-in ones", () => {
 	setup(settingsOf(PRESETS, "summarize"));
-	expect(names()).toEqual(["Explain", "Summarize", "Translate to English", ...names().slice(3)]);
+	expect(names().slice(0, 5)).toEqual(["Explain", "Summarize", "Translate to English", "Proofread", "Draft a reply"]);
 	expect(rows()).toHaveLength(PRESETS.length);
 	expect(rows().map((row) => row.querySelector(".star")?.getAttribute("aria-pressed"))).toEqual(
 		PRESETS.map((preset) => String(preset.id === "summarize")),
@@ -124,6 +124,7 @@ it("a duplicate name is refused", () => {
 	row.querySelector<HTMLButtonElement>("button.primary")!.click();
 	expect(commands).toEqual([]);
 	expect(row.querySelector(".result")?.className).toBe("result bad");
+	expect(row.querySelector(".result")?.textContent).toBe("Another prompt has this name");
 });
 
 it("an unsaved form whose prompt the worker does not have stays through a render; a closed one goes", () => {

@@ -15,5 +15,5 @@
 		"skipLibCheck": true,
 		"noUncheckedIndexedAccess": true
 	},
-	"include": ["src", "test", "build.mjs"]
+	"include": ["src", "test", "build.mjs", "vitest.config.ts"]
 }

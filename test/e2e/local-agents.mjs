@@ -225,6 +225,8 @@ try {
 	await panel.goto(`chrome-extension://${id}/panel.html`);
 	const problems = [];
 	panel.on("pageerror", (error) => problems.push(error.message));
+	// The setup card shows with the worker's first state; before it, the Settings button does nothing.
+	await panel.waitForSelector("#setup:not([hidden])");
 	await panel.click("#open-settings");
 	await panel.click("#settings .advanced summary");
 	await panel.click('label:has(input[name="local-agents"][value="on"])');

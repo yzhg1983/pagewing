@@ -26,7 +26,7 @@ Then run the browser suite for the part you changed. CI runs all of them on pull
 
 `npm run coverage` runs the unit tests and reports which lines of `src/` and `mcp/src/` they ran, in the terminal and
 in `coverage/index.html`. It is a report, not a gate: it shows code no unit test runs, not whether the tests check
-enough, and it leaves out what only the browser suites run (`panel.ts`, `page-agent.ts`).
+enough, and it does not count what the browser suites run, so `panel.ts` and `page-agent.ts` show as nearly untested.
 
 ## Browser test suites
 
