@@ -189,6 +189,8 @@ body { margin: 0; font: 14px sans-serif }
 #bordered .inside { width: 50px; height: 20px }
 #scroller { left: 300px; top: 20px; width: 200px; height: 100px; overflow: scroll }
 #scroller .under { margin-left: 190px; width: 10px; height: 20px }
+/* A classic 15 px scrollbar on every system: macOS's overlay scrollbars take no space and leave .under in view. */
+#scroller::-webkit-scrollbar { width: 15px; height: 15px }
 #trap { left: 20px; top: 200px; width: 80px; height: 80px; overflow: hidden }
 #trap .fixed { position: fixed; left: 400px; top: 200px; width: 100px; height: 60px }
 #trap2 { left: 20px; top: 320px; width: 80px; height: 80px; overflow: hidden; transform: translateX(0) }
