@@ -11,7 +11,7 @@
 // starts host.cmd, and host.cmd the CLI, from such a path. On Windows the registry key Chrome reads is the user's: the
 // test saves it and puts it back. A sentinel on another home's bridge address fails the test if anything reaches it.
 import { spawn, spawnSync } from "node:child_process";
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createServer as createHttp } from "node:http";
 import { createServer as createSocketServer } from "node:net";
 import { homedir, tmpdir } from "node:os";
@@ -25,10 +25,12 @@ import { HOST_NAME, socketPath } from "../../mcp/src/bridge.ts";
 if (!process.env.CHROME) throw new Error("Set CHROME to a Chrome for Testing 140+ executable.");
 const repo = fileURLToPath(new URL("../../", import.meta.url));
 const windows = process.platform === "win32";
-// Short elsewhere: the bridge's unix socket path, under the home, must stay under about 100 bytes.
-const dir = mkdtempSync(join(tmpdir(), windows ? "pagewing 测试-" : "pa-"));
+// Short: the bridge's unix socket path, under the home, must stay under about 100 bytes.
+const dir = mkdtempSync(join(tmpdir(), "pa-"));
 const ext = join(dir, "ext");
-const home = join(dir, "h");
+// The home and the CLI: on Windows in a folder whose name has a space and Chinese.
+const place = windows ? join(dir, "pagewing 测试") : dir;
+const home = join(place, "h");
 const env = { ...process.env, HOME: home, USERPROFILE: home, LOCALAPPDATA: join(home, "AppData", "Local") };
 const profile = windows
 	? join(env.LOCALAPPDATA, "Google", "Chrome for Testing", "User Data")
@@ -39,10 +41,12 @@ mkdirSync(profile, { recursive: true });
 console.log("Artifacts:", dir);
 const built = spawnSync(process.execPath, [join(repo, "mcp/build.mjs")], { stdio: "inherit" });
 if (built.status !== 0) throw new Error("mcp/build.mjs failed");
-// As npm installs it: dist/ beside the package.json that makes cli.js a module.
-cpSync(join(repo, "mcp/dist"), join(dir, "mcp", "dist"), { recursive: true });
-cpSync(join(repo, "mcp/package.json"), join(dir, "mcp", "package.json"));
-const cli = join(dir, "mcp", "dist", "cli.js");
+// As npm installs it: dist/ beside the package.json that makes cli.js a module. copyFileSync: in CI, Node 22's cpSync
+// into a non-ASCII Windows folder left nothing at the path.
+mkdirSync(join(place, "mcp", "dist"), { recursive: true });
+copyFileSync(join(repo, "mcp/dist/cli.js"), join(place, "mcp", "dist", "cli.js"));
+copyFileSync(join(repo, "mcp/package.json"), join(place, "mcp", "package.json"));
+const cli = join(place, "mcp", "dist", "cli.js");
 mkdirSync(ext);
 const common = {
 	absWorkingDir: repo,

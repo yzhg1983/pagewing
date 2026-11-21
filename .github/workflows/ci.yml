@@ -193,7 +193,8 @@ jobs:
           npm pack ./mcp --ignore-scripts --pack-destination "$tmp"
           mkdir -p "$(cygpath -u "$LOCALAPPDATA")/Google/Chrome/User Data" "$tmp/pagewing 测试 install"
           cd "$tmp/pagewing 测试 install"
-          npm init -y > /dev/null
+          # npm init would name the package after the folder, which npm refuses.
+          echo '{ "private": true }' > package.json
           npm install --ignore-scripts "$tmp"/pagewing-mcp-*.tgz
           npx pagewing-mcp install | tee first.txt
           grep -q 'Registered: HKCU\\Software\\Google\\Chrome\\NativeMessagingHosts' first.txt
