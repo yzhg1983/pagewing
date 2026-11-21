@@ -166,12 +166,14 @@ jobs:
           node-version: "22"
           cache: npm
       - run: npm ci --ignore-scripts
-      # cmd.exe reads host.cmd in this code page. On UTF-8 already, the suite would not show that host.cmd's switch works.
-      - name: Code page
-        shell: cmd
+      # cmd.exe reads host.cmd in its console's code page. The console Chrome starts it in gets the system's OEM code page,
+      # or HKCU\Console's, not the 65001 of the steps' own shells. On UTF-8 already, the suite would not show that
+      # host.cmd's switch works. //v: Git Bash would turn /v into a path.
+      - name: Code page of new consoles
         run: |
-          chcp
-          chcp | findstr /c:"65001" >nul && (echo The runner already uses UTF-8. & exit /b 1) || exit /b 0
+          reg query 'HKLM\SYSTEM\CurrentControlSet\Control\Nls\CodePage' //v OEMCP | tee pages.txt
+          { reg query 'HKCU\Console' //v CodePage 2> /dev/null || true; } | tee -a pages.txt
+          if grep -q 65001 pages.txt; then echo "New consoles already use UTF-8."; exit 1; fi
       - run: npx vitest --run mcp/test
       - id: chrome
         uses: browser-actions/setup-chrome@v2
