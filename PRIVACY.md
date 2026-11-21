@@ -3,7 +3,7 @@
 Pagewing is a Chrome extension that sends your questions, and the parts of web pages you choose, to an AI provider
 that you set up. This policy says what it handles, where that goes, and how to delete it.
 
-Last updated: 2026-11-10.
+Last updated: 2026-11-21.
 
 ## In short
 
@@ -88,9 +88,13 @@ agent's tab, or drag into its group, join it.
 
 What the tools return goes to that program: the text and outline of the pages in its group, screenshots of them,
 their console messages and network requests, the results of scripts it runs, and the titles and addresses of its
-tabs. Pagewing sends this only over a connection
-on your computer that your user account alone can open, and to no one else. The program may send it on, for example
-to its own AI provider, under its own policy. Turning on Local agents asks Chrome for native messaging, for network
+tabs. Pagewing sends this only over a connection on your computer, and to no one else. On macOS and Linux, only your
+user account can open that connection. On Windows, other ordinary accounts cannot send requests on it, but two cases
+are not covered: another account on the same PC can take the connection's name before Pagewing's helper starts and
+receive your agent's requests (addresses, text to type, scripts), though not reach your Chrome through it; and
+Windows does not stop a client on another computer, signed in as you or as an administrator of this PC, from using the
+connection where your network allows it. So on Windows, use Local agents only on a PC whose user accounts you trust.
+The program may send what it receives on, for example to its own AI provider, under its own policy. Turning on Local agents asks Chrome for native messaging, for network
 requests, and for access to all sites; turning it off ends every agent's session.
 
 ## Access to pages
