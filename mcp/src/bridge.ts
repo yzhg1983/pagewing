@@ -1,8 +1,10 @@
 // What the three processes of a local agent share (design 6.45): the native host's name, the socket the MCP servers
-// reach the host on, and the two framings: Chrome's native messages and newline-delimited JSON on the socket.
+// reach the host on (a named pipe on Windows, design 6.49), and the two framings: Chrome's native messages and
+// newline-delimited JSON on the socket.
 
+import { createHash } from "node:crypto";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { join, win32 } from "node:path";
 import type { Readable, Writable } from "node:stream";
 
 /** The native messaging host Pagewing connects to; Chrome finds its manifest by this name. */
@@ -14,7 +16,20 @@ export const MAX_MESSAGE_BYTES = 1_000_000;
 
 /** Pagewing's folder in the user's home: the host script and the socket, readable by the user alone. */
 export const homeDir = () => join(homedir(), ".pagewing");
-export const socketPath = () => join(homeDir(), "bridge.sock");
+
+/** Where the host of `home` listens and the MCP servers connect: a socket in its .pagewing, or on Windows a pipe. */
+export const socketPath = (home = homedir()) =>
+	process.platform === "win32" ? pipeName(home) : join(home, ".pagewing", "bridge.sock");
+
+/**
+ * The Windows pipe of a home folder. Pipe names are machine-wide: one per home folder keeps a test's temporary home
+ * off the user's host, and two accounts with the same user name apart. The hash keeps the name short and free of `\`;
+ * `resolve` and lower case give one name to `C:\Users\alex\` and `c:/users/alex`.
+ */
+export function pipeName(home: string): string {
+	const id = createHash("sha256").update(win32.resolve(home).toLowerCase()).digest("hex").slice(0, 16);
+	return `\\\\.\\pipe\\pagewing-${id}`;
+}
 
 /** A call result as MCP's tools/call returns it. */
 export type ToolResult = {

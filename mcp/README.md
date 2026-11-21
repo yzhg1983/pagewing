@@ -2,7 +2,10 @@
 
 Lets a coding agent on your computer, such as [pi](https://github.com/earendil-works/pi), use
 [Pagewing](https://github.com/yzhg1983/pagewing)'s page tools in your Chrome over MCP: open a page, read it, click,
-type, hover, and drag, run a script, take a screenshot. macOS and Linux. Needs the Pagewing Chrome extension, 0.4.4 or later.
+type, hover, and drag, run a script, take a screenshot. macOS, Linux, and Windows. Needs the Pagewing Chrome extension,
+0.4.4 or later.
+
+On Windows, use Local agents only on a PC whose user accounts you trust (see [Windows](#windows)).
 
 ## Set up
 
@@ -31,6 +34,22 @@ helper relays your agent's calls to Pagewing over a socket only you can open (`~
 ```
 agent ──MCP──▶ pagewing-mcp ──socket──▶ helper ──native messaging──▶ Pagewing in Chrome
 ```
+
+### Windows
+
+On Windows the helper is `%USERPROFILE%\.pagewing\host.cmd`, and Chrome finds it through a registry key under
+`HKEY_CURRENT_USER` that names `%USERPROFILE%\.pagewing\io.github.yzhg1983.pagewing.json`; `--user-data-dir` has no
+effect there. The helper listens on a named pipe, `\\.\pipe\pagewing-` and a short hash of your user folder. Chrome,
+Edge, and Chromium are supported; Brave is untested.
+
+The pipe gives other ordinary accounts read access only, so they cannot send calls to it. Two cases are not covered:
+
+- Another account on the same PC can create the pipe before your helper does, receive your agent's calls (addresses,
+  text to type, scripts), and answer them with false results. It cannot reach your Chrome this way.
+- Pagewing does not block remote pipe clients: where Windows and your network allow it, a client on another computer
+  signed in as you, or as an administrator of this PC, can use the bridge.
+
+So on a PC shared with accounts you do not trust, leave Local agents off.
 
 ## What the agent can do
 

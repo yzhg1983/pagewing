@@ -1,4 +1,5 @@
-// The native host, as Chrome runs it: native messages on stdin and stdout, MCP servers on its socket.
+// The native host, as Chrome runs it: native messages on stdin and stdout, MCP servers on its socket (a pipe on
+// Windows).
 
 import { type ChildProcess, spawn } from "node:child_process";
 import { existsSync, mkdtempSync, statSync } from "node:fs";
@@ -6,20 +7,19 @@ import { connect, type Socket } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { readLines, readNative, writeLine, writeNative } from "../src/bridge.ts";
+import { readLines, readNative, socketPath, writeLine, writeNative } from "../src/bridge.ts";
 
 const CLI = join(import.meta.dirname, "..", "src", "cli.ts");
 
 /**
- * A host started as Chrome starts it, with its home in a new folder; `fromHost` collects its native messages after
- * `ready`, which says it listens.
+ * A host started as Chrome starts it, with its home in a new folder (or `home`), so it never meets the user's host;
+ * `fromHost` collects its native messages after `ready`, which says it listens.
  */
-function startHost() {
-	// Short: a unix socket path must stay under about 100 bytes.
-	const home = mkdtempSync(join(tmpdir(), "pa-"));
+// Short: a unix socket path must stay under about 100 bytes.
+function startHost(home = mkdtempSync(join(tmpdir(), "pa-"))) {
 	const child = spawn(process.execPath, [CLI, "host", "chrome-extension://test/"], {
-		env: { ...process.env, HOME: home },
-		stdio: ["pipe", "pipe", "inherit"],
+		env: { ...process.env, HOME: home, USERPROFILE: home },
+		stdio: ["pipe", "pipe", "pipe"],
 	});
 	children.push(child);
 	const fromHost: Record<string, unknown>[] = [];
@@ -28,8 +28,16 @@ function startHost() {
 		if ((value as { type: string }).type === "ready") ready = true;
 		else fromHost.push(value as Record<string, unknown>);
 	});
-	const socketPath = join(home, ".pagewing", "bridge.sock");
-	return { child, home, socketPath, fromHost, ready: () => vi.waitFor(() => expect(ready).toBe(true)) };
+	let stderr = "";
+	child.stderr!.setEncoding("utf8").on("data", (chunk: string) => (stderr += chunk));
+	return {
+		child,
+		home,
+		socketPath: socketPath(home),
+		fromHost,
+		stderr: () => stderr,
+		ready: () => vi.waitFor(() => expect(ready).toBe(true)),
+	};
 }
 
 /** An MCP server stand-in on the host's socket, once it listens: `lines` collects what Pagewing sends it. */
@@ -95,14 +103,34 @@ describe("routing", () => {
 });
 
 describe("the socket", () => {
-	it("is readable by the user alone, and goes when Chrome closes the port", async () => {
-		const host = startHost();
-		await agent(host);
-		expect(statSync(join(host.home, ".pagewing")).mode & 0o777).toBe(0o700);
-		expect(statSync(host.socketPath).mode & 0o777).toBe(0o600);
-		const exited = new Promise((resolve) => host.child.once("exit", resolve));
-		host.child.stdin!.end();
-		expect(await exited).toBe(0);
-		expect(existsSync(host.socketPath)).toBe(false);
-	});
+	it.skipIf(process.platform === "win32")(
+		"is readable by the user alone, and goes when Chrome closes the port",
+		async () => {
+			const host = startHost();
+			await agent(host);
+			expect(statSync(join(host.home, ".pagewing")).mode & 0o777).toBe(0o700);
+			expect(statSync(host.socketPath).mode & 0o777).toBe(0o600);
+			const exited = new Promise((resolve) => host.child.once("exit", resolve));
+			host.child.stdin!.end();
+			expect(await exited).toBe(0);
+			expect(existsSync(host.socketPath)).toBe(false);
+		},
+	);
+});
+
+describe("the pipe on Windows", () => {
+	it.runIf(process.platform === "win32")(
+		"refuses a second host of the same home, and the first keeps serving",
+		async () => {
+			const first = startHost();
+			await agent(first);
+			const second = startHost(first.home);
+			const code = await new Promise((resolve) => second.child.once("exit", resolve));
+			expect(code).toBe(1);
+			expect(second.stderr()).toMatch(/^pagewing-mcp host: .*EADDRINUSE/);
+			const a = await agent(first);
+			writeLine(a.socket, { type: "open", name: "after" });
+			await vi.waitFor(() => expect(first.fromHost).toContainEqual(expect.objectContaining({ name: "after" })));
+		},
+	);
 });
