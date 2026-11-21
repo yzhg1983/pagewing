@@ -5,30 +5,48 @@
 // design 6.47), run_script, screenshot_page, list_tabs, and close_tab work there; a tab outside the group is refused; Off in Tools refuses its tool; the switch
 // going off ends the session and leaves the tabs open, and a new client then hears how to connect. A page open_tab loads
 // is recorded from its start: its console (an error thrown while loading) and its requests (design 6.46). The user's home,
-// Chrome profile, and ~/.pagewing are never touched: Chrome and the bridge run with HOME in a temporary folder, and
-// the profile is that HOME's Chrome for Testing folder, where pagewing-mcp registers by default.
-import { spawn } from "node:child_process";
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+// Chrome profile, and ~/.pagewing are never touched: Chrome and the bridge run with their home in a temporary folder,
+// and the profile is that home's Chrome for Testing folder, where pagewing-mcp registers by default. The bridge is the
+// built package (design 6.49), copied into that folder: on Windows the folder's name has a space and Chinese, so Chrome
+// starts host.cmd, and host.cmd the CLI, from such a path. On Windows the registry key Chrome reads is the user's: the
+// test saves it and puts it back. A sentinel on another home's bridge address fails the test if anything reaches it.
+import { spawn, spawnSync } from "node:child_process";
+import { copyFileSync, cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createServer as createHttp } from "node:http";
-import { tmpdir } from "node:os";
+import { createServer as createSocketServer } from "node:net";
+import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
 import { chromium } from "playwright-core";
+import { HOST_NAME, socketPath } from "../../mcp/src/bridge.ts";
 
 if (!process.env.CHROME) throw new Error("Set CHROME to a Chrome for Testing 140+ executable.");
 const repo = fileURLToPath(new URL("../../", import.meta.url));
-// Short: the bridge's unix socket path, under HOME, must stay under about 100 bytes.
+const windows = process.platform === "win32";
+// Short: the bridge's unix socket path, under the home, must stay under about 100 bytes.
 const dir = mkdtempSync(join(tmpdir(), "pa-"));
 const ext = join(dir, "ext");
-const home = join(dir, "h");
-const profile =
-	process.platform === "darwin"
+// The home and the CLI: on Windows in a folder whose name has a space and Chinese.
+const place = windows ? join(dir, "pagewing 测试") : dir;
+const home = join(place, "h");
+const env = { ...process.env, HOME: home, USERPROFILE: home, LOCALAPPDATA: join(home, "AppData", "Local") };
+const profile = windows
+	? join(env.LOCALAPPDATA, "Google", "Chrome for Testing", "User Data")
+	: process.platform === "darwin"
 		? join(home, "Library", "Application Support", "Google", "Chrome for Testing")
 		: join(home, ".config", "google-chrome-for-testing");
 mkdirSync(profile, { recursive: true });
 console.log("Artifacts:", dir);
+const built = spawnSync(process.execPath, [join(repo, "mcp/build.mjs")], { stdio: "inherit" });
+if (built.status !== 0) throw new Error("mcp/build.mjs failed");
+// As npm installs it: dist/ beside the package.json that makes cli.js a module. copyFileSync: in CI, Node 22's cpSync
+// into a non-ASCII Windows folder left nothing at the path.
+mkdirSync(join(place, "mcp", "dist"), { recursive: true });
+copyFileSync(join(repo, "mcp/dist/cli.js"), join(place, "mcp", "dist", "cli.js"));
+copyFileSync(join(repo, "mcp/package.json"), join(place, "mcp", "package.json"));
+const cli = join(place, "mcp", "dist", "cli.js");
 mkdirSync(ext);
 const common = {
 	absWorkingDir: repo,
@@ -143,10 +161,7 @@ const B = "http://b.test:8702";
 
 /** An MCP client on a new pagewing-mcp: `call` gives the tool result. */
 function mcpClient(name) {
-	const child = spawn(process.execPath, [join(repo, "mcp/src/cli.ts")], {
-		env: { ...process.env, HOME: home },
-		stdio: ["pipe", "pipe", "inherit"],
-	});
+	const child = spawn(process.execPath, [cli], { env, stdio: ["pipe", "pipe", "inherit"] });
 	let buffered = "";
 	const waiting = new Map();
 	child.stdout.setEncoding("utf8");
@@ -187,13 +202,36 @@ function mcpClient(name) {
 	};
 }
 
+// The registry key every Google build reads hosts from, as it was: put back at the end.
+const KEY = `HKCU\\Software\\Google\\Chrome\\NativeMessagingHosts\\${HOST_NAME}`;
+const reg = (...args) => spawnSync("reg.exe", args, { encoding: "utf8", windowsHide: true });
+const savedKey = join(dir, "key.reg");
+const hasKey = () => reg("query", KEY, "/ve").status === 0;
+const hadKey = windows && hasKey();
+// An export is UTF-16: a value with any characters comes back as it was.
+if (hadKey && reg("export", KEY, savedKey, "/y").status !== 0) throw new Error(`Cannot save ${KEY}.`);
+
+// The sentinel: the bridge address of a home standing for the user's, or in CI, a throwaway account, the real one's.
+const sentinelHome = process.env.CI ? homedir() : join(dir, "user");
+if (!windows) mkdirSync(join(sentinelHome, ".pagewing"), { recursive: true });
+let reachedSentinel = 0;
+const sentinel = createSocketServer((socket) => {
+	reachedSentinel++;
+	socket.destroy();
+});
+await new Promise((resolve, reject) => sentinel.once("error", reject).listen(socketPath(sentinelHome), resolve));
+
 let context;
 try {
+	check(
+		"the test's bridge address is its own, not the user's",
+		socketPath(home) !== socketPath(homedir()) && socketPath(home) !== socketPath(sentinelHome),
+	);
 	context = await chromium.launchPersistentContext(profile, {
 		executablePath: process.env.CHROME,
 		headless: false,
 		viewport: null,
-		env: { ...process.env, HOME: home },
+		env,
 		args: [
 			"--headless=new",
 			"--disable-background-networking",
@@ -213,13 +251,13 @@ try {
 	console.log(`chrome ${context.browser().version()}`);
 
 	// The store ID is allowed by default; this unpacked build's ID is allowed as a developer does, before anything else.
-	const allow = spawn(process.execPath, [join(repo, "mcp/src/cli.ts"), "install", "--extension-id", id], {
-		env: { ...process.env, HOME: home },
-		stdio: "ignore",
-	});
+	const allow = spawn(process.execPath, [cli, "install", "--extension-id", id], { env, stdio: "ignore" });
 	await new Promise((resolve) => allow.once("exit", resolve));
-	// As for a user who never ran setup: no helper yet.
-	rmSync(join(home, ".pagewing"), { recursive: true, force: true });
+	// As for a user who never ran setup: no helper yet. The manifest stays, as in a profile on Unix: it allows this build.
+	if (windows) {
+		rmSync(join(home, ".pagewing", "host.cmd"));
+		reg("delete", KEY, "/f");
+	} else rmSync(join(home, ".pagewing"), { recursive: true, force: true });
 
 	const panel = await context.newPage();
 	await panel.goto(`chrome-extension://${id}/panel.html`);
@@ -258,6 +296,8 @@ try {
 		opened,
 	);
 	console.log(`(first call took ${Math.round((Date.now() - started) / 1000)} s)`);
+	const helper = readFileSync(join(home, ".pagewing", windows ? "host.cmd" : "host.sh"), "utf8");
+	check("the helper Chrome started runs the CLI in the test's folder", helper.includes(cli), helper);
 	await poll(
 		() =>
 			panel
@@ -582,10 +622,19 @@ try {
 	late.end();
 
 	check("no page errors in the panel", problems.length === 0, problems);
+	check("nothing reached the sentinel's bridge address", reachedSentinel === 0, { reachedSentinel });
 } catch (error) {
 	check("run", false, String(error?.stack ?? error));
 } finally {
-	await context?.close();
+	// First, so a failure below cannot skip it: the key as it was, when the test's manifest has it or the test deleted
+	// it; a registration written meanwhile stays.
+	const ours = join(home, ".pagewing", `${HOST_NAME}.json`);
+	if (windows && (!hasKey() || reg("query", KEY, "/f", ours, "/d", "/e").stdout.includes("REG_SZ"))) {
+		reg("delete", KEY, "/f");
+		if (hadKey && reg("import", savedKey).status !== 0) check("the registry key put back", false, savedKey);
+	}
+	sentinel.close();
 	pages.close();
+	await context?.close();
 }
 console.log(`${passed} passed${process.exitCode ? ", some FAILED" : ""}`);

@@ -47,7 +47,7 @@ pages, and a fake model provider: no accounts, keys, or network. Get Chrome for 
 | `diagrams` | diagrams, pele |
 | `localization` | any interface text (Chrome 147+) |
 | `model-list` | the model list and Update model list (`models.ts`, `catalog.ts`) |
-| `local-agents` | local agents (`local-agents.ts`, `mcp/`); macOS and Linux |
+| `local-agents` | local agents (`local-agents.ts`, `mcp/`); macOS, Linux, and Windows (in CI) |
 
 `page-tools` and `screenshots` use the same port: run them one at a time.
 
