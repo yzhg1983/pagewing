@@ -131,7 +131,7 @@ describe("install on Windows", () => {
 		const bytes = readFileSync(script);
 		expect(bytes.subarray(0, 3).equals(Buffer.from([0xef, 0xbb, 0xbf]))).toBe(false);
 		expect(bytes.toString("utf8")).toMatch(
-			/^@chcp 65001 >nul\r\n@"[^"\r\n]*node[^"\r\n]*" "C:\\Program Files\\工具 100%%\\cli\.js" host %\*\r\n$/,
+			/^@chcp 65001 >nul\r\n@"[^"\r\n]*node[^"\r\n]*" "C:\\Program Files\\工具 100%%\\cli\.js" host %\* & exit \/b\r\n$/,
 		);
 	});
 

@@ -14,7 +14,7 @@ export const STORE_ID = "eamkpenaglckggljpkdljhillecgpjlp";
 /** Chrome refuses a native message to the extension over 1 MB; the host refuses a socket line over this first. */
 export const MAX_MESSAGE_BYTES = 1_000_000;
 
-/** Pagewing's folder in the user's home: the host script and the socket, readable by the user alone. */
+/** Pagewing's folder in the user's home: the host script, the socket on macOS and Linux, the manifest on Windows. */
 export const homeDir = () => join(homedir(), ".pagewing");
 
 /** Where the host of `home` listens and the MCP servers connect: a socket in its .pagewing, or on Windows a pipe. */

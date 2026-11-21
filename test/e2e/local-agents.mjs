@@ -39,8 +39,10 @@ mkdirSync(profile, { recursive: true });
 console.log("Artifacts:", dir);
 const built = spawnSync(process.execPath, [join(repo, "mcp/build.mjs")], { stdio: "inherit" });
 if (built.status !== 0) throw new Error("mcp/build.mjs failed");
-cpSync(join(repo, "mcp/dist"), join(dir, "mcp"), { recursive: true });
-const cli = join(dir, "mcp", "cli.js");
+// As npm installs it: dist/ beside the package.json that makes cli.js a module.
+cpSync(join(repo, "mcp/dist"), join(dir, "mcp", "dist"), { recursive: true });
+cpSync(join(repo, "mcp/package.json"), join(dir, "mcp", "package.json"));
+const cli = join(dir, "mcp", "dist", "cli.js");
 mkdirSync(ext);
 const common = {
 	absWorkingDir: repo,
@@ -200,8 +202,10 @@ function mcpClient(name) {
 const KEY = `HKCU\\Software\\Google\\Chrome\\NativeMessagingHosts\\${HOST_NAME}`;
 const reg = (...args) => spawnSync("reg.exe", args, { encoding: "utf8", windowsHide: true });
 const savedKey = join(dir, "key.reg");
+const hasKey = () => reg("query", KEY, "/ve").status === 0;
+const hadKey = windows && hasKey();
 // An export is UTF-16: a value with any characters comes back as it was.
-const hadKey = windows && reg("export", KEY, savedKey, "/y").status === 0;
+if (hadKey && reg("export", KEY, savedKey, "/y").status !== 0) throw new Error(`Cannot save ${KEY}.`);
 
 // The sentinel: the bridge address of a home standing for the user's, or in CI, a throwaway account, the real one's.
 const sentinelHome = process.env.CI ? homedir() : join(dir, "user");
@@ -245,9 +249,11 @@ try {
 	// The store ID is allowed by default; this unpacked build's ID is allowed as a developer does, before anything else.
 	const allow = spawn(process.execPath, [cli, "install", "--extension-id", id], { env, stdio: "ignore" });
 	await new Promise((resolve) => allow.once("exit", resolve));
-	// As for a user who never ran setup: no helper yet.
-	rmSync(join(home, ".pagewing"), { recursive: true, force: true });
-	if (windows) reg("delete", KEY, "/f");
+	// As for a user who never ran setup: no helper yet. The manifest stays, as in a profile on Unix: it allows this build.
+	if (windows) {
+		rmSync(join(home, ".pagewing", "host.cmd"));
+		reg("delete", KEY, "/f");
+	} else rmSync(join(home, ".pagewing"), { recursive: true, force: true });
 
 	const panel = await context.newPage();
 	await panel.goto(`chrome-extension://${id}/panel.html`);
@@ -616,15 +622,15 @@ try {
 } catch (error) {
 	check("run", false, String(error?.stack ?? error));
 } finally {
-	await context?.close();
-	pages.close();
-	sentinel.close();
-	// The key as it was, when the test's manifest has it or the test deleted it; a registration written meanwhile stays.
+	// First, so a failure below cannot skip it: the key as it was, when the test's manifest has it or the test deleted
+	// it; a registration written meanwhile stays.
 	const ours = join(home, ".pagewing", `${HOST_NAME}.json`);
-	const absent = () => reg("query", KEY, "/ve").status !== 0;
-	if (windows && (absent() || reg("query", KEY, "/f", ours, "/d", "/e").stdout.includes("REG_SZ"))) {
+	if (windows && (!hasKey() || reg("query", KEY, "/f", ours, "/d", "/e").stdout.includes("REG_SZ"))) {
 		reg("delete", KEY, "/f");
-		if (hadKey) reg("import", savedKey);
+		if (hadKey && reg("import", savedKey).status !== 0) check("the registry key put back", false, savedKey);
 	}
+	sentinel.close();
+	pages.close();
+	await context?.close();
 }
 console.log(`${passed} passed${process.exitCode ? ", some FAILED" : ""}`);

@@ -125,7 +125,8 @@ describe("the pipe on Windows", () => {
 			const first = startHost();
 			await agent(first);
 			const second = startHost(first.home);
-			const code = await new Promise((resolve) => second.child.once("exit", resolve));
+			// `close`, not `exit`: its stderr is all read by then.
+			const code = await new Promise((resolve) => second.child.once("close", resolve));
 			expect(code).toBe(1);
 			expect(second.stderr()).toMatch(/^pagewing-mcp host: .*EADDRINUSE/);
 			const a = await agent(first);

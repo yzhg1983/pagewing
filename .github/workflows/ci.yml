@@ -173,7 +173,8 @@ jobs:
         run: |
           reg query 'HKLM\SYSTEM\CurrentControlSet\Control\Nls\CodePage' //v OEMCP | tee pages.txt
           { reg query 'HKCU\Console' //v CodePage 2> /dev/null || true; } | tee -a pages.txt
-          if grep -q 65001 pages.txt; then echo "New consoles already use UTF-8."; exit 1; fi
+          # HKCU\Console's CodePage is a REG_DWORD: reg.exe shows 65001 as 0xfde9.
+          if grep -qiE '65001|0xfde9' pages.txt; then echo "New consoles already use UTF-8."; exit 1; fi
       - run: npx vitest --run mcp/test
       - id: chrome
         uses: browser-actions/setup-chrome@v2
@@ -185,6 +186,7 @@ jobs:
       # Without --force, so npm checks the package's "os". A second install finds everything in place; uninstall
       # removes the registry key.
       - name: Install the package and register it
+        if: ${{ !cancelled() }}
         run: |
           npm run build:mcp
           tmp="$(cygpath -u "$RUNNER_TEMP")"

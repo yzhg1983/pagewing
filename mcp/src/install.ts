@@ -58,11 +58,12 @@ export function installWindows(cli: string, extensionIds: string[], registry: Re
 		throw new Error(`Local agents cannot run from a Windows user folder whose path contains %: ${script}.`);
 	mkdirSync(homeDir(), { recursive: true });
 	// cmd.exe reads a batch file in the console's code page, a legacy one on most PCs: the first line switches to UTF-8
-	// before the second, with its paths, is read. In a batch file %% is a literal %.
+	// before the second, with its paths, is read. In a batch file %% is a literal %. cmd.exe reads on from the same byte
+	// after each command: `exit /b` ends the script with Node's exit code, so a host.cmd rewritten meanwhile is never read.
 	const quote = (value: string) => `"${value.replaceAll("%", "%%")}"`;
 	const scriptChanged = writeScript(
 		script,
-		`@chcp 65001 >nul\r\n@${quote(stableNode())} ${quote(cli)} host %*\r\n`,
+		`@chcp 65001 >nul\r\n@${quote(stableNode())} ${quote(cli)} host %* & exit /b\r\n`,
 		cli,
 	);
 	const manifest = join(homeDir(), `${HOST_NAME}.json`);
@@ -201,8 +202,8 @@ const regExe: Registry = {
 		return status === 0 && stdout.includes("REG_SZ");
 	},
 	set: (key, value) => {
-		const { status, stderr } = reg(["add", `HKCU\\${key}`, "/ve", "/t", "REG_SZ", "/d", value, "/f"]);
-		if (status !== 0) throw new Error(`reg.exe could not write HKCU\\${key}: ${stderr.trim()}`);
+		const { status, stderr, error } = reg(["add", `HKCU\\${key}`, "/ve", "/t", "REG_SZ", "/d", value, "/f"]);
+		if (status !== 0) throw new Error(`reg.exe could not write HKCU\\${key}: ${stderr?.trim() || error?.message}`);
 	},
 	remove: (key) => reg(["delete", `HKCU\\${key}`, "/f"]).status === 0,
 };
