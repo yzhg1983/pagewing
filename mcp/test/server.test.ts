@@ -1,12 +1,12 @@
 // The MCP server: the MCP methods, and tool calls passed to a fake host over a socket.
 
-import { mkdtempSync } from "node:fs";
+import { mkdirSync, mkdtempSync } from "node:fs";
 import { connect, createServer, type Server, type Socket } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PassThrough } from "node:stream";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { readLines, writeLine } from "../src/bridge.ts";
+import { readLines, socketPath, writeLine } from "../src/bridge.ts";
 import { NOT_CONNECTED, serve } from "../src/server.ts";
 
 type Response = { id: number; result?: Record<string, unknown>; error?: { code: number; message: string } };
@@ -35,8 +35,15 @@ function client(path: string, retryUntil = 0) {
 	};
 }
 
+/** A new address for a host, as a new home folder's: a socket in it, or on Windows its pipe. */
+function newAddress(): string {
+	const home = mkdtempSync(join(tmpdir(), "pagewing-mcp-"));
+	mkdirSync(join(home, ".pagewing"));
+	return socketPath(home);
+}
+
 /** A host stand-in on a socket, at `path` or a new one: records what each session sends. */
-function fakeHost(path = join(mkdtempSync(join(tmpdir(), "pagewing-mcp-")), "bridge.sock")) {
+function fakeHost(path = newAddress()) {
 	const received: Record<string, unknown>[] = [];
 	const sockets: Socket[] = [];
 	const server: Server = createServer((socket) => {
@@ -106,7 +113,7 @@ describe("tool calls", () => {
 	});
 
 	it("after a new registration, a call waits for Pagewing to start the host", async () => {
-		const path = join(mkdtempSync(join(tmpdir(), "pagewing-mcp-")), "bridge.sock");
+		const path = newAddress();
 		const mcp = client(path, Date.now() + 10_000);
 		mcp.send({ id: 1, method: "tools/call", params: { name: "list_tabs", arguments: {} } });
 		await new Promise((resolve) => setTimeout(resolve, 1500));
