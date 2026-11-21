@@ -29,7 +29,8 @@ The first call after setup may take up to 30 s while Pagewing connects.
 Chrome lets an extension talk only to programs registered with it (native messaging). At each start, `pagewing-mcp`
 registers a small helper in each installed Chromium browser: `~/.pagewing/host.sh`, and a file in the browser's
 `NativeMessagingHosts` folder that lets only Pagewing start it. While the switch is on, Pagewing starts the helper; the
-helper relays your agent's calls to Pagewing over a socket only you can open (`~/.pagewing/bridge.sock`).
+helper relays your agent's calls to Pagewing over a socket only you can open (`~/.pagewing/bridge.sock`; on Windows a
+named pipe, see [Windows](#windows)).
 
 ```
 agent ──MCP──▶ pagewing-mcp ──socket──▶ helper ──native messaging──▶ Pagewing in Chrome
