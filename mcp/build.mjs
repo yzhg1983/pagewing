@@ -3,10 +3,12 @@
 // node mcp/build.mjs.
 
 import { copyFileSync, rmSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
 
-const root = new URL("./", import.meta.url).pathname;
-rmSync(`${root}dist`, { recursive: true, force: true });
+const root = fileURLToPath(new URL("./", import.meta.url));
+rmSync(join(root, "dist"), { recursive: true, force: true });
 await build({
 	absWorkingDir: root,
 	entryPoints: { cli: "src/cli.ts" },
@@ -18,5 +20,5 @@ await build({
 	logLevel: "warning",
 });
 // npm takes the licence from the package folder.
-copyFileSync(`${root}../LICENSE`, `${root}LICENSE`);
+copyFileSync(join(root, "..", "LICENSE"), join(root, "LICENSE"));
 console.log("built mcp/dist/cli.js");

@@ -37,9 +37,13 @@ else if (command === undefined || command === "serve") {
 		},
 	});
 	const dirs = values["user-data-dir"];
+	const windows = process.platform === "win32";
+	if (windows && dirs.length > 0)
+		console.log("On Windows, Chrome finds the helper in the registry only: --user-data-dir has no effect.");
 	if (command === "install") {
 		const written = install(fileURLToPath(import.meta.url), values["extension-id"], dirs);
-		if (written.length === 0) console.log("Already registered, or no Chromium browser found (pass --user-data-dir).");
+		if (written.length === 0)
+			console.log(`Already registered, or no Chromium browser found${windows ? "." : " (pass --user-data-dir)."}`);
 		for (const file of written) console.log(`Registered: ${file}`);
 	} else for (const file of uninstall(dirs)) console.log(`Removed: ${file}`);
 } else {
