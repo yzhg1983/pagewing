@@ -1,6 +1,7 @@
 // The native host (design 6.45): Chrome starts it when Pagewing's Local agents switch is on, and it lives as long as
-// Pagewing keeps the port open. It listens on a socket in ~/.pagewing, readable by the user alone, and passes messages
-// between each MCP server that connects, one session each, and Pagewing.
+// Pagewing keeps the port open. It listens on a socket in ~/.pagewing, readable by the user alone, or on Windows on a
+// named pipe only the user can write to (design 6.49), and passes messages between each MCP server that connects, one
+// session each, and Pagewing.
 
 import { chmodSync, mkdirSync, rmSync, statSync } from "node:fs";
 import { createServer, type Socket } from "node:net";
@@ -27,11 +28,15 @@ export function runHost(): void {
 	const toChrome = (message: Routed<AgentRequest> | { type: "close"; session: string }) =>
 		writeNative(process.stdout, message);
 
-	mkdirSync(homeDir(), { recursive: true, mode: 0o700 });
-	// The folder may be older than this host: other users must not reach the socket in it.
-	chmodSync(homeDir(), 0o700);
-	// A socket left by a host that did not exit cleanly, or by another Chrome profile's host: the newest host serves.
-	rmSync(socketPath(), { force: true });
+	// A pipe is no file: Windows removes it with its last handle, and refuses a second host its name.
+	const unix = process.platform !== "win32";
+	if (unix) {
+		mkdirSync(homeDir(), { recursive: true, mode: 0o700 });
+		// The folder may be older than this host: other users must not reach the socket in it.
+		chmodSync(homeDir(), 0o700);
+		// A socket left by a host that did not exit cleanly, or by another Chrome profile's host: the newest host serves.
+		rmSync(socketPath(), { force: true });
+	}
 	const server = createServer((socket) => {
 		const session = `s${++next}`;
 		sessions.set(session, socket);
@@ -63,9 +68,16 @@ export function runHost(): void {
 	});
 	/** The socket's inode: a newer host may have replaced the socket, and this one must not remove that one's. */
 	let own: number | undefined;
+	// On Windows, another Chrome profile's host holds the pipe: this one exits, and that profile's Pagewing retries.
+	server.once("error", (error) => {
+		console.error(`pagewing-mcp host: ${error.message}`);
+		process.exit(1);
+	});
 	server.listen(socketPath(), () => {
-		chmodSync(socketPath(), 0o600);
-		own = statSync(socketPath()).ino;
+		if (unix) {
+			chmodSync(socketPath(), 0o600);
+			own = statSync(socketPath()).ino;
+		}
 		// Pagewing's Settings says the bridge runs only from here: before, an agent finds no socket.
 		writeNative(process.stdout, { type: "ready" });
 	});

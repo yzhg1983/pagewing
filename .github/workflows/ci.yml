@@ -1,8 +1,9 @@
 # Checks and the Chrome suites for pushes to main, pull requests, weekly, and on demand; an installable zip of each main
 # build. Other branches get CI through a pull request or a run from the Actions tab. A change to Markdown or docs/ alone
 # runs nothing: none of it is linted, tested, or built. Billing rounds each job up to a whole minute, so everything runs
-# in one job with one npm ci and one Chrome. The suites build their own temporary extensions and use only loopback
-# servers and in-process providers: no secrets, accounts, or paid requests (CONTRIBUTING.md, Browser test suites).
+# in one job with one npm ci and one Chrome, except what only Windows can show: Local agents there (design 6.49). The
+# suites build their own temporary extensions and use only loopback servers and in-process providers: no secrets,
+# accounts, or paid requests (CONTRIBUTING.md, Browser test suites).
 
 name: CI
 
@@ -147,3 +148,58 @@ jobs:
         if: ${{ !cancelled() && steps.chrome.outcome == 'success' }}
         env:
           CHROME: ${{ steps.chrome.outputs.chrome-path }}
+
+  # pagewing-mcp on Windows: its tests, the local agents suite with Chrome starting host.cmd from a folder whose name
+  # has a space and Chinese, and the package installed as npm installs it. The runner is a throwaway account: setup
+  # writes its registry, and the suite's sentinel listens on its real bridge address.
+  windows:
+    name: Local agents on Windows
+    runs-on: windows-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci --ignore-scripts
+      # cmd.exe reads host.cmd in its console's code page. The console Chrome starts it in gets the system's OEM code page,
+      # or HKCU\Console's, not the 65001 of the steps' own shells. On UTF-8 already, the suite would not show that
+      # host.cmd's switch works. //v: Git Bash would turn /v into a path.
+      - name: Code page of new consoles
+        run: |
+          reg query 'HKLM\SYSTEM\CurrentControlSet\Control\Nls\CodePage' //v OEMCP | tee pages.txt
+          { reg query 'HKCU\Console' //v CodePage 2> /dev/null || true; } | tee -a pages.txt
+          # HKCU\Console's CodePage is a REG_DWORD: reg.exe shows 65001 as 0xfde9.
+          if grep -qiE '65001|0xfde9' pages.txt; then echo "New consoles already use UTF-8."; exit 1; fi
+      - run: npx vitest --run mcp/test
+      - id: chrome
+        uses: browser-actions/setup-chrome@v2
+        with:
+          chrome-version: ${{ env.CHROME_VERSION }}
+      - run: npm run test:local-agents
+        env:
+          CHROME: ${{ steps.chrome.outputs.chrome-path }}
+      # Without --force, so npm checks the package's "os". A second install finds everything in place; uninstall
+      # removes the registry key.
+      - name: Install the package and register it
+        if: ${{ !cancelled() }}
+        run: |
+          npm run build:mcp
+          tmp="$(cygpath -u "$RUNNER_TEMP")"
+          npm pack ./mcp --ignore-scripts --pack-destination "$tmp"
+          mkdir -p "$(cygpath -u "$LOCALAPPDATA")/Google/Chrome/User Data" "$tmp/pagewing 测试 install"
+          cd "$tmp/pagewing 测试 install"
+          # npm init would name the package after the folder, which npm refuses.
+          echo '{ "private": true }' > package.json
+          npm install --ignore-scripts "$tmp"/pagewing-mcp-*.tgz
+          npx pagewing-mcp install | tee first.txt
+          grep -q 'Registered: HKCU\\Software\\Google\\Chrome\\NativeMessagingHosts' first.txt
+          grep -q 'host.cmd' first.txt
+          npx pagewing-mcp install | tee second.txt
+          grep -q 'Already registered' second.txt
+          npx pagewing-mcp uninstall | tee removed.txt
+          grep -q 'Removed: HKCU' removed.txt

@@ -1,6 +1,6 @@
 {
 	"name": "pagewing-mcp",
-	"version": "0.1.2",
+	"version": "0.1.3",
 	"description": "MCP server that lets local agents, such as pi, use Pagewing's page tools in Chrome",
 	"license": "MIT",
 	"type": "module",
@@ -32,6 +32,7 @@
 	},
 	"os": [
 		"darwin",
-		"linux"
+		"linux",
+		"win32"
 	]
 }
