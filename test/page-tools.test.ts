@@ -29,6 +29,7 @@ import { Asks, memoryGrants } from "../src/background/asks.ts";
 import { type Input, typedInput } from "../src/background/chats.ts";
 import {
 	ACT_ON_PAGE,
+	type FrameMeta,
 	LIST_TABS,
 	MAX_RESULT_BYTES,
 	OBSERVE_PAGE,
@@ -47,9 +48,11 @@ import type {
 	ActRequest,
 	ActResult,
 	AgentTarget,
+	FrameRequest,
 	LocateRequest,
 	LocateResult,
 	ObserveRequest,
+	ObserveResult,
 	ScrollRequest,
 	ScrollResult,
 	Step,
@@ -135,6 +138,14 @@ const SCROLLED: Step = { kind: "scroll", target: null, direction: "down", end: n
 const IMAGE = "aW1hZ2U=";
 
 /** `model`: the chat's model "one", as the faux provider has it. */
+/** How the frames of tab 1's page answer (design 6.50): the metadata pass, frame steps, and observe and act in them. */
+type FakeFrames = {
+	map: () => FrameMeta[];
+	frame: (documentId: string, request: FrameRequest) => unknown;
+	observe: (documentId: string, request: ObserveRequest) => ObserveResult | null;
+	act: (documentId: string, request: ActRequest) => ActResult | null;
+};
+
 async function setup(
 	settings: PageToolOffer = ALL_ON,
 	timeoutMs?: number,
@@ -160,6 +171,7 @@ async function setup(
 		scroll: [] as Omit<ScrollRequest, "op">[],
 		capture: [] as number[],
 		encode: [] as { crop: Crop | null; longSide: number; quality: number }[],
+		frame: [] as { documentId: string; request: FrameRequest }[],
 	};
 	/** Where each tab is: tab 1 in front of window 1, tab 2 in front of window 2. */
 	const places = new Map<number, TabState>([
@@ -175,6 +187,8 @@ async function setup(
 	let scrollWith: ((request: ScrollRequest, page: Doc) => Promise<ScrollResult | null>) | undefined;
 	let captureWith: ((windowId: number) => Promise<string>) | undefined;
 	let encodeWith: ((index: number) => string | Promise<string>) | undefined;
+	/** Tab 1's page has frames (design 6.50): its outline ends with frame line 3, and the frames answer here. */
+	let framesWith: FakeFrames | undefined;
 	/** Replaces how the page answers an action. */
 	let actWith: ((request: ActRequest, page: Doc) => Promise<ActResult | null>) | undefined;
 	/** Replaces how the page runs a script; by default the runner runs it here. */
@@ -222,23 +236,49 @@ async function setup(
 		},
 		async observe(tabId, documentId, request) {
 			const now = shown(tabId);
+			if (framesWith !== undefined && now.documentId !== documentId) {
+				calls.observe.push(request);
+				return framesWith.observe(documentId, request);
+			}
 			if (now.documentId !== documentId) throw new Error(`No document with id ${documentId}.`);
 			calls.observe.push(request);
 			if (request.within !== null && request.within.mapId !== now.mapId)
 				return { ok: false, error: `${request.within.letter}${request.within.number} is gone` };
 			const letter = request.known.find((known) => known.mapId === now.mapId)?.letter ?? request.letter;
+			const frame = framesWith !== undefined && request.within === null;
 			return {
 				ok: true,
 				mapId: now.mapId,
 				letter,
 				url: now.url,
 				title: now.title,
-				outline: `- button "Save" ${letter}1\n- link "Next" ${letter}2`,
+				outline: `- button "Save" ${letter}1\n- link "Next" ${letter}2${frame ? `\n- frame "Chat" ${letter}3 640×480` : ""}`,
 				omitted: null,
+				frames: frame ? [{ line: 2, number: 3, index: 0 }] : [],
+				iframes: frame ? [3] : [],
 			};
+		},
+		async frameMap(tabId) {
+			const now = shown(tabId);
+			return (
+				framesWith?.map() ?? [{ frameId: 0, documentId: now.documentId, origin: new URL(now.url).origin, path: [] }]
+			);
+		},
+		async frame(tabId, documentId, request) {
+			shown(tabId);
+			calls.frame.push({ documentId, request });
+			// The fake answers as the page agent does: its result type follows the request's op.
+			if (framesWith !== undefined) return framesWith.frame(documentId, request) as never;
+			if (request.op === "owner") return { kind: "notFrame" } as never;
+			if (request.op === "indexes") return { indexes: request.targets.map(() => null) } as never;
+			return null;
 		},
 		async act(tabId, documentId, request) {
 			const now = shown(tabId);
+			if (framesWith !== undefined && now.documentId !== documentId) {
+				calls.act.push(request);
+				return framesWith.act(documentId, request);
+			}
 			if (now.documentId !== documentId) throw new Error(`No document with id ${documentId}.`);
 			calls.act.push(request);
 			if (actWith !== undefined) return actWith(request, now);
@@ -486,6 +526,9 @@ async function setup(
 		changes: () => changes,
 		actWith(value: typeof actWith) {
 			actWith = value;
+		},
+		framesWith(value: typeof framesWith) {
+			framesWith = value;
 		},
 		scriptWith(value: typeof scriptWith) {
 			scriptWith = value;
@@ -4142,4 +4185,264 @@ it("hover and drag need their arguments before anything is sent; to and by reach
 			dragMs: 2000,
 		},
 	]);
+});
+
+/**
+ * Frame line a3 of tab 1's page shows `origin` in document "chat" (design 6.50). `next` gives the `<iframe>`'s index
+ * at each check, else 0; `reachable` false: Chrome does not let pi script the frame; `covered`: the top refuses the point.
+ */
+function chatFrame(s: Awaited<ReturnType<typeof setup>>, origin = "https://b.test") {
+	const world = { next: [] as number[], reachable: true, covered: null as string | null, userInput: false };
+	const index = () => world.next.shift() ?? 0;
+	const top = () => s.tabs.get(1)!;
+	s.framesWith({
+		map: () => [
+			{ frameId: 0, documentId: top().documentId, origin: new URL(top().url).origin, path: [] },
+			...(world.reachable ? [{ frameId: 7, documentId: "chat", origin, path: [0] }] : []),
+		],
+		frame(_documentId, request) {
+			switch (request.op) {
+				case "owner": {
+					if (request.target.number !== 3) return { kind: "notFrame" };
+					if (world.covered !== null && request.point !== null) return { kind: "refused", error: world.covered };
+					const now = index();
+					if (request.index !== null && request.index !== now) return { kind: "changed" };
+					const point = request.point === null ? null : { x: request.point.x + 100, y: request.point.y + 50 };
+					return { kind: "frame", index: now, line: '- frame "Chat" a3 640×480', hint: "https://b.test", point };
+				}
+				case "indexes":
+					return { indexes: request.targets.map(() => index()) };
+				case "watch":
+					return { ok: true };
+				case "unwatch":
+					return { userInput: world.userInput };
+				case "settle":
+					return { timedOut: false };
+				case "aim":
+					return { ok: true, point: { x: 10, y: 10 }, path: [0] };
+			}
+		},
+		observe: (_documentId, request) => {
+			const letter = request.known[0]?.letter ?? request.letter;
+			const outline = `  - button "Send" ${letter}1`;
+			return {
+				ok: true,
+				mapId: "chat-map",
+				letter,
+				url: `${origin}/chat`,
+				title: "Chat",
+				outline,
+				omitted: null,
+				frames: [],
+				iframes: [],
+			};
+		},
+		act: (_documentId, request) => {
+			const target = request.target === null ? "the page" : `button "Send" (b${request.target.number})`;
+			return {
+				ok: true,
+				step: { kind: "click", target },
+				url: `${origin}/chat`,
+				title: "Chat",
+				timedOut: false,
+				userInput: false,
+			};
+		},
+	});
+	return world;
+}
+
+const ops = (s: Awaited<ReturnType<typeof setup>>) =>
+	s.calls.frame.map(({ documentId, request }) => `${documentId === "chat" ? "chat" : "top"} ${request.op}`);
+
+it("labels a frame line, lists the frame within its ref, and acts in its document through the top (design 6.50)", async () => {
+	const s = await setup();
+	chatFrame(s);
+	const first = s.tabs.get(1)!;
+	s.faux.setResponses([
+		s.step(s.call(OBSERVE_PAGE)),
+		s.step(s.call(OBSERVE_PAGE, { within: "a3" })),
+		s.step(s.call(ACT_ON_PAGE, { action: "click", ref: "b1" }), () => {
+			s.calls.frame.length = 0;
+		}),
+		s.answer(),
+	]);
+	await s.tab.send(withPage("r1", "Send", attach(1, first)));
+	await s.idle();
+	expect(json(s.seen[0]!).outline).toBe(
+		'- button "Save" a1\n- link "Next" a2\n- frame "Chat" a3 640×480 origin=https://b.test',
+	);
+	// The frame's contents under its line; url and title stay the tab's.
+	expect(json(s.seen[1]!)).toMatchObject({
+		url: first.url,
+		title: first.title,
+		outline: '- frame "Chat" a3 640×480 origin=https://b.test\n  - button "Send" b1',
+		frame: { origin: "https://b.test" },
+	});
+	expect(s.calls.observe.at(-1)).toMatchObject({ within: null, depth: 1 });
+	expect(s.seen[2]).toMatchObject({ isError: false });
+	// The watchers first, the point checked in the top, the events without a scroll, quiet in the top, the watchers gone.
+	expect(ops(s)).toEqual([
+		"top watch",
+		"chat watch",
+		"chat aim",
+		"top owner",
+		"top settle",
+		"top unwatch",
+		"chat unwatch",
+	]);
+	expect(s.calls.frame[3]!.request).toMatchObject({ op: "owner", index: 0, point: { x: 10, y: 10 } });
+	expect(s.calls.act.at(-1)).toMatchObject({
+		action: "click",
+		target: { letter: "b", mapId: "chat-map", number: 1 },
+		frame: { at: { x: 10, y: 10 }, path: [0] },
+	});
+});
+
+it("asks to act on the frame's site, not the page's (design 6.50)", async () => {
+	const s = await setup(tools("ask"));
+	chatFrame(s);
+	s.faux.setResponses([
+		s.step(s.call(OBSERVE_PAGE)),
+		s.step(s.call(OBSERVE_PAGE, { within: "a3" })),
+		s.step(s.call(ACT_ON_PAGE, { action: "click", ref: "b1" })),
+		s.answer(),
+	]);
+	await s.tab.send(withPage("r1", "Send", attach(1, s.tabs.get(1)!)));
+	const card = await s.cards();
+	expect(card).toMatchObject({ kind: "act", origin: "https://b.test" });
+	s.asks.answer(card.id, false);
+	await s.idle();
+	expect(s.seen.at(-1)!.text).toContain(
+		"The user denied acting on https://b.test in this answer; do not try again in this answer.",
+	);
+	expect(s.calls.act).toEqual([]);
+});
+
+it("a frame Chrome does not let pi reach: the label says so, and within shows the frame's site card (design 6.50)", async () => {
+	const s = await setup();
+	const world = chatFrame(s);
+	world.reachable = false;
+	s.allSites.on = false;
+	s.faux.setResponses([s.step(s.call(OBSERVE_PAGE)), s.step(s.call(OBSERVE_PAGE, { within: "a3" })), s.answer()]);
+	await s.tab.send(withPage("r1", "Look", attach(1, s.tabs.get(1)!)));
+	const named = await s.cards();
+	expect(json(s.seen[0]!).outline).toContain(`- frame "Chat" a3 640×480 no access to this frame's site`);
+	expect(named).toMatchObject({ kind: "site", origin: "https://b.test", frame: true });
+	// The grant did not reach the frame: the next card names no site.
+	s.asks.answer(named.id, true);
+	const unnamed = await vi.waitFor(() => {
+		const found = s.asks.cards(s.tab.id!)[0];
+		if (found === undefined || found.id === named.id) throw new Error("no second card yet");
+		return found;
+	});
+	expect(unnamed).toMatchObject({ kind: "site", origin: null, frame: true });
+	s.asks.answer(unnamed.id, false);
+	await s.idle();
+	expect(s.seen.at(-1)!.text).toContain(
+		"The user cancelled: Chrome does not let pi reach the site in this frame. Do not try again in this answer.",
+	);
+
+	// With access to all sites, no card: the tool says why.
+	s.allSites.on = true;
+	s.faux.setResponses([s.step(s.call(OBSERVE_PAGE, { within: "a3" })), s.answer()]);
+	await s.tab.send(withPage("r2", "Look", attach(1, s.tabs.get(1)!)));
+	await s.idle();
+	expect(s.seen.at(-1)).toMatchObject({
+		isError: true,
+		text: "The frame a3 is on a site pi has no access to (no access to this frame's site).",
+	});
+});
+
+it("the join retries once when the frame's index changes, then refuses (design 6.50)", async () => {
+	const s = await setup();
+	const world = chatFrame(s);
+	s.faux.setResponses([
+		s.step(s.call(OBSERVE_PAGE)),
+		// Another `<iframe>` takes index 0 between the checks, once: the retry binds the frame.
+		s.step(s.call(OBSERVE_PAGE, { within: "a3" }), () => world.next.push(0, 1)),
+		s.step(s.call(OBSERVE_PAGE, { within: "a3" }), () => world.next.push(0, 1, 0, 1)),
+		s.answer(),
+	]);
+	await s.tab.send(withPage("r1", "Look", attach(1, s.tabs.get(1)!)));
+	await s.idle();
+	expect(s.seen[1]).toMatchObject({ isError: false });
+	expect(s.seen[2]).toMatchObject({
+		isError: true,
+		text: "The page's frames changed while pi looked; observe again.",
+	});
+});
+
+it("a frame line's scroll with a direction scrolls the frame's page; without one it reveals the line (design 6.50)", async () => {
+	const s = await setup();
+	chatFrame(s);
+	const first = s.tabs.get(1)!;
+	s.faux.setResponses([
+		s.step(s.call(OBSERVE_PAGE)),
+		s.step(s.call(ACT_ON_PAGE, { action: "scroll", ref: "a3", direction: "down" })),
+		s.step(s.call(ACT_ON_PAGE, { action: "scroll", ref: "a3" })),
+		s.answer(),
+	]);
+	await s.tab.send(withPage("r1", "Scroll", attach(1, first)));
+	await s.idle();
+	expect(s.seen.map((one) => one.isError)).toEqual([false, false, false]);
+	expect(s.calls.act.map(({ target, direction, frame }) => ({ target, direction, frame }))).toEqual([
+		{ target: null, direction: "down", frame: { at: { x: 10, y: 10 }, path: [0] } },
+		{ target: { letter: "a", mapId: first.mapId, number: 3 }, direction: null, frame: null },
+	]);
+});
+
+it("refuses drag, a screenshot of a ref in a frame, and an action whose point the top covers (design 6.50)", async () => {
+	const s = await setup();
+	const world = chatFrame(s);
+	s.faux.setResponses([
+		s.step(s.call(OBSERVE_PAGE)),
+		s.step(s.call(OBSERVE_PAGE, { within: "a3" })),
+		s.step(s.call(ACT_ON_PAGE, { action: "drag", ref: "b1", by: { x: 10, y: 0 } })),
+		s.step(s.call(ACT_ON_PAGE, { action: "drag", ref: "a1", to: "b1" })),
+		s.answer(),
+	]);
+	await s.tab.send(withPage("r1", "Drag", attach(1, s.tabs.get(1)!)));
+	await s.idle();
+	expect(s.seen.slice(2).map((one) => one.text)).toEqual([
+		"drag does not work inside frames yet.",
+		"drag does not work inside frames yet.",
+	]);
+	s.faux.setResponses([s.step(s.call(SCREENSHOT_PAGE, { ref: "b1" })), s.answer()]);
+	await s.tab.send(withPage("r2", "See", attach(1, s.tabs.get(1)!)));
+	await s.idle();
+	expect(s.seen.at(-1)!.text).toBe(
+		"pi cannot capture an element inside a frame yet: pass the frame's ref (a3), or capture the whole view.",
+	);
+	world.covered = 'The frame a3 is covered by dialog "Cookies" (a9) where pi would act';
+	s.calls.frame.length = 0;
+	s.faux.setResponses([s.step(s.call(ACT_ON_PAGE, { action: "click", ref: "b1" })), s.answer()]);
+	await s.tab.send(withPage("r3", "Send", attach(1, s.tabs.get(1)!)));
+	await s.idle();
+	expect(s.seen.at(-1)!.text).toContain(world.covered);
+	expect(ops(s)).toEqual(["top watch", "chat watch", "chat aim", "top owner", "top unwatch", "chat unwatch"]);
+	expect(s.calls.act).toEqual([]);
+});
+
+it("a tab opened while the user's input reached a frame is not pi's (design 6.50, 6.29)", async () => {
+	const s = await setup();
+	const world = chatFrame(s);
+	world.userInput = true;
+	const act = s.access.act;
+	s.access.act = async (tabId, documentId, request) => {
+		s.openTab(1, "https://a.test/unattributed");
+		return act(tabId, documentId, request);
+	};
+	s.faux.setResponses([
+		s.step(s.call(OBSERVE_PAGE)),
+		s.step(s.call(OBSERVE_PAGE, { within: "a3" })),
+		s.step(s.call(ACT_ON_PAGE, { action: "click", ref: "b1" })),
+		s.answer(),
+	]);
+	await s.tab.send(withPage("r1", "Send", attach(1, s.tabs.get(1)!)));
+	await s.idle();
+	expect(json(s.seen.at(-1)!).done).toBe(
+		'Clicked button "Send" (b1); a tab opened from the page while the user also used it, which pi does not use',
+	);
+	expect((await s.harness.snapshot(PageReadsDoc, s.tab.id as ConversationId, context))?.tabs).toEqual([]);
 });

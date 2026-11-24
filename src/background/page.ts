@@ -33,6 +33,8 @@ import { type MediaState, mediaState } from "./media.ts";
 import {
 	type ActRequest,
 	type ActResult,
+	type FrameRequest,
+	type FrameResultOf,
 	type LocateRequest,
 	type LocateResult,
 	type ObserveRequest,
@@ -74,6 +76,12 @@ export const MAX_OPENED_TABS = 20;
 
 /** A frame of the tab (design 6.22): where it is, and whether it shows: each `<iframe>` above it is visible. */
 export type FrameInfo = { frameId: number; documentId: string; url: string; origin: string; shown: boolean };
+
+/**
+ * A frame of the tab that pi may script, for frame lines and their join (design 6.50): its real origin and its index
+ * path through `parent.frames`, never its text or URL.
+ */
+export type FrameMeta = { frameId: number; documentId: string; origin: string; path: number[] };
 
 /**
  * What the reader found in one document: its text, at most the `maxChars` asked for, the length of all it read, and
@@ -125,6 +133,10 @@ export type PageAccess = {
 	/** Runs the page agent in the document. Null when the document went away during the call. */
 	observe(tabId: number, documentId: string, request: ObserveRequest): Promise<ObserveResult | null>;
 	act(tabId: number, documentId: string, request: ActRequest): Promise<ActResult | null>;
+	/** The frames of the tab that pi may script (design 6.50); Chrome skips the others. Rejects when the tab is gone. */
+	frameMap(tabId: number): Promise<FrameMeta[]>;
+	/** Runs a frame step of the page agent in the document (design 6.50). Null when the document went away. */
+	frame<R extends FrameRequest>(tabId: number, documentId: string, request: R): Promise<FrameResultOf<R> | null>;
 	/**
 	 * Loads `url` in the tab, or reloads its page, from inside document `documentId`: Chrome sends it only while pi may
 	 * script that document (design 6.28). The request goes to Chrome before the first await.
@@ -435,6 +447,8 @@ export function scopedPageAccess(
 		top: (tab: number) => send(() => a.top(tab)),
 		observe: (tab: number, doc: string, request: ObserveRequest) => send(() => a.observe(tab, doc, request)),
 		act: (tab: number, doc: string, request: ActRequest) => send(() => a.act(tab, doc, request)),
+		frameMap: (tab: number) => send(() => a.frameMap(tab)),
+		frame: <R extends FrameRequest>(tab: number, doc: string, request: R) => send(() => a.frame(tab, doc, request)),
 		navigate: (tab: number, doc: string, url: string) => send(() => a.navigate(tab, doc, url)),
 		loaded: (tab: number, ms: number, signal: AbortSignal) => send(() => a.loaded(tab, ms, signal, send)),
 		scriptWorld: () => send(() => a.scriptWorld()),
@@ -930,6 +944,25 @@ function frameInfo(maxUrl: number): Omit<FrameInfo, "frameId" | "documentId"> {
 }
 
 /**
+ * Runs in each frame: its real origin and its index path through `parent.frames`, by window identity, which works
+ * across origins (design 6.50). Self-contained: Chrome serializes it.
+ */
+function frameMeta(): Omit<FrameMeta, "frameId" | "documentId"> {
+	const path: number[] = [];
+	for (let at: Window = window; at !== at.parent; at = at.parent) {
+		const parent = at.parent;
+		let index = -1;
+		for (let k = 0; k < parent.length; k += 1)
+			if (parent[k] === at) {
+				index = k;
+				break;
+			}
+		path.unshift(index);
+	}
+	return { origin: self.origin, path };
+}
+
+/**
  * Runs in one document: the text it has drawn (design 6.22), without form field values, scripts, or hidden text, read
  * for about `budgetMs`. Null for a document without a body (SVG, XML), whose other text is not drawn text.
  * Self-contained: Chrome serializes it.
@@ -1415,6 +1448,21 @@ export const chromePageAccess: PageAccess = {
 			args: [request],
 		});
 		return (injection?.result as ActResult | undefined) ?? null;
+	},
+	async frameMap(tabId) {
+		const injections = await chrome.scripting.executeScript({ target: { tabId, allFrames: true }, func: frameMeta });
+		return injections.flatMap(({ frameId, documentId, result }) =>
+			result == null ? [] : [{ ...result, frameId, documentId }],
+		);
+	},
+	async frame<R extends FrameRequest>(tabId: number, documentId: string, request: R) {
+		const [injection] = await chrome.scripting.executeScript({
+			target: { tabId, documentIds: [documentId] },
+			func: pageAgent,
+			args: [request],
+		});
+		// The page agent answers each request with its own result type.
+		return (injection?.result as FrameResultOf<R> | undefined) ?? null;
 	},
 	async navigate(tabId, documentId, url) {
 		const sent = chrome.scripting.executeScript({

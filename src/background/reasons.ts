@@ -160,6 +160,38 @@ const REASONS: readonly (readonly [RegExp, MessageKey])[] = [
 	[/^Cannot scroll the page: (.+)\. It may have scrolled$/, "reasonCannotScroll"],
 	[/^The page went away while pi scrolled it; try again$/, "reasonGoneScrolling"],
 	[/^navigate only goes to URLs on (.+), not (.+)$/, "reasonNavigateOrigin"],
+	// Frames (design 6.50).
+	[/^The page's frames changed while pi looked; observe again$/, "reasonFramesChanged"],
+	[/^drag does not work inside frames yet$/, "reasonDragInFrame"],
+	[new RegExp(`^pi cannot check whether the frame ${REF} shows: observe again$`), "reasonFrameUnchecked"],
+	[new RegExp(`^The frame ${REF} is not on a site: pi does not list what is in it$`), "reasonFrameNoSite"],
+	[new RegExp(`^The frame ${REF} is not on a site: pi does not act in it$`), "reasonFrameNoSiteAct"],
+	[
+		new RegExp(`^The frame ${REF} is on a site pi has no access to \\(no access to this frame's site\\)$`),
+		"reasonNoFrameAccess",
+	],
+	[
+		/^The user cancelled: Chrome does not let pi reach the site in this frame\. Do not try again in this answer$/,
+		"reasonFrameSiteCancelled",
+	],
+	[
+		new RegExp(
+			`^pi cannot capture an element inside a frame yet: pass the frame's ref \\(${REF}\\), or capture the whole view$`,
+		),
+		"reasonCaptureInFrame",
+	],
+	[/^The frame moved in the page while pi acted: observe again$/, "reasonFrameMoved"],
+	[/^Focus is in (.+): pass a ref in it$/, "reasonFocusInFrame"],
+	[new RegExp(`^${REF} is a frame in a shadow root: pi cannot tell which page it shows$`), "reasonShadowFrame"],
+	[new RegExp(`^pi cannot map points into the frame ${REF}: it is zoomed or transformed$`), "reasonFrameTransformed"],
+	[new RegExp(`^pi cannot map the frame ${REF} to its page: observe again$`), "reasonFrameUnmapped"],
+	[new RegExp(`^The frame ${REF} is covered by (.+) where pi would act$`), "reasonFrameCovered"],
+	[new RegExp(`^The frame ${REF} is hidden or smaller than 2 px: observe again$`), "reasonFrameHidden"],
+	[new RegExp(`^Where pi would act in the frame ${REF} is outside the view: observe again$`), "reasonFrameOutside"],
+	[/^The frame's page went away: observe again$/, "reasonFrameGone"],
+	[/^pi cannot reach the frame's page: (.+)$/, "reasonFrameUnreachable"],
+	[new RegExp(`^${REF} moved while pi checked the frames: observe again$`), "reasonMovedChecking"],
+	[/^The frame's page moved while pi checked the frames: observe again$/, "reasonFrameScrolled"],
 	// Tabs.
 	[/^The attached page's tab is never closed by pi$/, "reasonAttachedTab"],
 	[/^Tab (\d+) was not opened by pi in this chat$/, "reasonNotOpened"],

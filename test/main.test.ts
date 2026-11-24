@@ -745,12 +745,16 @@ it("a site card's Allow grants no acting: Chrome's access, which the panel reque
 	const { asks } = workerSession;
 	const page = await panel(91);
 
-	const unknown = asks.ask({ kind: "site", conversationId: chat, run: 3, origin: null }, undefined, asks.version);
+	const unknown = asks.ask(
+		{ kind: "site", conversationId: chat, run: 3, origin: null, frame: false },
+		undefined,
+		asks.version,
+	);
 	await page.run({ type: "answer-ask", askId: asks.cards(chat)[0]!.id, answer: "deny" });
 	expect(await unknown).toBe("deny");
 
 	const waiting = asks.ask(
-		{ kind: "site", conversationId: chat, run: 3, origin: "https://b.test" },
+		{ kind: "site", conversationId: chat, run: 3, origin: "https://b.test", frame: false },
 		undefined,
 		asks.version,
 	);

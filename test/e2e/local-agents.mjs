@@ -2,7 +2,7 @@
 // there, which shows the command that adds Pagewing to pi; then an MCP client starts pagewing-mcp over stdio, which
 // registers the bridge itself, and its first call waits until Pagewing connects. open_tab puts a loopback page in the
 // session's tab group; read_page, observe_page, act_on_page (click, type, navigate, and drag in a tab not in front,
-// design 6.47), run_script, screenshot_page, list_tabs, and close_tab work there; a tab outside the group is refused; Off in Tools refuses its tool; the switch
+// design 6.47; within a frame and a click in it, design 6.50), run_script, screenshot_page, list_tabs, and close_tab work there; a tab outside the group is refused; Off in Tools refuses its tool; the switch
 // going off ends the session and leaves the tabs open, and a new client then hears how to connect. A page open_tab loads
 // is recorded from its start: its console (an error thrown while loading) and its requests (design 6.46). The user's home,
 // Chrome profile, and ~/.pagewing are never touched: Chrome and the bridge run with their home in a temporary folder,
@@ -137,6 +137,14 @@ $("done").addEventListener("drop", (event) => {
 	navigator.sendBeacon("/beacon/drop:" + event.dataTransfer.getData("text/plain"));
 });
 </script>`;
+// Frames (design 6.50): the top on a.test, a frame on b.test with a button.
+const FRAMED_PAGE = `<!doctype html><title>Framed page</title>
+<iframe title="Inner" src="http://b.test:8702/inner" style="width: 300px; height: 100px"></iframe>`;
+const INNER_PAGE = `<!doctype html><title>Inner</title><button>Inner button</button>
+<script>
+window.clicks = 0;
+document.querySelector("button").addEventListener("click", () => clicks++);
+</script>`;
 const beacons = [];
 const pages = createHttp((req, res) => {
 	res.setHeader("content-type", "text/html");
@@ -146,6 +154,8 @@ const pages = createHttp((req, res) => {
 	}
 	if (req.url === "/form") return res.end(FORM_PAGE);
 	if (req.url === "/drag") return res.end(DRAG_PAGE);
+	if (req.url === "/framed") return res.end(FRAMED_PAGE);
+	if (req.url === "/inner") return res.end(INNER_PAGE);
 	if (req.url === "/broken")
 		return res.end(`<!doctype html><title>Broken page</title><p>Broken.</p>
 <script>fetch("/api/save?token=secret", { method: "POST" }); throw new TypeError("thrown while loading");</script>`);
@@ -527,6 +537,34 @@ try {
 		{ toAndBy, fraction },
 	);
 	await agent.call("close_tab", { tab: dragTab });
+
+	// A frame line's ref: within lists the frame's page under it, and a ref in it acts there.
+	const framedTab = (await agent.call("open_tab", { url: `${A}/framed` })).text.tab;
+	const inner = () =>
+		context
+			.pages()
+			.find((page) => page.url() === `${A}/framed`)
+			?.frame({ url: `${B}/inner` });
+	await poll(() => inner() != null, "the frame loaded");
+	const framedOutline = (await agent.call("observe_page", { tab: framedTab })).text.outline;
+	const within = await agent.call("observe_page", { tab: framedTab, within: refIn(framedOutline, "Inner") });
+	const innerClick = await agent.call("act_on_page", {
+		tab: framedTab,
+		action: "click",
+		ref: refIn(within.text.outline, "Inner button"),
+	});
+	check(
+		"within a frame's ref lists the frame's page, and a click in it reaches its button",
+		!within.error &&
+			within.text.frame?.origin === B &&
+			/^- frame "Inner" \w+ \S+ origin=http:\/\/b\.test:8702\n {2}- button "Inner button" \w+$/.test(
+				within.text.outline,
+			) &&
+			!innerClick.error &&
+			(await inner().evaluate(() => window.clicks)) === 1,
+		{ framedOutline, within, innerClick },
+	);
+	await agent.call("close_tab", { tab: framedTab });
 
 	// A page open_tab loads is recorded from its start.
 	const broken = await agent.call("open_tab", { url: `${A}/broken` });

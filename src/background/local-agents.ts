@@ -6,6 +6,7 @@
 import { BACKGROUND_CONTEXT, type Context, withCancel } from "@earendil-works/chord/context";
 import { ENCODINGS, MAX_IMAGE_CHARS } from "../shared/images.ts";
 import { type AgentsStatus, cut, MAX_URL_CHARS, pageTitle, type ToolModes } from "../shared/protocol.ts";
+import { actInFrame, actingOf, type FrameCall, knownIn, noFrameAccess, observeAt } from "./frames.ts";
 import {
 	ACT_ON_PAGE,
 	bounded,
@@ -27,8 +28,8 @@ import {
 	scopedPageAccess,
 	type TopDocument,
 } from "./page.ts";
-import { type ActAction, type ActRequest, type AgentTarget, DRAG_MOVES, DRAG_MS, stepText } from "./page-agent.ts";
-import { letterOf, type RefMaps, targetOf } from "./page-tools.ts";
+import { type ActAction, type ActRequest, DRAG_MOVES, DRAG_MS, stepText } from "./page-agent.ts";
+import { keepMap, letterOf, type RefMaps } from "./page-tools.ts";
 import { type ConsoleQuery, consoleResult, type NetworkQuery, networkResult } from "./recording.ts";
 import { CAPTURE_GAP_MS, capturable, RETRY_GAP_MS, staleText } from "./screenshot.ts";
 import { ScopeDenied, type ScopeTab } from "./tab-groups.ts";
@@ -74,7 +75,6 @@ export const RETRY_ALARM = "local-agents-retry";
 const LOAD_MS = 10_000;
 /** How long run_script waits for a script. */
 const SCRIPT_MS = 30_000;
-const MAX_MAPS = 50;
 
 const text = (value: string, isError = false): ToolResult => ({
 	content: [{ type: "text", text: value }],
@@ -433,48 +433,34 @@ export class LocalAgents {
 		const { access, wait } = this.#scoped(session, tabId, OBSERVE_PAGE, context);
 		const top = await this.#top(access, wait, tabId, context);
 		if (typeof top === "string") return text(top, true);
-		let within: AgentTarget | null = null;
-		if (typeof args.within === "string") {
-			const found = targetOf(session.maps, args.within, top.documentId);
-			if (typeof found === "string") return text(found, true);
-			within = found;
-		}
-		const known = session.maps.maps
-			.filter((map) => map.documentId === top.documentId)
-			.map(({ letter, mapId }) => ({ letter, mapId }));
 		const find = typeof args.find === "string" && args.find.trim() !== "" ? args.find.trim().slice(0, 200) : null;
-		const result = await wait(
-			() =>
-				access.observe(tabId, top.documentId, {
-					op: "observe",
-					known,
-					letter: letterOf(session.maps.next),
-					find,
-					within,
-					maxBytes: MAX_RESULT_BYTES - 8 * 1024,
-					budgetMs: 3_000,
-					maxElements: 100_000,
-					maxMatches: 50,
-					maxUrl: MAX_URL_CHARS,
-				}),
-			context,
-			PAGE_TIMEOUT_MS,
+		const call: FrameCall = { scope: { access, wait }, tabId, context, timeoutMs: PAGE_TIMEOUT_MS };
+		const result = await observeAt(
+			top,
+			session.maps,
+			typeof args.within === "string" ? args.within : undefined,
+			{
+				letter: letterOf(session.maps.next),
+				find,
+				maxBytes: MAX_RESULT_BYTES - 8 * 1024,
+				budgetMs: 3_000,
+				maxElements: 100_000,
+				maxMatches: 50,
+				maxUrl: MAX_URL_CHARS,
+			},
+			call,
 		);
-		if (result === null) return text("The page went away while Pagewing observed it; observe again.", true);
-		if (!result.ok) return text(result.error, true);
-		if (!known.some((map) => map.mapId === result.mapId)) {
-			// A new map takes the letter the page wrote, unless another call of the session took it meanwhile.
-			if (letterOf(session.maps.next) !== result.letter)
-				return text("The page's refs changed while Pagewing observed it; observe again.", true);
-			session.maps.next += 1;
-			session.maps.maps.push({ letter: result.letter, documentId: top.documentId, mapId: result.mapId });
-			if (session.maps.maps.length > MAX_MAPS) session.maps.maps.splice(0, session.maps.maps.length - MAX_MAPS);
-		}
+		if (result.kind === "refused") return text(result.error, true);
+		if (result.kind === "unreachable") return text(noFrameAccess(result.ref), true);
+		if (!keepMap(session.maps, result))
+			return text("The page's refs changed while Pagewing observed it; observe again.", true);
+		const inFrame = result.documentId !== top.documentId;
 		return json({
-			url: result.url,
-			title: pageTitle(result.title),
+			url: inFrame ? top.url : result.url,
+			title: pageTitle(inFrame ? top.title : result.title),
 			outline: result.outline,
 			omitted: result.omitted,
+			...(result.binding === null ? {} : { frame: { origin: result.binding.origin } }),
 		});
 	}
 
@@ -518,25 +504,24 @@ export class LocalAgents {
 		}
 		const top = await this.#top(access, wait, tabId, context);
 		if (typeof top === "string") return text(top, true);
-		let target: AgentTarget | null = null;
-		if (typeof args.ref === "string") {
-			const found = targetOf(session.maps, args.ref, top.documentId);
-			if (typeof found === "string") return text(found, true);
-			target = found;
-		}
-		let to: AgentTarget | null = null;
-		if (typeof args.to === "string") {
-			const found = targetOf(session.maps, args.to, top.documentId);
-			if (typeof found === "string") return text(found, true);
-			to = found;
-		}
+		const call: FrameCall = { scope: { access, wait }, tabId, context, timeoutMs: PAGE_TIMEOUT_MS };
+		const acting = await actingOf(
+			top,
+			session.maps,
+			{
+				action: String(action),
+				...(typeof args.ref === "string" ? { ref: args.ref } : {}),
+				...(typeof args.to === "string" ? { to: args.to } : {}),
+				...(typeof args.direction === "string" ? { direction: args.direction } : {}),
+			},
+			call,
+		);
+		if (acting.kind === "refused") return text(acting.error, true);
 		const request: ActRequest = {
 			op: "act",
 			action: action as ActAction,
-			target,
-			known: session.maps.maps
-				.filter((map) => map.documentId === top.documentId)
-				.map(({ letter, mapId }) => ({ letter, mapId })),
+			target: acting.target,
+			known: knownIn(session.maps, acting.kind === "frame" ? acting.documentId : top.documentId),
 			text: typeof args.text === "string" ? args.text : null,
 			submit: args.submit === true,
 			key: typeof args.key === "string" ? args.key : null,
@@ -544,7 +529,7 @@ export class LocalAgents {
 			direction: ["up", "down", "top", "bottom"].includes(args.direction as string)
 				? (args.direction as ActRequest["direction"])
 				: null,
-			to,
+			to: acting.kind === "top" ? acting.to : null,
 			by: moveOf(args.by),
 			summary: null,
 			dragMoves: DRAG_MOVES,
@@ -553,13 +538,32 @@ export class LocalAgents {
 			maxWaitMs: 5_000,
 			outlineMs: 800,
 			maxUrl: MAX_URL_CHARS,
+			frame: null,
 		};
 		await wait(() => this.#record(session, tabId, top, null), context, PAGE_TIMEOUT_MS);
-		// Tabs the page opens during the action, as a link with target _blank does, join the session's group.
-		const stopNoting = this.#deps.access.opened(tabId);
+		// Tabs the page opens during the action, as a link with target _blank does, join the session's group; in a
+		// frame, from before the frames are checked (design 6.50).
+		let stopNoting = acting.kind === "top" ? this.#deps.access.opened(tabId) : () => [] as number[];
 		let result: Awaited<ReturnType<typeof access.act>>;
 		try {
-			result = await wait(() => access.act(tabId, top.documentId, request), context, PAGE_TIMEOUT_MS);
+			if (acting.kind === "frame") {
+				const inFrame = await actInFrame(
+					top,
+					acting,
+					request,
+					this.#deps.access,
+					() => {
+						stopNoting = this.#deps.access.opened(tabId);
+						return stopNoting;
+					},
+					call,
+				);
+				if ("lost" in inFrame) {
+					stopNoting();
+					return text(inFrame.lost, true);
+				}
+				result = inFrame;
+			} else result = await wait(() => access.act(tabId, top.documentId, request), context, PAGE_TIMEOUT_MS);
 		} catch (error) {
 			stopNoting();
 			if (context.abortSignal?.aborted) throw error;

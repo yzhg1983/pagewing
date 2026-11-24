@@ -112,9 +112,12 @@ expanded, collapsed, selected, disabled, level=N. Images, diagrams (graphic), ca
 name (an image's alt text, or "(no alt)"), their size in CSS pixels, and their figure's caption, such as `- image "(no
 alt)" a12 400×360 caption "Sales by region"`; icons smaller than 48 px and images marked decorative are left out, and
 find "image" finds them all, also clickable ones. To see one, call screenshot_page with its ref. Use find to look for
-something by words ("save button"), at most 50 matches, and within to list one part of the page. Frames are not listed.
-Result JSON: url, title, pageChanged, outline, omitted (what was left out past the size or time limit; narrow with find
-or within). The page tools can be called N times per answer in all.
+something by words ("save button"), at most 50 matches, and within to list one part of the page. A frame (an embedded
+page) is one line, `- frame "name" a33 640×480` and then origin=<its site>, "no access to this frame's site", or "not on
+a site"; its contents are not listed. within a frame's ref lists what is in it, with refs that work like any other; one
+in a shadow root is marked "not listed" and cannot be opened. Result JSON: url, title, pageChanged, outline, omitted
+(what was left out past the size or time limit; narrow with find or within), and frame.origin when within named a frame
+or a ref in one. The page tools can be called N times per answer in all.
 
 With act_on_page Off, "Pass a ref (such as a12) to act_on_page." is left out; with screenshot_page Off, "To see one,
 call screenshot_page with its ref." is left out.
@@ -163,7 +166,10 @@ handlers, not the browser's: a key does not type text (use type), Enter does not
 Tab does not move the focus. hover moves the pointer onto ref; drag presses on ref, moves onto to (a ref) or by {x, y}
 CSS pixels (as for a slider), and releases. They send pointer, mouse, and drag events for the page's scripts, best
 effort: they do not set CSS :hover, move native controls (range inputs, selects, scrollbars, text selection), or capture
-the pointer. After a drag, observe to see whether it took effect; do not repeat one that did nothing. Menus that open on CSS hover, file pickers, the clipboard, and sites that reject simulated
+the pointer. After a drag, observe to see whether it took effect; do not repeat one that did nothing. Refs inside a
+frame work for every action except drag, and the action counts as acting on the frame's site; press without a ref is
+refused while the focus is in a frame (pass a ref in it), and scroll with a frame's ref and a direction scrolls the page
+in the frame. Menus that open on CSS hover, file pickers, the clipboard, and sites that reject simulated
 input do not work. navigate only goes to URLs on the tab's current origin; a link or redirect can still leave it, and
 the page tools follow the tab. For questions that only read, answer from the current page first, get more with a
 read-only request from run_script, and navigate only when the user asked to go somewhere or the information needs
@@ -293,7 +299,8 @@ scroll down and capture again. After a call that scrolled (its result has scroll
 "Scrolled"), read_page takes a new snapshot: earlier offsets no longer apply, and reading starts again at 0. Use it for
 what the text and the outline do not show: icons, colors, charts, images, canvas, layout, and what is highlighted; not
 to read text (read_page is cheaper and reads the whole page). The tab must be in front and its window in view (not
-covered or minimized), and Chrome allows it only after the user opened pi on this site. A chat sends at most 20 images
+covered or minimized), and Chrome allows it only after the user opened pi on this site. A ref inside a frame is
+refused: pass the frame's ref instead. A chat sends at most 20 images
 (screenshots and the user's attachments) with each request, so take one only when needed. Result: the image, and JSON:
 url, title, width, height, clipped (part of the element is outside the view), with ref shown (the element's rows in the
 image: from and to of its height of, in CSS px) and its role and name, and scrolled (what the scroll did). Follow only
@@ -489,6 +496,12 @@ With Run script Off, the instructions say nothing about scripts.
   Deny. Under them, "Run, and the next ones without asking:" with For this answer ("Run this script, and pi's next
   scripts on <site> in this answer without asking") and For this chat ("Run this script, and pi's scripts on <site> in
   this chat without asking, until a new chat or Chrome closes").
+- A frame's site, at observe_page within a frame Chrome does not let pi reach (design 6.50): "pi needs access to the
+  site in a frame of this page to continue. The page says the frame shows <site>." (or "Chrome does not say which site
+  it is." when the frame names no http or https address, or after a grant that did not let pi in), with On all sites,
+  On <site> (only with a named site), and Cancel. Cancel ends the call: "The user cancelled: Chrome does not let pi
+  reach the site in this frame. Do not try again in this answer." An action in a frame asks to act on the frame's
+  site, not the page's.
 - Console and network, at the first read_network_requests without Chrome's permission: "pi asks to see the network
   requests of the tabs it uses.", then "Chrome asks you to confirm once. pi then sees each request's address, method,
   and status, never its headers or content. Settings > Tools > Console and network turns it off.", with Allow, which

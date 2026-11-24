@@ -18,6 +18,8 @@ export const NO_AGENT: Pick<
 	PageAccess,
 	| "top"
 	| "observe"
+	| "frameMap"
+	| "frame"
 	| "act"
 	| "navigate"
 	| "loaded"
@@ -41,6 +43,8 @@ export const NO_AGENT: Pick<
 > = {
 	top: async () => null,
 	observe: async () => null,
+	frameMap: async () => [],
+	frame: async () => null,
 	act: async () => null,
 	navigate: async () => {},
 	loaded: async () => true,
