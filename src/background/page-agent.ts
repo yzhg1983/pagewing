@@ -20,11 +20,33 @@ export type ObserveRequest = {
 	maxElements: number;
 	maxMatches: number;
 	maxUrl: number;
+	/** How far the outline's lines are indented: 1 under a frame line it expands (design 6.50). */
+	depth: number;
 };
 
+/**
+ * `frames`: the outline's frame lines that a frame's metadata can label (design 6.50): the line's index, its ref's
+ * number, and the frame's index in `window.frames`. `iframes`: the ref number of every `<iframe>` line, listed in
+ * `window.frames` or not: within such a ref, or a scroll with a direction on it, goes through the frame checks.
+ */
 export type ObserveResult =
-	| { ok: true; mapId: string; letter: string; url: string; title: string; outline: string; omitted: string | null }
+	| {
+			ok: true;
+			mapId: string;
+			letter: string;
+			url: string;
+			title: string;
+			outline: string;
+			omitted: string | null;
+			frames: FrameLine[];
+			iframes: number[];
+	  }
 	| { ok: false; error: string };
+
+export type FrameLine = { line: number; number: number; index: number };
+
+/** A point in CSS px from the top left of a document's view. */
+export type Point = { x: number; y: number };
 
 export type ActAction = "click" | "type" | "press" | "scroll" | "select_option" | "hover" | "drag";
 
@@ -53,7 +75,82 @@ export type ActRequest = {
 	maxWaitMs: number;
 	outlineMs: number;
 	maxUrl: number;
+	/**
+	 * In a frame (design 6.50): the point `aim` gave, which every ancestor checked, and the frame's index path; the
+	 * action does not scroll, and is refused if the element's center moved off the point or the frame moved.
+	 */
+	frame: { at: Point; path: number[] } | null;
 };
+
+/** The first step of an action in a frame (design 6.50): the act's checks and scroll, up to the point it would use. */
+export type AimRequest = Omit<ActRequest, "op" | "frame"> & { op: "aim" };
+
+/** The point in the frame's view, and the frame's index path through `parent.frames`. */
+export type AimResult = { ok: true; point: Point; path: number[] } | Extract<ActResult, { ok: false }>;
+
+/**
+ * Checks the `<iframe>` that `target` names (design 6.50): in this document, not in a shadow root, in `window.frames`
+ * at `index` if given, shown, and not zoomed or transformed. With `point`, a point in the frame's view, also that the
+ * point is in this view and hits the `<iframe>`.
+ */
+export type OwnerRequest = {
+	op: "owner";
+	target: AgentTarget;
+	/** The letter of this document's map, which names elements in messages. */
+	letter: string;
+	index: number | null;
+	point: Point | null;
+};
+
+/**
+ * "frame": the frame's index in `window.frames`, its outline line, the origin its `src` claims, and `point` in this
+ * view. "changed": it is not at `index` now.
+ */
+export type OwnerResult =
+	| { kind: "frame"; index: number; line: string; hint: string | null; point: Point | null }
+	| { kind: "notFrame" }
+	| { kind: "changed" }
+	| { kind: "refused"; error: string };
+
+/** Each `<iframe>`'s index in `window.frames` now; null for one that is gone or not there. */
+export type IndexesRequest = { op: "indexes"; targets: AgentTarget[] };
+export type IndexesResult = { indexes: (number | null)[] };
+
+/**
+ * Notes the user's input while pi acts in a frame (design 6.50, 6.29), until `unwatch` or `ms`. "ancestor" (the top
+ * and each document between it and the target): a pointer or a key, or focus going to a frame other than `exempt`, the
+ * one pi acts through; "target": a pointer, a key, or the window losing focus.
+ */
+export type WatchRequest = {
+	op: "watch";
+	id: string;
+	kind: "ancestor" | "target";
+	exempt: AgentTarget | null;
+	ms: number;
+};
+export type WatchResult = { ok: true };
+/** Ends watch `id`; `userInput` also when the watch was gone. */
+export type UnwatchRequest = { op: "unwatch"; id: string };
+export type UnwatchResult = { userInput: boolean };
+
+/** Waits until the document is quiet, as after an action. */
+export type SettleRequest = { op: "settle"; quietMs: number; maxWaitMs: number };
+export type SettleResult = { timedOut: boolean };
+
+export type FrameRequest = AimRequest | OwnerRequest | IndexesRequest | WatchRequest | UnwatchRequest | SettleRequest;
+
+/** The result of a frame request. */
+export type FrameResultOf<R extends FrameRequest> = R extends AimRequest
+	? AimResult
+	: R extends OwnerRequest
+		? OwnerResult
+		: R extends IndexesRequest
+			? IndexesResult
+			: R extends WatchRequest
+				? WatchResult
+				: R extends UnwatchRequest
+					? UnwatchResult
+					: SettleResult;
 
 /**
  * `sent`: of a failure, whether events had reached the page by then. `userInput`: the user pressed a pointer or a key
@@ -170,27 +267,49 @@ export type LocateResult = ({ ok: true } & Located) | { ok: false; error: string
 
 /** Runs in the page; Chrome serializes it, so it uses nothing outside itself. */
 export async function pageAgent(
-	input: ObserveRequest | ActRequest | LocateRequest | ScrollRequest,
-): Promise<ObserveResult | ActResult | LocateResult | ScrollResult> {
+	input: ObserveRequest | ActRequest | LocateRequest | ScrollRequest | FrameRequest,
+): Promise<
+	| ObserveResult
+	| ActResult
+	| LocateResult
+	| ScrollResult
+	| AimResult
+	| OwnerResult
+	| IndexesResult
+	| WatchResult
+	| UnwatchResult
+	| SettleResult
+> {
 	// Chrome leaves out the null properties of an argument object (Chrome 140 and 147): a missing one is null.
-	const request: ObserveRequest | ActRequest | LocateRequest | ScrollRequest =
+	const request:
+		| ObserveRequest
+		| ActRequest
+		| AimRequest
+		| LocateRequest
+		| ScrollRequest
+		| Exclude<FrameRequest, AimRequest> =
 		input.op === "observe"
 			? { ...input, find: input.find ?? null, within: input.within ?? null }
-			: input.op === "locate"
+			: input.op === "locate" || input.op === "indexes" || input.op === "unwatch" || input.op === "settle"
 				? input
 				: input.op === "scroll"
 					? { ...input, target: input.target ?? null, direction: input.direction ?? null }
-					: {
-							...input,
-							target: input.target ?? null,
-							text: input.text ?? null,
-							key: input.key ?? null,
-							option: input.option ?? null,
-							direction: input.direction ?? null,
-							to: input.to ?? null,
-							by: input.by ?? null,
-							summary: input.summary ?? null,
-						};
+					: input.op === "owner"
+						? { ...input, index: input.index ?? null, point: input.point ?? null }
+						: input.op === "watch"
+							? { ...input, exempt: input.exempt ?? null }
+							: {
+									...input,
+									target: input.target ?? null,
+									text: input.text ?? null,
+									key: input.key ?? null,
+									option: input.option ?? null,
+									direction: input.direction ?? null,
+									to: input.to ?? null,
+									by: input.by ?? null,
+									summary: input.summary ?? null,
+									...(input.op === "act" ? { frame: input.frame ?? null } : {}),
+								};
 	type Refs = {
 		id: string;
 		next: number;
@@ -439,6 +558,11 @@ export async function pageAgent(
 	};
 	/** The role a line shows; null for an element that is not listed. `clickable`: a pointer that its parent lacks. */
 	const roleOf = (element: Element, clickable: boolean): string | null => {
+		// A frame the page draws is listed whatever role the page gives it, so it can be expanded (design 6.50).
+		if (element.tagName === "IFRAME") {
+			const box = element.getBoundingClientRect();
+			return box.width >= 2 && box.height >= 2 ? "frame" : null;
+		}
 		const role = explicitRole(element) ?? implicitRole(element);
 		if (role === "img") return "image";
 		if (role !== null) return role;
@@ -558,6 +682,11 @@ export async function pageAgent(
 		if (role === "heading") {
 			const level = /^H([1-6])$/.exec(element.tagName)?.[1] ?? attribute(element, "aria-level");
 			if (level !== "") states.push(`level=${level}`);
+		}
+		if (element.tagName === "IFRAME") {
+			states.push(sizeOf(element));
+			// Not in `window.frames`: pi cannot tell which document it shows (design 6.50).
+			if (element.getRootNode() !== document) states.push("in a shadow root: not listed");
 		}
 		if (mediaOf(element) !== null) {
 			states.push(sizeOf(element));
@@ -776,6 +905,189 @@ export async function pageAgent(
 		return { box, step };
 	};
 
+	/** The deepest element at a point, through shadow roots. */
+	const hitAt = (x: number, y: number): Element | null => {
+		let hit = document.elementFromPoint(x, y);
+		for (;;) {
+			const shadow = hit === null ? null : shadowOf(hit);
+			const inner = shadow?.elementFromPoint(x, y) ?? null;
+			if (inner === null || inner === hit) return hit;
+			hit = inner;
+		}
+	};
+	/** The nearest listed element at or above `hit`, as messages name it. */
+	const coverOf = (hit: Element, letter: string | null) => {
+		let cover: Element | null = hit;
+		while (cover !== null && roleOf(cover, false) === null) cover = parentOf(cover);
+		return describe(cover ?? hit, letter);
+	};
+	/** `element` is `ancestor` or inside it, in the flat tree. */
+	const within = (element: Element, ancestor: Element) => {
+		let at: Element | null = element;
+		while (at !== null && at !== ancestor) at = parentOf(at);
+		return at !== null;
+	};
+	/** This document's index path from the top through `parent.frames` (design 6.50); [] in the top. */
+	const framePath = (): number[] => {
+		const path: number[] = [];
+		for (let at: Window = window; at !== at.parent; at = at.parent) {
+			const parent = at.parent;
+			let index = -1;
+			for (let k = 0; k < parent.length; k += 1)
+				if (parent[k] === at) {
+					index = k;
+					break;
+				}
+			path.unshift(index);
+		}
+		return path;
+	};
+	/** The `<iframe>`'s index in `window.frames`, by window identity (design 6.50); -1 when it is not there. */
+	const frameIndex = (element: HTMLIFrameElement): number => {
+		for (let k = 0; k < window.length; k += 1) if (window[k] === element.contentWindow) return k;
+		return -1;
+	};
+	/** The focused element, through shadow roots. */
+	const deepFocus = (): Element | null => {
+		let active = document.activeElement;
+		for (;;) {
+			const inner = active === null ? null : (shadowOf(active)?.activeElement ?? null);
+			if (inner === null) return active;
+			active = inner;
+		}
+	};
+	/** An element that shows another document. */
+	const isFrame = (element: Element | null) =>
+		element instanceof HTMLIFrameElement ||
+		element instanceof HTMLFrameElement ||
+		element instanceof HTMLObjectElement ||
+		element instanceof HTMLEmbedElement;
+	/** Zoomed, or transformed other than by a translation: the `<iframe>` or an element containing it (design 6.50). */
+	const transformed = (element: Element): boolean => {
+		for (let at: Element | null = element; at !== null; at = parentOf(at)) {
+			const style = getComputedStyle(at);
+			if (!["1", "normal", ""].includes(style.zoom)) return true;
+			if ([style.transform, style.scale, style.rotate, style.perspective].some((value) => value !== "none"))
+				return true;
+		}
+		return false;
+	};
+	/** An owner request's checks of an `<iframe>` (design 6.50). */
+	const ownerOf = (owner: OwnerRequest): OwnerResult => {
+		const ref = `${owner.target.letter}${owner.target.number}`;
+		const element = elementOf(owner.target);
+		if (element === undefined) return { kind: "refused", error: gone(ref) };
+		if (!(element instanceof HTMLIFrameElement)) return { kind: "notFrame" };
+		if (element.getRootNode() !== document)
+			return { kind: "refused", error: `${ref} is a frame in a shadow root: pi cannot tell which page it shows` };
+		const index = frameIndex(element);
+		if (index < 0) return { kind: "refused", error: `pi cannot map the frame ${ref} to its page: observe again` };
+		if (owner.index !== null && index !== owner.index) return { kind: "changed" };
+		const box = element.getBoundingClientRect();
+		if (!element.checkVisibility({ visibilityProperty: true }) || box.width < 2 || box.height < 2)
+			return { kind: "refused", error: `The frame ${ref} is hidden or smaller than 2 px: observe again` };
+		// A point maps into the frame by addition only, so its view must not be scaled against this one.
+		if (
+			Math.abs(box.width - element.offsetWidth) > 0.5 ||
+			Math.abs(box.height - element.offsetHeight) > 0.5 ||
+			transformed(element)
+		)
+			return { kind: "refused", error: `pi cannot map points into the frame ${ref}: it is zoomed or transformed` };
+		let hint: string | null = null;
+		try {
+			const url = new URL(element.src);
+			if (url.protocol === "http:" || url.protocol === "https:") hint = url.origin;
+		} catch {
+			hint = null;
+		}
+		const { letter } = owner;
+		const name = short(nameOf(element, "frame"), MAX_NAME);
+		const line = `- frame${name === "" ? "" : ` ${JSON.stringify(name)}`} ${letter}${numberOf(element)} ${sizeOf(element)}`;
+		if (owner.point === null) return { kind: "frame", index, line, hint, point: null };
+		// From the frame's view to this one: the `<iframe>`'s content box.
+		const style = getComputedStyle(element);
+		const px = (value: string) => Number.parseFloat(value) || 0;
+		const point = {
+			x: box.left + element.clientLeft + px(style.paddingLeft) + owner.point.x,
+			y: box.top + element.clientTop + px(style.paddingTop) + owner.point.y,
+		};
+		const outside = `Where pi would act in the frame ${ref} is outside the view: observe again`;
+		if (point.x < 0 || point.y < 0 || point.x >= innerWidth || point.y >= innerHeight)
+			return { kind: "refused", error: outside };
+		const hit = hitAt(point.x, point.y);
+		// An element around the `<iframe>` got the point: a scroll box clips the frame there, nothing covers it.
+		if (hit !== null && hit !== element && within(element, hit)) return { kind: "refused", error: outside };
+		if (hit !== element)
+			return {
+				kind: "refused",
+				error: `The frame ${ref} is covered by ${coverOf(hit ?? document.documentElement, letter)} where pi would act`,
+			};
+		return { kind: "frame", index, line, hint, point };
+	};
+	/**
+	 * Waits until nothing in the document or its shadow roots changes for `quietMs`, at most `maxWaitMs`. True when pi
+	 * cannot tell that the page is quiet: the wait reached `maxWaitMs`, or the last look for shadow roots stopped at its
+	 * bound of 50,000 elements.
+	 */
+	const settle = (ignore: Element | null, quietMs: number, maxWaitMs: number): Promise<boolean> =>
+		new Promise((resolve) => {
+			const own = ignore === null ? null : shadowOf(ignore);
+			const observer = new MutationObserver((records) => {
+				let changed = false;
+				for (const record of records) {
+					const nodes = [...record.addedNodes, ...record.removedNodes];
+					// The outline's host coming and going, and what is inside it, are not the page's changes.
+					if (
+						ignore !== null &&
+						(record.target === ignore ||
+							(own?.contains(record.target) ?? false) ||
+							(record.type === "childList" && nodes.length > 0 && nodes.every((node) => node === ignore)))
+					)
+						continue;
+					changed = true;
+					for (const node of record.addedNodes) if (node instanceof Element) watch(node, { left: 50_000 });
+				}
+				if (!changed) return;
+				clearTimeout(quiet);
+				quiet = setTimeout(quieted, quietMs);
+			});
+			const options = { subtree: true, childList: true, attributes: true, characterData: true };
+			const roots = new Set<ShadowRoot>();
+			/** Observes the shadow roots under `root` that are not observed yet, nested ones too, while `scan` lasts; how many. */
+			const watch = (root: Node, scan: { left: number }): number => {
+				let found = 0;
+				const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT);
+				for (let node: Node | null = walker.currentNode; node !== null && scan.left > 0; node = walker.nextNode()) {
+					scan.left -= 1;
+					const shadow = node instanceof Element ? shadowOf(node) : null;
+					if (shadow === null) continue;
+					if (!roots.has(shadow)) {
+						roots.add(shadow);
+						observer.observe(shadow, options);
+						found += 1;
+					}
+					found += watch(shadow, scan);
+				}
+				return found;
+			};
+			/** Nothing changed for `quietMs`. A root attached to an element already there makes no record: look again first. */
+			const quieted = () => {
+				const scan = { left: 50_000 };
+				if (watch(document, scan) > 0) quiet = setTimeout(quieted, quietMs);
+				else done(scan.left <= 0);
+			};
+			observer.observe(document, options);
+			watch(document, { left: 50_000 });
+			let quiet = setTimeout(quieted, quietMs);
+			const limit = setTimeout(() => done(true), maxWaitMs);
+			const done = (timedOut: boolean) => {
+				observer.disconnect();
+				clearTimeout(quiet);
+				clearTimeout(limit);
+				resolve(timedOut);
+			};
+		});
+
 	if (request.op === "scroll") {
 		let element: Element | undefined;
 		if (request.target !== null) {
@@ -926,8 +1238,12 @@ export async function pageAgent(
 		}
 
 		// Lines until the outline would pass `maxBytes` as a JSON string; the rest are counted.
+		/** A frame line's label: " origin=" and an origin cut to 200 characters, escaped. */
+		const FRAME_LABEL_BYTES = 256;
 		const encoder = new TextEncoder();
 		const lines: string[] = [];
+		const frames: FrameLine[] = [];
+		const iframes: number[] = [];
 		let bytes = 2;
 		let left = 0;
 		const render = (list: Item[], depth: number) => {
@@ -937,10 +1253,18 @@ export async function pageAgent(
 				} else {
 					const name = item.name === "" ? "" : ` ${JSON.stringify(item.name)}`;
 					const states = item.states.length === 0 ? "" : ` ${item.states.join(" ")}`;
-					const line = `${"  ".repeat(depth)}- ${item.role}${name} ${letter}${numberOf(item.element)}${states}`;
-					const size = encoder.encode(JSON.stringify(line)).length;
+					const number = numberOf(item.element);
+					const line = `${"  ".repeat(depth)}- ${item.role}${name} ${letter}${number}${states}`;
+					// A frame in `window.frames` gets its label from the worker (design 6.50): room for it is kept.
+					const index =
+						item.element instanceof HTMLIFrameElement && item.element.getRootNode() === document
+							? frameIndex(item.element)
+							: -1;
+					const size = encoder.encode(JSON.stringify(line)).length + (index < 0 ? 0 : FRAME_LABEL_BYTES);
 					if (bytes + size > request.maxBytes) left = 1;
 					else {
+						if (index >= 0) frames.push({ line: lines.length, number, index });
+						if (item.element instanceof HTMLIFrameElement) iframes.push(number);
 						lines.push(line);
 						bytes += size;
 					}
@@ -948,7 +1272,7 @@ export async function pageAgent(
 				render(item.children, depth + 1);
 			}
 		};
-		render(items, 0);
+		render(items, request.depth);
 		const omitted = [
 			...(left > 0 ? [`${left} more elements past the size limit`] : []),
 			...(unmatched > 0 ? [`${unmatched} more matches`] : []),
@@ -962,8 +1286,12 @@ export async function pageAgent(
 			url: location.href.slice(0, request.maxUrl),
 			title: document.title.slice(0, 300),
 			outline:
-				lines.length > 0 ? lines.join("\n") : request.find !== null ? "No element matches." : "Nothing is listed.",
+				lines.length > 0
+					? lines.join("\n")
+					: `${"  ".repeat(request.depth)}${request.find !== null ? "No element matches." : "Nothing is listed."}`,
 			omitted: omitted.length === 0 ? null : `${omitted.join("; ")}; narrow with find or within`,
+			frames,
+			iframes,
 		};
 	}
 
@@ -996,11 +1324,72 @@ export async function pageAgent(
 		};
 	}
 
-	// act_on_page.
+	if (request.op === "owner") return ownerOf(request);
+
+	if (request.op === "indexes")
+		return {
+			indexes: request.targets.map((target) => {
+				const element = elementOf(target);
+				if (!(element instanceof HTMLIFrameElement) || element.getRootNode() !== document) return null;
+				const index = frameIndex(element);
+				return index < 0 ? null : index;
+			}),
+		};
+
+	// The user's input while pi acts in a frame (design 6.50), kept in the isolated world until unwatch or its time.
+	// By the action's ID: a panel chat and a local agent may act in the same document at once.
+	type Watch = { userInput: boolean; stop: () => boolean };
+	const watchHolder = globalThis as unknown as { piasideWatches?: Map<string, Watch> };
+	watchHolder.piasideWatches ??= new Map();
+	const watches = watchHolder.piasideWatches;
+	if (request.op === "watch") {
+		const exempt = request.exempt === null ? undefined : elementOf(request.exempt);
+		const watch: Watch = { userInput: false, stop: () => false };
+		/** Focus is in a frame other than the one pi acts through. */
+		const elsewhere = () => {
+			const active = deepFocus();
+			return isFrame(active) && active !== exempt;
+		};
+		const noteInput = (event: Event) => {
+			if (event.isTrusted) watch.userInput = true;
+		};
+		const noteBlur = (event: Event) => {
+			if (!event.isTrusted || event.target !== window) return;
+			// In the target, pi never moves the focus out of the window; in an ancestor, only into the frame it acts through.
+			if (request.kind === "target" || elsewhere()) watch.userInput = true;
+		};
+		addEventListener("pointerdown", noteInput, true);
+		addEventListener("keydown", noteInput, true);
+		addEventListener("blur", noteBlur, true);
+		const timer = setTimeout(() => watch.stop(), request.ms);
+		watch.stop = () => {
+			removeEventListener("pointerdown", noteInput, true);
+			removeEventListener("keydown", noteInput, true);
+			removeEventListener("blur", noteBlur, true);
+			clearTimeout(timer);
+			watches.delete(request.id);
+			return request.kind === "ancestor" && elsewhere();
+		};
+		watches.set(request.id, watch);
+		return { ok: true };
+	}
+	if (request.op === "unwatch") {
+		const watch = watches.get(request.id);
+		// A watch that ended on its own may have missed input.
+		if (watch === undefined) return { userInput: true };
+		const focusElsewhere = watch.stop();
+		return { userInput: watch.userInput || focusElsewhere };
+	}
+
+	if (request.op === "settle") return { timedOut: await settle(null, request.quietMs, request.maxWaitMs) };
+
+	// act_on_page, and in a frame its first step, aim (design 6.50).
 	const act = {
 		...request,
-		letter: request.known.find((known) => known.mapId === holder.piasideRefs?.id)?.letter ?? null,
+		letter: request.known.find((one) => one.mapId === holder.piasideRefs?.id)?.letter ?? null,
 	};
+	const aiming = request.op === "aim";
+	const frame = request.op === "act" ? request.frame : null;
 	let sent = false;
 	// pi's events are not trusted ones: a trusted one is the user's. Input in a frame stays in the frame's document,
 	// unseen here, but moves focus into the frame; pi acts in this document only, so focus in a frame is the user's
@@ -1009,16 +1398,7 @@ export async function pageAgent(
 	const noteInput = (event: Event) => {
 		if (event.isTrusted) userInput = true;
 	};
-	const inFrame = () => {
-		let active = document.activeElement;
-		while (active?.shadowRoot?.activeElement) active = active.shadowRoot.activeElement;
-		return (
-			active instanceof HTMLIFrameElement ||
-			active instanceof HTMLFrameElement ||
-			active instanceof HTMLObjectElement ||
-			active instanceof HTMLEmbedElement
-		);
-	};
+	const inFrame = () => isFrame(deepFocus());
 	const noteBlur = (event: Event) => {
 		if (event.isTrusted && event.target === window && inFrame()) userInput = true;
 	};
@@ -1031,10 +1411,14 @@ export async function pageAgent(
 		removeEventListener("blur", noteBlur, true);
 		if (inFrame()) userInput = true;
 	};
-	const refused = (error: string): ActResult => {
+	const refused = (error: string): Extract<ActResult, { ok: false }> => {
 		stopInput();
 		return { ok: false, error, sent, userInput };
 	};
+	if (act.action === "drag" && (aiming || frame !== null)) return refused("drag does not work inside frames yet");
+	// The frame must be where the ancestors checked it (design 6.50).
+	if (frame !== null && framePath().join() !== frame.path.join())
+		return refused("The frame moved in the page while pi acted: observe again");
 	const ref = act.target === null ? "" : `${act.target.letter}${act.target.number}`;
 	let element: Element | undefined;
 	if (act.target !== null) {
@@ -1045,39 +1429,46 @@ export async function pageAgent(
 			return refused(`${ref} is not drawn (hidden, collapsed, or empty): observe again`);
 		if (disabled(element)) return refused(`${ref} is disabled`);
 	}
-	const center = (target: Element) => {
-		target.scrollIntoView({ block: "center", inline: "center", behavior: "instant" });
+	/** The center of `target` in the view, or of the view itself. */
+	const middleOf = (target: Element | null): Point => {
+		if (target === null) return { x: innerWidth / 2, y: innerHeight / 2 };
 		const box = target.getBoundingClientRect();
 		return {
 			x: Math.min(innerWidth - 1, Math.max(0, box.left + box.width / 2)),
 			y: Math.min(innerHeight - 1, Math.max(0, box.top + box.height / 2)),
 		};
 	};
-	/** The deepest element at a point, through shadow roots. */
-	const hitAt = (x: number, y: number): Element | null => {
-		let hit = document.elementFromPoint(x, y);
-		for (;;) {
-			const shadow = hit === null ? null : shadowOf(hit);
-			const inner = shadow?.elementFromPoint(x, y) ?? null;
-			if (inner === null || inner === hit) return hit;
-			hit = inner;
+	/**
+	 * Where pi acts on `target`: its center after it scrolls to the middle of the view. In a frame, once the ancestors
+	 * checked the point, nothing scrolls: the center must still be at the point and hit the element, else why not.
+	 */
+	const place = (target: Element | null): Point | string => {
+		if (frame === null) {
+			target?.scrollIntoView({ block: "center", inline: "center", behavior: "instant" });
+			return middleOf(target);
 		}
+		const point = middleOf(target);
+		if (Math.abs(point.x - frame.at.x) > 1 || Math.abs(point.y - frame.at.y) > 1)
+			return `${target === null ? "The frame's page" : ref} moved while pi checked the frames: observe again`;
+		if (target === null) return point;
+		const hit = hitAt(point.x, point.y);
+		return hit !== null && within(hit, target)
+			? point
+			: `${ref} is covered by ${coverOf(hit ?? document.documentElement, act.letter)}`;
 	};
-	/** The focused element, through shadow roots. */
-	const focused = (): Element | null => {
-		let active = document.activeElement;
-		for (;;) {
-			const inner = active === null ? null : (shadowOf(active)?.activeElement ?? null);
-			if (inner === null) return active;
-			active = inner;
-		}
+	/** The first step in a frame ends at the point, before anything is sent. */
+	const aimed = (point: Point): AimResult => {
+		stopInput();
+		return { ok: true, point, path: framePath() };
 	};
 	/**
 	 * The element under `target`'s center after it scrolls to the middle of the view, where a press would land; why
 	 * not, if the center is outside the window, covered, or another interactive element.
 	 */
 	const aim = (target: Element): { x: number; y: number; hit: Element } | string => {
-		const { x, y } = center(target);
+		const point = place(target);
+		if (typeof point === "string") return point;
+		const { x, y } = point;
 		const hit = hitAt(x, y);
 		if (hit === null) return `The center of ${ref} is outside the window`;
 		// From the element hit up to the target: no other interactive element between them.
@@ -1087,21 +1478,9 @@ export async function pageAgent(
 			if (between === null && (interactive(at) || roleOf(at, false) === "link" || clickable(at))) between = at;
 			at = parentOf(at);
 		}
-		if (at === null) return `${ref} is covered by ${coverOf(hit)}`;
+		if (at === null) return `${ref} is covered by ${coverOf(hit, act.letter)}`;
 		if (between !== null) return `The center of ${ref} is ${describe(between, act.letter)}; act on that ref instead`;
 		return { x, y, hit };
-	};
-	/** The nearest listed element at or above `hit`, as messages name it. */
-	const coverOf = (hit: Element) => {
-		let cover: Element | null = hit;
-		while (cover !== null && roleOf(cover, false) === null) cover = parentOf(cover);
-		return describe(cover ?? hit, act.letter);
-	};
-	/** `element` is `ancestor` or inside it, in the flat tree. */
-	const within = (element: Element, ancestor: Element) => {
-		let at: Element | null = element;
-		while (at !== null && at !== ancestor) at = parentOf(at);
-		return at !== null;
 	};
 	/** As a real press: the focusable element under the pointer takes the focus. */
 	const focusAt = (hit: Element) => {
@@ -1201,18 +1580,18 @@ export async function pageAgent(
 		new Promise<void>((resolve) => {
 			const channel = new MessageChannel();
 			const done = () => {
-				cancelAnimationFrame(frame);
+				cancelAnimationFrame(animation);
 				document.removeEventListener("visibilitychange", done);
 				channel.port1.close();
 				resolve();
 			};
-			const frame = requestAnimationFrame(done);
+			const animation = requestAnimationFrame(done);
 			document.addEventListener("visibilitychange", done);
 			channel.port1.onmessage = done;
 			if (document.visibilityState === "hidden") channel.port2.postMessage(null);
 		});
 	const focusText = (target: Element): string | null => {
-		const now = focused();
+		const now = deepFocus();
 		return now === target
 			? null
 			: now === null || now === document.body
@@ -1238,71 +1617,8 @@ export async function pageAgent(
 		setTimeout(() => host.remove(), act.outlineMs);
 		return host;
 	};
-	/**
-	 * Waits until nothing in the document or its shadow roots changes for `quietMs`, at most `maxWaitMs`. True when pi
-	 * cannot tell that the page is quiet: the wait reached `maxWaitMs`, or the last look for shadow roots stopped at its
-	 * bound of 50,000 elements.
-	 */
-	const settle = (ignore: Element | null): Promise<boolean> =>
-		new Promise((resolve) => {
-			const own = ignore === null ? null : shadowOf(ignore);
-			const observer = new MutationObserver((records) => {
-				let changed = false;
-				for (const record of records) {
-					const nodes = [...record.addedNodes, ...record.removedNodes];
-					// The outline's host coming and going, and what is inside it, are not the page's changes.
-					if (
-						ignore !== null &&
-						(record.target === ignore ||
-							(own?.contains(record.target) ?? false) ||
-							(record.type === "childList" && nodes.length > 0 && nodes.every((node) => node === ignore)))
-					)
-						continue;
-					changed = true;
-					for (const node of record.addedNodes) if (node instanceof Element) watch(node, { left: 50_000 });
-				}
-				if (!changed) return;
-				clearTimeout(quiet);
-				quiet = setTimeout(quieted, act.quietMs);
-			});
-			const options = { subtree: true, childList: true, attributes: true, characterData: true };
-			const roots = new Set<ShadowRoot>();
-			/** Observes the shadow roots under `root` that are not observed yet, nested ones too, while `scan` lasts; how many. */
-			const watch = (root: Node, scan: { left: number }): number => {
-				let found = 0;
-				const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT);
-				for (let node: Node | null = walker.currentNode; node !== null && scan.left > 0; node = walker.nextNode()) {
-					scan.left -= 1;
-					const shadow = node instanceof Element ? shadowOf(node) : null;
-					if (shadow === null) continue;
-					if (!roots.has(shadow)) {
-						roots.add(shadow);
-						observer.observe(shadow, options);
-						found += 1;
-					}
-					found += watch(shadow, scan);
-				}
-				return found;
-			};
-			/** Nothing changed for `quietMs`. A root attached to an element already there makes no record: look again first. */
-			const quieted = () => {
-				const scan = { left: 50_000 };
-				if (watch(document, scan) > 0) quiet = setTimeout(quieted, act.quietMs);
-				else done(scan.left <= 0);
-			};
-			observer.observe(document, options);
-			watch(document, { left: 50_000 });
-			let quiet = setTimeout(quieted, act.quietMs);
-			const limit = setTimeout(() => done(true), act.maxWaitMs);
-			const done = (timedOut: boolean) => {
-				observer.disconnect();
-				clearTimeout(quiet);
-				clearTimeout(limit);
-				resolve(timedOut);
-			};
-		});
 	const finish = async (step: Step, shown: Element | null): Promise<ActResult> => {
-		const timedOut = await settle(shown);
+		const timedOut = await settle(shown, act.quietMs, act.maxWaitMs);
 		stopInput();
 		return {
 			ok: true,
@@ -1318,9 +1634,10 @@ export async function pageAgent(
 		switch (act.action) {
 			case "click": {
 				if (element === undefined) return refused("click needs a ref");
-				const aimed = aim(element);
-				if (typeof aimed === "string") return refused(aimed);
-				const { x, y, hit } = aimed;
+				const target = aim(element);
+				if (typeof target === "string") return refused(target);
+				const { x, y, hit } = target;
+				if (aiming) return aimed({ x, y });
 				noteLink(element);
 				const shown = outline(element);
 				const pointer = {
@@ -1373,7 +1690,9 @@ export async function pageAgent(
 				if (problem !== null) return refused(problem);
 				if (act.submit && form === null)
 					return refused(`${ref} is not in a form: type without submit, then click the form's button`);
-				center(element);
+				const point = place(element);
+				if (typeof point === "string") return refused(point);
+				if (aiming) return aimed(point);
 				const shown = outline(element);
 				(element as HTMLElement).focus({ preventScroll: true });
 				if (kind === "field") (element as HTMLInputElement).select();
@@ -1445,12 +1764,18 @@ export async function pageAgent(
 				let target: Element | null = element ?? null;
 				let shown: Element | null = null;
 				if (element !== undefined) {
-					center(element);
+					const point = place(element);
+					if (typeof point === "string") return refused(point);
+					if (aiming) return aimed(point);
 					shown = outline(element);
 					(element as HTMLElement).focus({ preventScroll: true });
 					const problem = focusText(element);
 					if (problem !== null) return refused(problem);
-				} else target = focused() ?? document.body;
+				} else {
+					target = deepFocus() ?? document.body;
+					// The key would go to the frame's page, which pi does not check here (design 6.50).
+					if (isFrame(target)) return refused(`Focus is in ${describe(target!, act.letter)}: pass a ref in it`);
+				}
 				if (target === null) return refused("The page has no element to press the key in");
 				const init = { key, code, bubbles: true, cancelable: true, composed: true, view: window, ...modifiers };
 				sent = true;
@@ -1470,8 +1795,10 @@ export async function pageAgent(
 			case "scroll": {
 				if (element === undefined && act.direction === null)
 					return refused("scroll needs a ref, a direction, or both");
+				const point = place(act.direction === null || frame !== null || aiming ? (element ?? null) : null);
+				if (typeof point === "string") return refused(point);
+				if (aiming) return aimed(point);
 				if (act.direction === null) {
-					center(element!);
 					sent = true;
 					return await finish({ kind: "reveal", target: describe(element!, act.letter) }, outline(element!));
 				}
@@ -1497,7 +1824,9 @@ export async function pageAgent(
 				// Also an option in a disabled optgroup.
 				if (option.matches(":disabled"))
 					return refused(`The option "${clean(option.label)}" of ${ref} is disabled`);
-				center(element);
+				const point = place(element);
+				if (typeof point === "string") return refused(point);
+				if (aiming) return aimed(point);
 				const shown = outline(element);
 				sent = true;
 				// By index: two options may have the same value.
@@ -1511,11 +1840,12 @@ export async function pageAgent(
 			}
 			case "hover": {
 				if (element === undefined) return refused("hover needs a ref");
-				const aimed = aim(element);
-				if (typeof aimed === "string") return refused(aimed);
+				const target = aim(element);
+				if (typeof target === "string") return refused(target);
+				if (aiming) return aimed({ x: target.x, y: target.y });
 				const shown = outline(element);
 				sent = true;
-				moveTo(aimed.hit, aimed.x, aimed.y, 0, true);
+				moveTo(target.hit, target.x, target.y, 0, true);
 				return await finish({ kind: "hover", target: describe(element, act.letter) }, shown);
 			}
 			case "drag": {
@@ -1524,9 +1854,9 @@ export async function pageAgent(
 				const goal = act.to === null ? null : elementOf(act.to);
 				const goalRef = act.to === null ? "" : `${act.to.letter}${act.to.number}`;
 				if (goal === undefined) return refused(gone(goalRef));
-				const aimed = aim(element);
-				if (typeof aimed === "string") return refused(aimed);
-				const { x, y, hit: start } = aimed;
+				const pressAt = aim(element);
+				if (typeof pressAt === "string") return refused(pressAt);
+				const { x, y, hit: start } = pressAt;
 				const outside = (point: { x: number; y: number }) =>
 					point.x < 0 || point.y < 0 || point.x >= innerWidth || point.y >= innerHeight;
 				let end: { x: number; y: number };
@@ -1541,7 +1871,7 @@ export async function pageAgent(
 					if (outside(end)) return refused(`${ref} and ${goalRef} do not fit in the window together`);
 					const hit = hitAt(end.x, end.y);
 					if (hit === null || !within(hit, goal))
-						return refused(`${goalRef} is covered by ${coverOf(hit ?? document.documentElement)}`);
+						return refused(`${goalRef} is covered by ${coverOf(hit ?? document.documentElement, act.letter)}`);
 				}
 				const shown = outline(element);
 				const step = {

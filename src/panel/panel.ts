@@ -380,7 +380,9 @@ function announceChanges(previous: PanelState, next: PanelState): void {
 	if (asked !== undefined)
 		announce(
 			asked.kind === "site"
-				? t("announceNeedsSite", [asked.origin === null ? t("movedSite") : originName(asked.origin)])
+				? asked.frame
+					? t("announceNeedsFrameSite")
+					: t("announceNeedsSite", [asked.origin === null ? t("movedSite") : originName(asked.origin)])
 				: asked.kind === "network"
 					? t("announceNetwork")
 					: t(asked.kind === "script" ? "announceScript" : "announceAct", [asked.origin]),
@@ -2045,10 +2047,17 @@ function askNode(card: AskCard): HTMLElement {
 			node(
 				"p",
 				"",
-				name === null ? t("needsMovedSite") : t("needsSite", [name]),
+				card.frame
+					? name === null
+						? t("needsFrameSite")
+						: t("needsNamedFrameSite", [name])
+					: name === null
+						? t("needsMovedSite")
+						: t("needsSite", [name]),
 				node("span", "", t("siteAskNote")),
 				// Chrome does not tell pi the site: the toolbar button lets pi in on it alone (design 6.28).
-				...(name === null ? [node("span", "", t("movedSiteHint"))] : []),
+				// The toolbar button grants the tab's page, never a frame's site (design 6.50).
+				...(name === null && !card.frame ? [node("span", "", t("movedSiteHint"))] : []),
 			),
 		];
 	}

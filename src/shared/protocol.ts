@@ -9,7 +9,7 @@
 
 import type { Preset } from "./presets.ts";
 
-export const PROTOCOL_VERSION = 45;
+export const PROTOCOL_VERSION = 46;
 export const PANEL_PORT = "panel";
 export const MAX_UNACKED = 4;
 
@@ -616,7 +616,7 @@ export type AskReply = "allow" | "answer" | "chat" | "deny";
  * (null: it cannot name it); may it act on `origin`, or run this script there? A script's `summary` is the model's words.
  */
 export type AskCard =
-	| { id: string; kind: "site"; origin: string | null }
+	| { id: string; kind: "site"; origin: string | null; frame: boolean }
 	/** Chrome's webRequest permission for read_network_requests (design 6.46). */
 	| { id: string; kind: "network" }
 	| { id: string; kind: "act"; origin: string }

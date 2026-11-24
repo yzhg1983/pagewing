@@ -52,7 +52,9 @@ Returns url, title, offset, nextOffset (null at the end), truncated, text. Read 
 and images, as \`- role "name" ref states\`, indented under the element that holds them. Pass a ref (such as a12) to \
 act_on_page. A ref fails once the page reloads or navigates or the element is removed; then observe again. Field \
 content is never shown, only (empty) or (filled); fields marked password, card field, or one-time code are refused for \
-typing. find keeps elements whose role and name contain every word; within lists one element's contents. ${PAGE_TEXT}`,
+typing. find keeps elements whose role and name contain every word; within lists one element's contents. A frame is \
+one line, \`- frame "name" a33 640×480\` with origin=<its site>, "no access to this frame's site", or "not on a \
+site"; within its ref lists what is in it, with refs that work like any other (drag excepted). ${PAGE_TEXT}`,
 		inputSchema: {
 			type: "object",
 			properties: {

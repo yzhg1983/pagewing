@@ -14,7 +14,7 @@ export type AskAnswer = "allow" | "deny" | "recheck";
  * permission to see a tab's requests (6.46), to act on `origin`, or to run this task's script in document `documentId`.
  */
 export type AskRequest = { conversationId: number; run: number } & (
-	| { kind: "site"; origin: string | null }
+	| { kind: "site"; origin: string | null; frame: boolean }
 	| { kind: "network" }
 	| { kind: "act"; origin: string }
 	| { kind: "script"; origin: string; taskId: string; documentId: string; code: string; summary: string | null }
@@ -190,7 +190,7 @@ export class Asks {
 						? { id, kind: "act", origin: request.origin }
 						: request.kind === "network"
 							? { id, kind: "network" }
-							: { id, kind: "site", origin: request.origin };
+							: { id, kind: "site", origin: request.origin, frame: request.frame };
 			this.#waiting.set(id, {
 				card,
 				request,

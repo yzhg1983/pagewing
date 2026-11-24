@@ -626,6 +626,15 @@
 	"needsSite": {
 		"message": "pi 需要访问 $1 才能继续。"
 	},
+	"needsFrameSite": {
+		"message": "pi 需要访问此页面中一个框架里的网站才能继续。Chrome 没有说明是哪个网站。"
+	},
+	"needsNamedFrameSite": {
+		"message": "pi 需要访问此页面中一个框架里的网站才能继续。页面称该框架显示的是 $1。"
+	},
+	"announceNeedsFrameSite": {
+		"message": "pi 需要访问此页面中一个框架里的网站"
+	},
 	"siteAskNote": {
 		"message": "Chrome 会请你确认。随后 pi 可直接读取该网站的页面而不再询问；其他页面工具仍按各自设置执行。可在“设置 > 高级 > 网站”中移除权限。"
 	},
@@ -1531,6 +1540,66 @@
 	},
 	"reasonCannotEncode": {
 		"message": "无法编码图片：$1。"
+	},
+	"reasonFramesChanged": {
+		"message": "pi 查看时，网页中的框架变了。"
+	},
+	"reasonDragInFrame": {
+		"message": "暂不支持在框架内拖动。"
+	},
+	"reasonFrameUnchecked": {
+		"message": "pi 无法确认框架 $1 是否显示。"
+	},
+	"reasonFrameNoSite": {
+		"message": "框架 $1 不属于任何网站，pi 不列出其中的内容。"
+	},
+	"reasonFrameNoSiteAct": {
+		"message": "框架 $1 不属于任何网站，pi 不在其中操作。"
+	},
+	"reasonNoFrameAccess": {
+		"message": "框架 $1 所在的网站 pi 无权访问。"
+	},
+	"reasonFrameSiteCancelled": {
+		"message": "你取消了：Chrome 不允许 pi 访问这个框架里的网站。"
+	},
+	"reasonCaptureInFrame": {
+		"message": "pi 暂不能截取框架内的单个元素。"
+	},
+	"reasonFrameMoved": {
+		"message": "pi 操作时，框架在网页中的位置变了。"
+	},
+	"reasonFocusInFrame": {
+		"message": "焦点在 $1 中。"
+	},
+	"reasonShadowFrame": {
+		"message": "$1 是影子根中的框架，pi 无法判断它显示的是哪个网页。"
+	},
+	"reasonFrameTransformed": {
+		"message": "框架 $1 被缩放或变形，pi 无法换算其中的位置。"
+	},
+	"reasonFrameUnmapped": {
+		"message": "pi 无法判断框架 $1 显示的是哪个网页。"
+	},
+	"reasonFrameCovered": {
+		"message": "框架 $1 中 pi 要操作的位置被 $2 挡住了。"
+	},
+	"reasonFrameHidden": {
+		"message": "框架 $1 已隐藏或小于 2 像素。"
+	},
+	"reasonFrameOutside": {
+		"message": "框架 $1 中 pi 要操作的位置不在可见区域内。"
+	},
+	"reasonFrameGone": {
+		"message": "框架里的网页已关闭或跳转。"
+	},
+	"reasonFrameUnreachable": {
+		"message": "pi 无法访问框架里的网页：$1。"
+	},
+	"reasonMovedChecking": {
+		"message": "pi 检查框架时，$1 移动了。"
+	},
+	"reasonFrameScrolled": {
+		"message": "pi 检查框架时，框架里的网页移动了。"
 	},
 	"reasonTooDetailed": {
 		"message": "画面细节太多，无法作为图片发送。"

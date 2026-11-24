@@ -20,6 +20,21 @@ import { bool, int, num, obj, opt, str, union } from "@earendil-works/pi-schema"
 import { ENCODINGS, MAX_IMAGE_BYTES, MAX_IMAGE_CHARS, MAX_IMAGES } from "../shared/images.ts";
 import { cut, MAX_URL_CHARS, type PageRef, pageTitle, type ToolMode, type ToolModes } from "../shared/protocol.ts";
 import {
+	type Acting,
+	actInFrame,
+	actingOf,
+	checkAncestors,
+	type FrameBinding,
+	type FrameCall,
+	type Joined,
+	joinFrame,
+	knownIn,
+	noFrameAccess,
+	type Observed,
+	observeAt,
+	refIn,
+} from "./frames.ts";
+import {
 	ACT_ON_PAGE,
 	bounded,
 	type Encoded,
@@ -79,8 +94,6 @@ import { CAPTURE_GAP_MS, capturable, chatImages, cropOf, RETRY_GAP_MS, sameView,
 import type { ScriptResult } from "./script-runner.ts";
 import { SCOPE_DENIED, ScopeDenied } from "./tab-groups.ts";
 
-/** Maps a chat keeps, newest last; a ref of an older one fails as gone. */
-const MAX_MAPS = 50;
 /** After an action: how long the page must be quiet, and how long pi waits for that at most. */
 const QUIET_MS = 300;
 const MAX_WAIT_MS = 5_000;
@@ -175,8 +188,11 @@ function pause(ms: number, context: Context): Promise<void> {
 	});
 }
 
-/** A ref map of the chat: its letter, the document it lives in, and its random ID there. */
-export type RefMap = { letter: string; documentId: string; mapId: string };
+/**
+ * A ref map of the chat: its letter, the document it lives in, and its random ID there; of a frame's document, the
+ * frame's binding to the `<iframe>` that shows it (design 6.50).
+ */
+export type RefMap = { letter: string; documentId: string; mapId: string; frame?: FrameBinding; frames?: number[] };
 /** `next`: the index of the next letter; letters are never reused in a chat. */
 export type RefMaps = { next: number; maps: RefMap[] };
 
@@ -203,14 +219,35 @@ export function letterOf(index: number): string {
 	return letters;
 }
 
-/** The element `ref` names in document `documentId`, or why it is gone. */
-export function targetOf(maps: RefMaps | undefined, ref: string, documentId: string): AgentTarget | string {
-	const parsed = /^([a-z]+)([1-9][0-9]*)$/.exec(ref.trim());
-	if (parsed === null) return `"${ref}" is not a ref: pass one from observe_page, such as a12`;
-	const [, letter, number] = parsed as unknown as [string, string, string];
-	const map = maps?.maps.find((one) => one.letter === letter);
-	if (map === undefined || map.documentId !== documentId) return `${ref} is gone (the page changed): observe again`;
-	return { letter, mapId: map.mapId, number: Number(number) };
+/** Maps a chat or an agent's session keeps, newest last; a ref of an older one fails as gone. */
+const MAX_MAPS = 50;
+
+/**
+ * Keeps an outline's map in `maps`: a map seen before keeps a frame's binding from this join and learns new frame
+ * lines; a new map takes the letter the page wrote. False when another call took that letter meanwhile.
+ */
+export function keepMap(maps: RefMaps, observed: Extract<Observed, { kind: "outline" }>): boolean {
+	const map = maps.maps.find((one) => one.mapId === observed.mapId);
+	if (map !== undefined) {
+		if (observed.binding !== null && map.documentId === observed.documentId) map.frame = observed.binding;
+		const known = map.frames ?? [];
+		const added = observed.frames.filter((number) => !known.includes(number));
+		if (added.length > 0) map.frames = [...known, ...added];
+		return true;
+	}
+	if (letterOf(maps.next) !== observed.letter) return false;
+	maps.next += 1;
+	const frame = observed.binding === null ? {} : { frame: observed.binding };
+	const frames = observed.frames.length === 0 ? {} : { frames: observed.frames };
+	maps.maps.push({
+		letter: observed.letter,
+		documentId: observed.documentId,
+		mapId: observed.mapId,
+		...frame,
+		...frames,
+	});
+	if (maps.maps.length > MAX_MAPS) maps.maps.splice(0, maps.maps.length - MAX_MAPS);
+	return true;
 }
 
 /**
@@ -327,8 +364,11 @@ collapsed, selected, disabled, level=N. Images, diagrams (graphic), canvas, and 
 "(no alt)" a12 400×360 caption "Sales by region"\`; icons \
 smaller than 48 px and images marked decorative are left out, and find "image" finds them all, also clickable ones.${see} \
 Use find to look for something by words ("save button"), at most 50 matches, \
-and within to list one part of the page. Frames are not listed. Result JSON: url, title, pageChanged, outline, omitted \
-(what was left out past the size or time limit; narrow with find or within). The page tools can be called \
+and within to list one part of the page. A frame (an embedded page) is one line, \`- frame "name" a33 640×480\` and \
+then origin=<its site>, "no access to this frame's site", or "not on a site"; its contents are not listed. within a \
+frame's ref lists what is in it, with refs that work like any other; one in a shadow root is marked "not listed" and \
+cannot be opened. Result JSON: url, title, pageChanged, outline, omitted (what was left out past the size or time \
+limit; narrow with find or within), and frame.origin when within named a frame or a ref in one. The page tools can be called \
 ${callsPerAnswer} times per answer in all.`;
 }
 
@@ -360,7 +400,9 @@ type with submit), Tab does not move the focus. hover moves the pointer onto ref
 (a ref) or by {x, y} CSS pixels (as for a slider), and releases. They send pointer, mouse, and drag events for the \
 page's scripts, best effort: they do not set CSS :hover, move native controls (range inputs, selects, scrollbars, text \
 selection), or capture the pointer. After a drag, observe to see whether it took effect; do not repeat one that did \
-nothing. Menus that open on CSS hover, file pickers, the clipboard, and sites \
+nothing. Refs inside a frame work for every action except drag, and the action counts as acting on the frame's site; \
+press without a ref is refused while the focus is in a frame (pass a ref in it), and scroll with a frame's ref and a \
+direction scrolls the page in the frame. Menus that open on CSS hover, file pickers, the clipboard, and sites \
 that reject simulated input do not work. navigate only goes to URLs on the tab's current origin; a link or redirect can \
 still leave it, and the page tools follow the tab. ${navigationNote(tools)} ${BUSINESS} A call that was stopped, interrupted, or timed out, or whose page unloaded before it answered (as \
 after a click on a link; the result is then an error naming the new page), may still have happened: observe and check \
@@ -435,7 +477,7 @@ equals shown.of; while an element that scrolls itself moves its content, shown s
 Use it for what the text${refs ? " and the outline" : ""} do not show: icons, colors, charts, images, canvas, layout, \
 and what is highlighted; not to read text${tools.read !== "off" ? ` (${READ_PAGE} is cheaper and reads the whole page)` : ""}. \
 The tab must be in front and its window in view (not covered or minimized), and Chrome allows it only after the \
-user opened pi on this site. A chat sends at most \
+user opened pi on this site.${refs ? " A ref inside a frame is refused: pass the frame's ref instead." : ""} A chat sends at most \
 ${MAX_IMAGES} images (screenshots and the user's attachments) with each request, so take one only when needed. Result: the image, and JSON: url, title, \
 width, height, clipped (part of the element is outside the view)${
 		refs
@@ -720,64 +762,50 @@ export function pageExtension(deps: PageDeps, config: PageToolOffer): Extension 
 			if (typeof top === "string") return failure(top);
 
 			const maps = await api.snapshot(RefMapsDoc, conversationId, context);
-			let within: AgentTarget | null = null;
-			if (args.within !== undefined) {
-				const target = targetOf(maps, args.within, top.documentId);
-				if (typeof target === "string") return failure(target);
-				within = target;
-			}
-			const letter = letterOf(maps?.next ?? 0);
-			const known = (maps?.maps ?? [])
-				.filter((map) => map.documentId === top.documentId)
-				.map(({ letter, mapId }) => ({ letter, mapId }));
 			const find = args.find?.trim();
 			// The mode as it is now: an observe turned Off during the waits above does not start.
 			const latest = await deps.settings();
 			if (latest.tools.observe === "off") return failure(offText(OBSERVE_PAGE));
-			let result: Awaited<ReturnType<typeof access.observe>>;
+			const call: FrameCall = { scope: { access, wait: bounded }, tabId: page.tabId, context, timeoutMs };
+			let result: Awaited<ReturnType<typeof observeAt>>;
 			try {
-				result = await bounded(
-					() =>
-						access.observe(page.tabId, top.documentId, {
-							op: "observe",
-							known,
-							letter,
-							find: find === undefined || find === "" ? null : find,
-							within,
-							maxBytes: MAX_OUTLINE_BYTES,
-							budgetMs: OBSERVE_BUDGET_MS,
-							maxElements: MAX_ELEMENTS,
-							maxMatches: MAX_MATCHES,
-							maxUrl: 2048,
-						}),
-					context,
-					timeoutMs,
+				result = await observeAt(
+					top,
+					maps,
+					args.within,
+					{
+						letter: letterOf(maps?.next ?? 0),
+						find: find === undefined || find === "" ? null : find,
+						maxBytes: MAX_OUTLINE_BYTES,
+						budgetMs: OBSERVE_BUDGET_MS,
+						maxElements: MAX_ELEMENTS,
+						maxMatches: MAX_MATCHES,
+						maxUrl: 2048,
+					},
+					call,
 				);
 			} catch (error) {
 				if (context.abortSignal?.aborted) throw error;
+				if (error instanceof ScopeDenied || error instanceof PageRefused) return failure(error.message);
 				return failure(`Cannot observe the page: ${messageOf(error)}. ${NO_ACCESS}`);
 			}
-			if (result === null) return failure("The page went away while pi observed it; observe again.");
-			if (!result.ok) return failure(result.error);
-			const { mapId } = result;
-			if (!known.some((map) => map.mapId === mapId)) {
-				// A new map: it takes the letter the page wrote, unless another call took it meanwhile.
-				const added = await api.commit(async (tx) => {
-					const state = await tx.doc(RefMapsDoc, conversationId);
-					if (letterOf(state.next) !== result.letter) return false;
-					state.next += 1;
-					state.maps.push({ letter: result.letter, documentId: top.documentId, mapId });
-					if (state.maps.length > MAX_MAPS) state.maps.splice(0, state.maps.length - MAX_MAPS);
-					return true;
-				}, context);
-				if (!added) return failure("The page's refs changed while pi observed it; observe again.");
-			}
+			if (result.kind === "refused") return failure(result.error);
+			if (result.kind === "unreachable") return failure(noFrameAccess(result.ref));
+			const observed = result;
+			const added = await api.commit(
+				async (tx) => keepMap(await tx.doc(RefMapsDoc, conversationId), observed),
+				context,
+			);
+			if (!added) return failure("The page's refs changed while pi observed it; observe again.");
+			// An outline of a frame names the tab's page, and the frame's origin.
+			const inFrame = observed.documentId !== top.documentId;
 			const envelope = {
-				url: result.url,
-				title: pageTitle(result.title),
-				pageChanged: !samePage(result.url, page.url),
-				outline: result.outline,
-				omitted: result.omitted,
+				url: inFrame ? top.url : observed.url,
+				title: pageTitle(inFrame ? top.title : observed.title),
+				pageChanged: !samePage(inFrame ? top.url : observed.url, page.url),
+				outline: observed.outline,
+				omitted: observed.omitted,
+				...(observed.binding === null ? {} : { frame: { origin: observed.binding.origin } }),
 			};
 			return {
 				output: [{ type: "text", text: JSON.stringify(envelope) }],
@@ -1014,7 +1042,8 @@ export function pageExtension(deps: PageDeps, config: PageToolOffer): Extension 
 			const guarded = {
 				...deps.access,
 				act(tabId: number, documentId: string, request: ActRequest) {
-					stopNoting = deps.access.opened(tabId);
+					// In a frame, noting starts before the frames are checked (design 6.50).
+					if (request.frame === null) stopNoting = deps.access.opened(tabId);
 					return deps.access.act(tabId, documentId, request);
 				},
 			};
@@ -1106,10 +1135,25 @@ export function pageExtension(deps: PageDeps, config: PageToolOffer): Extension 
 			}
 			const top = await topOf(scoped, page, context);
 			if (typeof top === "string") return refused(top);
+			const maps = await api.snapshot(RefMapsDoc, conversationId, context);
+			const call: FrameCall = { scope: { access, wait: bounded }, tabId: page.tabId, context, timeoutMs };
+			let acting: Acting = { kind: "top", target: null, to: null };
+			if (action !== "navigate") {
+				try {
+					acting = await actingOf(top, maps, args, call);
+				} catch (error) {
+					if (context.abortSignal?.aborted) throw error;
+					if (error instanceof ScopeDenied || error instanceof PageRefused) return refused(error.message);
+					return refused(`Cannot act on the page: ${messageOf(error)}. ${NO_ACCESS}`);
+				}
+				if (acting.kind === "refused") return refused(acting.error);
+			}
+			// An action in a frame acts on the frame's origin (design 6.50).
+			const origin = acting.kind === "frame" ? acting.origin : top.origin;
 			dispatchPolicy = () => {
 				const now = deps.currentSettings().tools.act;
-				return now === "ask" && !deps.asks.granted(conversationId, run, top.origin)
-					? `The user has not allowed acting on ${top.origin} in this answer.`
+				return now === "ask" && !deps.asks.granted(conversationId, run, origin)
+					? `The user has not allowed acting on ${origin} in this answer.`
 					: null;
 			};
 			/**
@@ -1120,8 +1164,8 @@ export function pageExtension(deps: PageDeps, config: PageToolOffer): Extension 
 				const latest = await deps.settings();
 				const now = latest.tools.act;
 				if (now === "off") return offText(ACT_ON_PAGE);
-				return now === "ask" && !deps.asks.granted(conversationId, run, top.origin)
-					? `The user has not allowed acting on ${top.origin} in this answer.`
+				return now === "ask" && !deps.asks.granted(conversationId, run, origin)
+					? `The user has not allowed acting on ${origin} in this answer.`
 					: null;
 			};
 			const denied = await notAllowed();
@@ -1198,32 +1242,17 @@ export function pageExtension(deps: PageDeps, config: PageToolOffer): Extension 
 						);
 					}
 				} else {
-					const maps = await api.snapshot(RefMapsDoc, conversationId, context);
-					let target: AgentTarget | null = null;
-					if (args.ref !== undefined) {
-						const found = targetOf(maps, args.ref, top.documentId);
-						if (typeof found === "string") return refused(found);
-						target = found;
-					}
-					let to: AgentTarget | null = null;
-					if (args.to !== undefined) {
-						const found = targetOf(maps, args.to, top.documentId);
-						if (typeof found === "string") return refused(found);
-						to = found;
-					}
 					const request: ActRequest = {
 						op: "act",
 						action: action as ActAction,
-						target,
-						known: (maps?.maps ?? [])
-							.filter((map) => map.documentId === top.documentId)
-							.map(({ letter, mapId }) => ({ letter, mapId })),
+						target: acting.target,
+						known: knownIn(maps, acting.kind === "frame" ? acting.documentId : top.documentId),
 						text: args.text ?? null,
 						submit: args.submit === true,
 						key: args.key ?? null,
 						option: args.option ?? null,
 						direction: (args.direction as ActRequest["direction"] | undefined) ?? null,
-						to,
+						to: acting.kind === "top" ? acting.to : null,
 						by: args.by ?? null,
 						summary,
 						dragMoves: DRAG_MOVES,
@@ -1232,6 +1261,7 @@ export function pageExtension(deps: PageDeps, config: PageToolOffer): Extension 
 						maxWaitMs: MAX_WAIT_MS,
 						outlineMs: OUTLINE_MS,
 						maxUrl: 2048,
+						frame: null,
 					};
 					const stopped = await notAllowed();
 					if (stopped !== null) return refused(stopped);
@@ -1245,7 +1275,25 @@ export function pageExtension(deps: PageDeps, config: PageToolOffer): Extension 
 							},
 						);
 						if (place?.active && !place.minimized && place.focused === true) frontWindow = place.windowId;
-						result = await bounded(() => access.act(page.tabId, top.documentId, request), context, timeoutMs);
+						if (acting.kind === "frame") {
+							const inFrame = await actInFrame(
+								top,
+								acting,
+								request,
+								deps.access,
+								() => {
+									stopNoting = deps.access.opened(page.tabId);
+									return stopNoting;
+								},
+								call,
+							);
+							if ("lost" in inFrame) {
+								noted = stopNoting();
+								return refused(`${inFrame.lost}${unknownTabs(noted)}`);
+							}
+							result = inFrame;
+						} else
+							result = await bounded(() => access.act(page.tabId, top.documentId, request), context, timeoutMs);
 					} catch (error) {
 						if (context.abortSignal?.aborted) throw error;
 						return refused(
@@ -1705,9 +1753,14 @@ to start a new chat.`;
 			if (typeof top === "string") return failure(top);
 			let target: AgentTarget | null = null;
 			if (ref !== undefined) {
-				const found = targetOf(await api.snapshot(RefMapsDoc, conversationId, context), ref, top.documentId);
+				const found = refIn(await api.snapshot(RefMapsDoc, conversationId, context), ref, top.documentId);
 				if (typeof found === "string") return failure(found);
-				target = found;
+				const outer = found.chain[0]?.owner;
+				if (outer !== undefined)
+					return failure(
+						`pi cannot capture an element inside a frame yet: pass the frame's ref (${outer.letter}${outer.number}), or capture the whole view.`,
+					);
+				target = found.target;
 			}
 
 			/** The tab's window, if the tab is in front and shows the document found above; else `notInFront`, or why not. */
@@ -2115,6 +2168,7 @@ to start a new chat.`;
 					const { conversationId } = api;
 					let skipChecked = false;
 					let named = true;
+					let frameNamed = true;
 					for (;;) {
 						// A change of the modes from here on makes the card below a recheck, also before it shows.
 						const version = deps.asks.version;
@@ -2174,7 +2228,7 @@ to start a new chat.`;
 							// pi in, the tab is elsewhere: the next card names none.
 							const origin = named ? deps.access.leadsTo(tabId) : null;
 							const answer = await deps.asks.ask(
-								{ kind: "site", conversationId, run, origin },
+								{ kind: "site", conversationId, run, origin, frame: false },
 								context.abortSignal,
 								version,
 							);
@@ -2187,6 +2241,43 @@ to start a new chat.`;
 						}
 						// A page that is not on a site (about:blank, data:) is refused by execute(), without a card.
 						if (top.origin === "null") return undefined;
+						const frameCall: FrameCall = { scope: { access, wait }, tabId, context, timeoutMs };
+						if (call.name === OBSERVE_PAGE) {
+							// within on a frame Chrome does not let pi script: the site card for it (design 6.50).
+							const { within } = call.arguments as { within?: string };
+							if (within === undefined || (await deps.access.allSites())) return undefined;
+							const resolved = refIn(
+								await api.snapshot(RefMapsDoc, conversationId, context),
+								within,
+								top.documentId,
+							);
+							if (typeof resolved === "string" || !resolved.frameLine) return undefined;
+							let joined: Joined;
+							try {
+								if (typeof (await checkAncestors(resolved.chain, null, frameCall)) === "string")
+									return undefined;
+								const path = resolved.chain.at(-1)?.path ?? [];
+								joined = await joinFrame({ documentId: resolved.documentId, path }, resolved.target, frameCall);
+							} catch (error) {
+								if (context.abortSignal?.aborted) throw error;
+								return undefined;
+							}
+							// execute() refuses the rest, or lists the frame.
+							if (joined.kind !== "unreachable") return undefined;
+							if (deps.asks.version !== version) continue;
+							// The site the page claims the frame shows; after an Allow that did not let pi in, none.
+							const answer = await deps.asks.ask(
+								{ kind: "site", conversationId, run, origin: frameNamed ? joined.hint : null, frame: true },
+								context.abortSignal,
+								version,
+							);
+							if (answer === "deny")
+								return {
+									block: "The user cancelled: Chrome does not let pi reach the site in this frame. Do not try again in this answer.",
+								};
+							if (answer === "allow") frameNamed = false;
+							continue;
+						}
 						if (call.name === READ_NETWORK) {
 							// Chrome asks for webRequest only in a click: the card's (design 6.46). Once granted, no card.
 							if (await deps.recording.networkAllowed()) return undefined;
@@ -2231,19 +2322,33 @@ to start a new chat.`;
 							if (answer === "allow") return undefined;
 							continue;
 						}
+						// An action in a frame acts on the frame's origin (design 6.50); execute() refuses one that goes nowhere.
+						let origin = top.origin;
+						if (action !== "navigate") {
+							let acting: Acting;
+							try {
+								const maps = await api.snapshot(RefMapsDoc, conversationId, context);
+								acting = await actingOf(top, maps, call.arguments as Parameters<typeof actingOf>[2], frameCall);
+							} catch (error) {
+								if (context.abortSignal?.aborted) throw error;
+								return undefined;
+							}
+							if (acting.kind === "refused") return undefined;
+							if (acting.kind === "frame") origin = acting.origin;
+						}
 						// An Allow of acting on the origin lasts for the answer, or with "For this chat" for the chat.
 						await deps.asks.ready();
 						// A change of the modes while the allowances loaded took back "For this chat": read them again.
 						if (deps.asks.version !== version) continue;
-						if (deps.asks.granted(conversationId, run, top.origin)) return undefined;
+						if (deps.asks.granted(conversationId, run, origin)) return undefined;
 						const answer = await deps.asks.ask(
-							{ kind: "act", conversationId, run, origin: top.origin },
+							{ kind: "act", conversationId, run, origin },
 							context.abortSignal,
 							version,
 						);
 						if (answer === "deny")
 							return {
-								block: `The user denied acting on ${top.origin} in this answer; do not try again in this answer.`,
+								block: `The user denied acting on ${origin} in this answer; do not try again in this answer.`,
 							};
 					}
 				},
