@@ -44,7 +44,7 @@
 	"devDependencies": {
 		"@biomejs/biome": "2.6.8",
 		"@types/chrome": "0.3.7",
-		"@vitest/coverage-v8": "5.1.0",
+		"@vitest/coverage-v8": "5.1.1",
 		"esbuild": "0.28.2",
 		"happy-dom": "21.0.4",
 		"playwright-core": "1.65.1",
